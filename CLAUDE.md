@@ -33,7 +33,9 @@ The CLI bundles its own JDK 21 at `~/.android/cli/bundles/<hash>/jre/`. **Caveat
 
 Practical rule of thumb:
 - `android run --apks=…` → just works.
-- `./gradlew assembleDebug` → `JAVA_HOME=/usr/lib/jvm/java-26-openjdk ./gradlew assembleDebug` (or equivalent system JDK 17+ path).
+- `./gradlew assembleDebug` → `JAVA_HOME=/usr/lib/jvm/java-26-openjdk ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleDebug` (or equivalent system JDK 17+ path).
+
+**Worktree caveat:** Gradle reads the SDK path from `local.properties`, which is gitignored. Worktrees created off `main` for subagents start without a `local.properties`, so direct `./gradlew` calls there will fail with `SDK location not found` unless `ANDROID_HOME` is exported (or `local.properties` is generated locally in the worktree). Always export `ANDROID_HOME=$HOME/Android/Sdk` alongside `JAVA_HOME` when invoking Gradle directly in an agent worktree.
 
 Useful subcommands:
 
