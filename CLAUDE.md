@@ -6,38 +6,83 @@ Modern Android music player. Kotlin + Jetpack Compose + Media3 + Room. Built ent
 
 - **Language:** Kotlin only. No Java.
 - **UI:** Jetpack Compose. No Android Views.
-- **Audio:** [androidx.media3](https://developer.android.com/media/media3) (ExoPlayer + MediaSession + MediaSessionService). This matches Auxio's stack.
+- **Audio:** [androidx.media3](https://developer.android.com/media/media3) (ExoPlayer + MediaSession + MediaSessionService). Same stack as Auxio.
 - **Data:** Room for cached MediaStore metadata.
-- **Build:** Gradle CLI (`./gradlew`). The repo includes a Gradle wrapper. Android SDK installed via `cmdline-tools` / `sdkmanager`. **Do not introduce Android Studio project files** (`.idea/`, `*.iml`).
+- **Build front-end:** [Google's Android CLI](https://developer.android.com/tools/agents/android-cli) (`android` command, launched April 2026). Wraps project creation, SDK management, build, install, and run. **Do not introduce Android Studio project files** (`.idea/`, `*.iml`).
+- **Build back-end:** Gradle (driven by the Android CLI; the wrapper is committed to the repo).
 - **Tests, unit:** Robolectric. JVM-only. No device required.
 - **Tests, UI:** [mobile-mcp](https://github.com/mobile-next/mobile-mcp), Claude-driven over ADB. Target is the user's phone via wifi-adb, or [Waydroid](https://waydro.id/) on Linux. **Never use a full QEMU emulator (AVD) — RAM-prohibitive on this user's setup.**
 
-## Test loop
+## Required CLIs and MCP servers
 
-The user runs the MCP server registration once per machine:
+These are user-machine prerequisites. The plan tracks each in Phase 0.
+
+### Android CLI
+
+The new (April 2026) `android` command from Google wraps everything we need.
+
+Install: <https://developer.android.com/tools/agents>
+
+Useful subcommands:
 
 ```bash
-claude mcp add mobile -- npx -y @mobilenext/mobile-mcp@latest
+android create list                                  # browse project templates
+android create --name=tonearm --output=. <template>  # scaffold a new project
+android sdk install platforms/android-34 build-tools/34.0.0
+android run --apks=app/build/outputs/apk/debug/app-debug.apk
+android docs search <query>                          # query the Android Knowledge Base
+android docs fetch <kb-url>                          # fetch a specific KB doc
+android skills list --long                           # browse official Android skills
+android info                                         # show detected SDK + version
 ```
 
-Once registered, an in-Claude-Code session can call mobile-mcp tools to:
+`android docs search` is **the first place to look** when uncertain about Android APIs. It returns up-to-date guidance from the official Android Knowledge Base — beats grepping web search results, and is on-machine.
 
-- list connected devices (`adb devices` equivalent)
-- install an APK
-- launch the app
-- read the accessibility tree (the screen state, the way Playwright reads the DOM)
-- tap by label / coordinates
-- assert UI state
+### `mobile` MCP server (UI driving)
 
-Build → install → drive flow:
+```bash
+claude mcp add mobile --scope user -- npx -y @mobilenext/mobile-mcp@latest
+```
+
+(Already registered in this user's `~/.claude.json` and allowed in `~/.claude/settings.json` permissions. Adds `mcp__mobile__*` tools.)
+
+What it gives you: list connected ADB targets, install APKs, launch the app, read the accessibility tree (the screen state, the way Playwright reads the DOM), tap by label / coordinates, assert UI state.
+
+### `android-skills` MCP server (official Android skills)
+
+```bash
+claude mcp add android-skills --scope user -- npx -y android-skills-mcp
+```
+
+Surfaces Google's official Android Skills (Compose migration, Navigation 3, Edge-to-Edge, AGP 9, R8 config, Media3 patterns, etc.) as MCP tools inside Claude Code. **Consult these before hand-rolling any Android-specific pattern** that could be load-bearing on platform conventions.
+
+### Test target
+
+One of:
+
+- **wifi-adb to the user's phone** (preferred — zero machine RAM cost):
+  ```bash
+  adb pair <ip>:<pair-port>      # pair once
+  adb connect <ip>:<connect-port>
+  adb devices                    # confirm
+  ```
+- **Waydroid** on Linux (LXC container, ~1-2 GB resident, shares host kernel):
+  ```bash
+  waydroid session start
+  adb connect 192.168.240.112:5555  # default Waydroid IP
+  ```
+
+## Test loop
 
 ```bash
 ./gradlew assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-# then mobile-mcp tools take over for UI interaction
+android run --apks=app/build/outputs/apk/debug/app-debug.apk
+# mobile-mcp tools take over for UI interaction
 ```
 
-For raw ADB without mobile-mcp:
+Or all-in-one via Android CLI when build + run is the same step.
+
+For raw ADB inspection during dev:
 
 ```bash
 adb logcat -s tonearm:* AudioFocus:* MediaSession:*
@@ -55,7 +100,7 @@ adb shell am start -n com.eight87.tonearm/.MainActivity
 
 ## Plan file
 
-The phased build plan lives at [`docs/plans/main.md`](docs/plans/main.md), per the user's global CLAUDE.md rule (numbered phases A–G, sub-step checkboxes A.1, A.2, …).
+The phased build plan lives at [`docs/plans/main.md`](docs/plans/main.md), per the user's global CLAUDE.md rule (numbered phases, sub-step checkboxes).
 
 When working on a phase:
 
@@ -76,3 +121,5 @@ Subagents working on this repo run in worktrees. Each agent prompt must:
 - be told to tick checkboxes and add the commit ID to the phase header as it lands work
 - be told to keep the work scoped to its phase (no opportunistic refactors of unrelated code)
 - be told to never modify `~/.claude/` files (those are not under this repo)
+- be told to consult `android docs search <query>` before hitting general web search for Android API questions
+- be told to consult the `android-skills` MCP for any pattern Google has codified (Compose migration, Navigation 3, edge-to-edge, etc.)
