@@ -45,7 +45,7 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen. Eve
 - [x] **A.5** Build verification: `./gradlew assembleDebug` succeeds. APK lands at `app/build/outputs/apk/debug/app-debug.apk`. — built with `JAVA_HOME=/usr/lib/jvm/java-26-openjdk` (the bundled JRE-21 lacks the `java.rmi` module that Gradle 9.1's Kotlin DSL classpath fingerprinter needs). Required SDK license stubs written to `~/Android/Sdk/licenses/` and `build-tools/36.0.0` installed via `android sdk install`. APK 16 MB.
 - [x] **A.6** Install verification: `android run --apks=app/build/outputs/apk/debug/app-debug.apk` launches the placeholder activity on the connected target. — installed and launched on `emulator-5554`; `dumpsys window` confirms `mCurrentFocus=...com.eight87.tonearm/.MainActivity`; `android layout` returns `"text": "Hello Android!"` from the rendered Compose surface.
 
-**Shipped:** A.0–A.6 in commit `<this commit>`.
+**Shipped:** A.0–A.6 in commit `b49571c`.
 
 ---
 
