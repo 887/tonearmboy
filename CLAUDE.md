@@ -29,7 +29,11 @@ chmod +x ~/.local/bin/android
 android --version  # self-bootstraps the runtime on first call
 ```
 
-The CLI bundles its own JDK 21 at `~/.android/cli/bundles/<hash>/jre/`. The system JDK is irrelevant when going through `android`. If a subagent ever needs to invoke `./gradlew` directly, export `JAVA_HOME` to that path first; otherwise prefer `android run` which handles the toolchain internally.
+The CLI bundles its own JDK 21 at `~/.android/cli/bundles/<hash>/jre/`. **Caveat:** the bundled JRE is *minimized* — it's missing modules including `java.rmi`, which Gradle 9.1's Kotlin DSL classpath fingerprinter loads. Direct `./gradlew` invocations against the bundled JRE will fail at configuration time with `java.lang.NoClassDefFoundError: java/rmi/Remote`. For direct Gradle calls, export `JAVA_HOME` to a full system JDK 17+ instead — for example `/usr/lib/jvm/java-26-openjdk` on this user's machine. Going through `android run` / other `android` subcommands is fine and uses the bundled toolchain internally.
+
+Practical rule of thumb:
+- `android run --apks=…` → just works.
+- `./gradlew assembleDebug` → `JAVA_HOME=/usr/lib/jvm/java-26-openjdk ./gradlew assembleDebug` (or equivalent system JDK 17+ path).
 
 Useful subcommands:
 
