@@ -59,6 +59,17 @@
                 <action android:name="com.eight87.tonearm.action.SMOKE_PLAY" />
             </intent-filter>
         </receiver>
+
+        <!-- Phase C smoke-test entry point: runs a MediaStore scan and logs
+             the result counts under the tonearm tag so the library smoke
+             test can assert the seeded fixtures were picked up. -->
+        <receiver
+            android:name=".data.LibraryScanReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.eight87.tonearm.action.LIBRARY_SCAN" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
