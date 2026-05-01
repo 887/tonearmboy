@@ -35,6 +35,30 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Media3 foreground media-playback service. The intent filter is
+             the canonical contract a MediaSessionService advertises so that
+             system controllers (and our in-app MediaController) can find it. -->
+        <service
+            android:name=".playback.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
+        <!-- Smoke-test entry point: receives an ACTION_PLAY broadcast with a
+             `path` extra, hands the URI to the running service via
+             MediaController, and logs ExoPlayer state transitions to logcat
+             so the scripted smoke test can assert STATE_READY without a UI. -->
+        <receiver
+            android:name=".playback.SmokeTestReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.eight87.tonearm.action.SMOKE_PLAY" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

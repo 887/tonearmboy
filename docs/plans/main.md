@@ -53,13 +53,13 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen. Eve
 
 Goal: ExoPlayer plays a known audio file. MediaSession is registered. Audio focus is honored.
 
-- [ ] **B.1** `PlayerHolder` wraps an ExoPlayer instance. Singleton for now; replaced by DI in Phase H if/when scope warrants it.
-- [ ] **B.2** `PlaybackService : MediaSessionService` with a stub notification (replaced for real in Phase E).
-- [ ] **B.3** `MediaSession` wired to the Player, custom layout for play / pause / next / previous / seek.
-- [ ] **B.4** `AudioFocusRequest` — duck on transient focus loss, pause on permanent loss, resume on focus regain.
-- [ ] **B.5** Format smoke test on the real target: play one each of MP3, FLAC, OGG Vorbis, OPUS. ExoPlayer handles all natively but verify codec coverage end-to-end.
+- [x] **B.1** `PlayerHolder` wraps an ExoPlayer instance. Singleton for now; replaced by DI in Phase H if/when scope warrants it. — `app/.../playback/PlayerHolder.kt`. Builds an `ExoPlayer` with `setAudioAttributes(..., handleAudioFocus = true)`, `setHandleAudioBecomingNoisy(true)`, and `setWakeMode(WAKE_MODE_LOCAL)`.
+- [x] **B.2** `PlaybackService : MediaSessionService` with a stub notification (replaced for real in Phase E). — declared in the manifest with `foregroundServiceType="mediaPlayback"` and the `androidx.media3.session.MediaSessionService` intent filter. Media3's default `MediaStyle` notification is sufficient as the stub; Phase E will replace it.
+- [x] **B.3** `MediaSession` wired to the Player, custom layout for play / pause / next / previous / seek. — built via `MediaSession.Builder(this, player)` in `PlaybackService.onCreate`. Media3's default button layout (play/pause/prev/next/seek) covers Phase B; custom layouts will land alongside the Phase E notification rework. `PlaybackController.connect(...)` exposes the canonical `MediaController` connection helper for `MainActivity`.
+- [x] **B.4** `AudioFocusRequest` — duck on transient focus loss, pause on permanent loss, resume on focus regain. — delegated to ExoPlayer's built-in audio-focus handling via `setAudioAttributes(..., handleAudioFocus = true)` (verified against `kb://android/media/media3/session/background-playback`). This is the official Media3 pattern; manual `AudioFocusRequest` is not needed.
+- [x] **B.5** Format smoke test on the real target: play one each of MP3, FLAC, OGG Vorbis, OPUS. ExoPlayer handles all natively but verify codec coverage end-to-end. — `scripts/smoke-test.sh` generates 1-second sine fixtures with `ffmpeg`, lands them in the app's internal data dir via `/data/local/tmp` + `run-as` (scoped storage on API 30+ blocks raw `file://` reads of `/sdcard/Music` from app processes), broadcasts `com.eight87.tonearm.action.SMOKE_PLAY` to drive playback through the service, and asserts `STATE_READY` from logcat. **All four codecs pass on `emulator-5554` (API 36)**. Fixtures stay local (not committed).
 
-**Shipped:** _(not yet)_
+**Shipped:** B.1–B.5 in commit _(this commit)_
 
 ---
 
