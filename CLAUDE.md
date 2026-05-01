@@ -11,7 +11,7 @@ Modern Android music player. Kotlin + Jetpack Compose + Media3 + Room. Built ent
 - **Build front-end:** [Google's Android CLI](https://developer.android.com/tools/agents/android-cli) (`android` command, launched April 2026). Wraps project creation, SDK management, build, install, and run. **Do not introduce Android Studio project files** (`.idea/`, `*.iml`).
 - **Build back-end:** Gradle (driven by the Android CLI; the wrapper is committed to the repo).
 - **Tests, unit:** Robolectric. JVM-only. No device required.
-- **Tests, UI:** [mobile-mcp](https://github.com/mobile-next/mobile-mcp), Claude-driven over ADB. Target is the user's phone via wifi-adb, or [Waydroid](https://waydro.id/) on Linux. **Never use a full QEMU emulator (AVD) — RAM-prohibitive on this user's setup.**
+- **Tests, UI:** [mobile-mcp](https://github.com/mobile-next/mobile-mcp), Claude-driven over ADB. **Current target: headless AVD `medium_phone`** (Android 16 / API 36, RSS ~3.2 GB), started without window/audio/snapshot. Phone via wifi-adb is the long-term home once notification + lock-screen behaviour matters; Waydroid was declined (would need root). The *full graphical* AVD (with window) is what's RAM-prohibitive — headless lands around 3 GB resident, which is fine on this user's 125 GB box.
 
 ## Required CLIs and MCP servers
 

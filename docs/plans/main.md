@@ -11,7 +11,7 @@
 - **Build front-end:** Google's [Android CLI](https://developer.android.com/tools/agents/android-cli) (`android` command, launched April 2026). Wraps Gradle, SDK, install, run. **No Android Studio.**
 - **Build back-end:** Gradle (driven via the Android CLI). The repo includes a Gradle wrapper.
 - **Unit tests:** Robolectric (JVM-only, zero device).
-- **UI tests:** [mobile-mcp](https://github.com/mobile-next/mobile-mcp) over ADB. Real phone (wifi-adb) or [Waydroid](https://waydro.id/). **Never** a full QEMU emulator.
+- **UI tests:** [mobile-mcp](https://github.com/mobile-next/mobile-mcp) over ADB. Current target: headless AVD `medium_phone` (Android 16 / API 36, RSS ~3.2 GB) — see Phase 0.6. Real phone via wifi-adb is the long-term home once notification + lock-screen behaviour starts mattering; Waydroid was declined (would need root).
 - **Knowledge:** `android docs search` for live Android API guidance. [`android-skills-mcp`](https://github.com/skydoves/android-skills-mcp) for the official Android skills inside Claude Code.
 
 ---
