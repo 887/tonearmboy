@@ -20,16 +20,16 @@
 
 These run once per developer machine. Tracked here so we can verify our environment before agents go to work.
 
-- [ ] **0.1** Install Google's Android CLI from <https://developer.android.com/tools/agents>. Verify with `android --version` and `android info`.
-- [ ] **0.2** `android sdk install platforms/android-34 build-tools/34.0.0` — current stable platform + build-tools. Bump version when AGP requires.
-- [ ] **0.3** Confirm Java 17 toolchain: `java -version` reports 17.x.
-- [ ] **0.4** Register the `mobile` MCP server (already done in this user's `~/.claude.json`):
-      `claude mcp add mobile --scope user -- npx -y @mobilenext/mobile-mcp@latest`
-- [ ] **0.5** Register the official Android skills MCP for Claude Code:
-      `claude mcp add android-skills --scope user -- npx -y android-skills-mcp`
-- [ ] **0.6** Pair test target: either wifi-adb to the user's phone (`adb pair <ip>:<port>` then `adb connect <ip>:<port>`) **or** Waydroid running locally with ADB exposed. Verify with `adb devices`.
+- [x] **0.1** Install Google's Android CLI: `curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/android -o ~/.local/bin/android && chmod +x ~/.local/bin/android`. The launcher self-bootstraps a 78 MB runtime on first invocation, including a bundled JDK 21 at `~/.android/cli/bundles/<hash>/jre/`. Verify with `android --version`.
+- [x] **0.2** `android sdk install platforms/android-34 build-tools/34.0.0` — installs to `~/Android/Sdk/`. Bump version when AGP requires.
+- [x] **0.3** JDK 21 bundled by the Android CLI is sufficient for AGP 9. System Java only matters if a subagent invokes `./gradlew` directly without going through `android` — set `JAVA_HOME` to the bundled JRE in that case (see CLAUDE.md).
+- [x] **0.4** `mobile` MCP server registered at **project scope** (`tonearm/.mcp.json`):
+      `claude mcp add mobile --scope project -- npx -y @mobilenext/mobile-mcp@latest`
+- [x] **0.5** `android-skills` MCP server registered at **project scope** (`tonearm/.mcp.json`):
+      `claude mcp add android-skills --scope project -- npx -y android-skills-mcp`
+- [ ] **0.6** Pair test target: either wifi-adb to the user's phone (`adb pair <ip>:<port>` then `adb connect <ip>:<port>`) **or** Waydroid running locally with ADB exposed. Verify with `adb devices`. *(left to user — phone pairing requires an interactive code on the device)*
 
-**Shipped:** _(not yet)_
+**Shipped:** 0.1–0.5 in commit _(this commit)_; 0.6 pending user action.
 
 ---
 

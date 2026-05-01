@@ -21,7 +21,15 @@ These are user-machine prerequisites. The plan tracks each in Phase 0.
 
 The new (April 2026) `android` command from Google wraps everything we need.
 
-Install: <https://developer.android.com/tools/agents>
+Install (userspace, this user's setup):
+
+```bash
+curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/android -o ~/.local/bin/android
+chmod +x ~/.local/bin/android
+android --version  # self-bootstraps the runtime on first call
+```
+
+The CLI bundles its own JDK 21 at `~/.android/cli/bundles/<hash>/jre/`. The system JDK is irrelevant when going through `android`. If a subagent ever needs to invoke `./gradlew` directly, export `JAVA_HOME` to that path first; otherwise prefer `android run` which handles the toolchain internally.
 
 Useful subcommands:
 
@@ -40,21 +48,25 @@ android info                                         # show detected SDK + versi
 
 ### `mobile` MCP server (UI driving)
 
-```bash
-claude mcp add mobile --scope user -- npx -y @mobilenext/mobile-mcp@latest
-```
+Registered at **project scope** in `.mcp.json` (committed to the repo) and allowed in `.claude/settings.json` (also committed). When a Claude Code session starts in this repo with `enableAllProjectMcpServers: true` (set in the project settings), the `mcp__mobile__*` tools become available automatically.
 
-(Already registered in this user's `~/.claude.json` and allowed in `~/.claude/settings.json` permissions. Adds `mcp__mobile__*` tools.)
+To re-register on a fresh checkout if for any reason the project config drops the entry:
+
+```bash
+claude mcp add mobile --scope project -- npx -y @mobilenext/mobile-mcp@latest
+```
 
 What it gives you: list connected ADB targets, install APKs, launch the app, read the accessibility tree (the screen state, the way Playwright reads the DOM), tap by label / coordinates, assert UI state.
 
 ### `android-skills` MCP server (official Android skills)
 
-```bash
-claude mcp add android-skills --scope user -- npx -y android-skills-mcp
-```
+Registered at **project scope** in `.mcp.json` and allowed in `.claude/settings.json`. Surfaces Google's official Android Skills (Compose migration, Navigation 3, Edge-to-Edge, AGP 9, R8 config, Media3 patterns, etc.) as MCP tools inside Claude Code. **Consult these before hand-rolling any Android-specific pattern** that could be load-bearing on platform conventions.
 
-Surfaces Google's official Android Skills (Compose migration, Navigation 3, Edge-to-Edge, AGP 9, R8 config, Media3 patterns, etc.) as MCP tools inside Claude Code. **Consult these before hand-rolling any Android-specific pattern** that could be load-bearing on platform conventions.
+To re-register on a fresh checkout:
+
+```bash
+claude mcp add android-skills --scope project -- npx -y android-skills-mcp
+```
 
 ### Test target
 
