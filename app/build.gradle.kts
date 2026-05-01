@@ -73,6 +73,7 @@ dependencies {
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.compose.material3)
+  implementation(libs.androidx.compose.material.icons.extended)
   // Tooling
   debugImplementation(libs.androidx.compose.ui.tooling)
   // Instrumented tests
@@ -106,6 +107,13 @@ dependencies {
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)
   ksp(libs.androidx.room.compiler)
+
+  // DataStore — persists Phase D Settings (theme preference).
+  implementation(libs.androidx.datastore.preferences)
+
+  // Coroutines bridge to Guava ListenableFuture for the Media3
+  // MediaController.connect() handshake on the UI thread.
+  implementation(libs.kotlinx.coroutines.guava)
 
   // Robolectric-driven JVM unit tests for the data layer (Phase C verification).
   testImplementation(libs.robolectric)

@@ -10,24 +10,23 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
+/**
+ * Three-mode app theme (System / Light / Dark) backed by Material 3 with
+ * dynamic color (Material You) on Android 12+.
+ *
+ * - On API 31+ with `dynamicColor = true` (the default), the wallpaper-
+ *   derived dynamic palette is used.
+ * - Otherwise falls back to the app's brand palette.
+ *
+ * The default is **dark** (per the locked spec) — `darkTheme = true` is
+ * only resolved from `isSystemInDarkTheme()` when [TonearmTheme] is
+ * called without an explicit value. Caller (the activity) usually drives
+ * `darkTheme` from the persisted [com.eight87.tonearm.ui.settings.ThemePreference].
+ */
 private val DarkColorScheme = darkColorScheme(primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80)
 
 private val LightColorScheme =
-  lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
-  )
+  lightColorScheme(primary = Purple40, secondary = PurpleGrey40, tertiary = Pink40)
 
 @Composable
 fun TonearmTheme(

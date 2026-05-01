@@ -81,15 +81,23 @@ Goal: scan the device's audio files into a queryable, searchable library cache.
 
 Goal: full Compose UI, navigable, themed.
 
-- [ ] **D.1** Navigation: pick **Navigation 3** (the new compose-first nav from Google, late 2025) — there's an official Android skill `navigation-3-setup` that codifies the pattern; consult it before hand-rolling. Destinations: Home / Library / Search / Now Playing / Playlist Detail / Settings.
-- [ ] **D.2** Library browse screens: Albums grid, Artists list, Tracks list, Genres list, Playlists list. Material 3 lists, sticky headers, fast-scroll.
-- [ ] **D.3** Now Playing screen: album art, scrubber, transport controls, queue.
-- [ ] **D.4** Mini-player persistent bottom sheet across all screens.
-- [ ] **D.5** Theming: Material 3, dark mode default, dynamic color (Material You) on Android 12+.
-- [ ] **D.6** Edge-to-edge: official Android skill `edge-to-edge-implementation` covers the current best practice. Consult.
-- [ ] **D.7** Settings screen: theme, library scan controls, dangerous actions (clear cache, rescan).
+- [x] **D.1** Navigation: pick **Navigation 3** (the new compose-first nav from Google, late 2025) — there's an official Android skill `navigation-3-setup` that codifies the pattern; consult it before hand-rolling. Destinations: Home / Library / Search / Now Playing / Playlist Detail / Settings. — adopted Navigation 3's `NavDisplay` + `entryProvider` DSL with serializable `NavKey`s in `ui/nav/Destinations.kt`. Per-tab back stacks live in `ui/nav/TonearmBackStack.kt` (lifted from the official skill's "Common UI" recipe). Bottom nav surfaces Home / Library / Search / Settings; `NowPlaying` and `PlaylistDetail` push onto the active tab. Library was kept top-level (the five sub-views are tabs of one screen, not five top-level destinations) — see D.2 note.
+- [x] **D.2** Library browse screens: Albums grid, Artists list, Tracks list, Genres list, Playlists list. Material 3 lists, sticky headers, fast-scroll. — single `LibraryScreen` with `PrimaryTabRow` over the five views (`AlbumsGridScreen`, `ArtistsListScreen`, `TracksListScreen`, `GenresListScreen`, `PlaylistsListScreen`) in `ui/library/`. Albums use `LazyVerticalGrid(GridCells.Adaptive(140.dp))`. Artists, Tracks, Playlists use `LazyColumn` with stickyHeader letter sections. Tracks ships an alphabet-letter scroller column on the right; tapping a letter scrolls to that section. Playlists has a Material 3 `ExtendedFloatingActionButton` + create-playlist `AlertDialog`. All five views consume Flows directly off `LibraryRepository`.
+- [x] **D.3** Now Playing screen: album art, scrubber, transport controls, queue. — `ui/playing/NowPlayingScreen.kt`. Album-art placeholder card, scrubber bound to `MediaController.currentPosition` / `duration` via the new `playback/PlaybackUiController.kt` (a UI-friendly wrapper around the Phase B `PlaybackController.connect` helper). Transport row is prev / seek-back-10 / play-pause / seek-forward-10 / next; queue button is a topbar action stub for Phase F. Connection lifecycle: the activity-scope `PlaybackUiController` calls `connect()` once on activity start; `NowPlayingScreen` calls it again (idempotent) so deep-link entry still works.
+- [x] **D.4** Mini-player persistent bottom sheet across all screens. — `ui/playing/MiniPlayer.kt` rendered as a slot directly above the `NavigationBar` whenever `PlaybackUiState.hasMedia` is true and the current destination isn't `NowPlaying`. Tapping the row pushes `NowPlaying`; the play / pause and close icons act in place.
+- [x] **D.5** Theming: Material 3, dark mode default, dynamic color (Material You) on Android 12+. — `theme/Theme.kt` now takes an explicit `darkTheme` parameter driven by the persisted `ThemePreference` (System / Light / Dark) stored via DataStore Preferences in `ui/settings/ThemePreference.kt`. Dynamic color is on by default for API 31+ (`dynamicDarkColorScheme(LocalContext.current)`); brand palette is the fallback.
+- [x] **D.6** Edge-to-edge: official Android skill `edge-to-edge-implementation` covers the current best practice. Consult. — consulted via `mcp__android-skills__get_skill edge-to-edge`. Activity already calls `enableEdgeToEdge()`; every screen is now wrapped in a Material 3 `Scaffold` and respects `innerPadding`. Lists pass insets via `Modifier.padding(innerPadding)` on the outer container — the tab content lives inside the Scaffold so the `NavigationBar` and Mini-Player draw to the bottom of the screen and the system bars do not clip content.
+- [x] **D.7** Settings screen: theme, library scan controls, dangerous actions (clear cache, rescan). — `ui/settings/SettingsScreen.kt`. Theme section is a 3-radio Row (System / Light / Dark) writing through `ThemePreferenceStore`. Library section: "Rescan now" + "Clear cache" both confirm via `AlertDialog` and route to `LibraryRepository.rescanNow()`. About section names version + MIT + repo URL.
 
-**Shipped:** _(not yet)_
+**Verification:**
+- `JAVA_HOME=… ANDROID_HOME=… ./gradlew testDebugUnitTest` passes. New JVM tests:
+  - `app/src/test/java/com/eight87/tonearm/ui/search/SearchInputReducerTest.kt`
+  - `app/src/test/java/com/eight87/tonearm/ui/settings/ThemePreferenceStoreTest.kt` (Robolectric, exercises real DataStore)
+  - `app/src/test/java/com/eight87/tonearm/ui/nav/TonearmBackStackTest.kt`
+- APK runs on `emulator-5554`; all seven screens render, mini-player floats over Library/Tracks while a track is queued, Now Playing reflects player state. Screenshots committed under `docs/screenshots/phase-d/`.
+- `scripts/ui-smoke-test.sh` (new) installs the APK, navigates Library → Tracks → first row, asserts the "Now Playing" topbar title appears via `uiautomator dump`. Passes.
+
+**Shipped:** _(this commit)_
 
 ---
 
