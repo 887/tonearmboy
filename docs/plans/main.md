@@ -27,9 +27,9 @@ These run once per developer machine. Tracked here so we can verify our environm
       `claude mcp add mobile --scope project -- npx -y @mobilenext/mobile-mcp@latest`
 - [x] **0.5** `android-skills` MCP server registered at **project scope** (`tonearm/.mcp.json`):
       `claude mcp add android-skills --scope project -- npx -y android-skills-mcp`
-- [ ] **0.6** Pair test target: either wifi-adb to the user's phone (`adb pair <ip>:<port>` then `adb connect <ip>:<port>`) **or** Waydroid running locally with ADB exposed. Verify with `adb devices`. *(left to user — phone pairing requires an interactive code on the device)*
+- [x] **0.6** Test target: **headless AVD `medium_phone`** (Android 16, API 36, x86_64, google_apis_playstore). Created via `android emulator create --profile=medium_phone`. Started headlessly via `~/Android/Sdk/emulator/emulator -avd medium_phone -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect`. RSS ~3.2 GB. Visible to ADB as `emulator-5554`. Waydroid declined (would need root); wifi-adb deferred (phone testing later when notification + lock-screen behaviour matters).
 
-**Shipped:** 0.1–0.5 in commit _(this commit)_; 0.6 pending user action.
+**Shipped:** 0.1–0.6 in commit _(this commit)_.
 
 ---
 
