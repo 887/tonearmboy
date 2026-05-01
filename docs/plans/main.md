@@ -67,8 +67,8 @@ Goal: ExoPlayer plays a known audio file. MediaSession is registered. Audio focu
 
 Goal: scan the device's audio files into a queryable, searchable library cache.
 
-- [ ] **C.1** `MediaStore.Audio` query — pull `_ID`, `TITLE`, `ARTIST`, `ALBUM`, `ALBUM_ARTIST`, `DURATION`, `TRACK`, `YEAR`, `GENRE`, `DATA`, `DATE_ADDED`. Permission flow for `READ_MEDIA_AUDIO`.
-- [ ] **C.2** Room database — entities for Track, Album, Artist, Genre, Playlist, PlaylistTrack join. Migration baseline.
+- [x] **C.1** `MediaStore.Audio` query — pull `_ID`, `TITLE`, `ARTIST`, `ALBUM`, `ALBUM_ARTIST`, `DURATION`, `TRACK`, `YEAR`, `GENRE`, `DATA`, `DATE_ADDED`. Permission flow for `READ_MEDIA_AUDIO`. — `data/mediastore/MediaStoreScanner.kt` runs the audio-table query and a separate `MediaStore.Audio.Genres.Members` walk (the per-row `GENRE` column has been deprecated since API 30); results are wrapped in `data/model/Track`. `data/mediastore/MediaStorePermissions.kt` exposes a Compose-friendly helper for the `READ_MEDIA_AUDIO` (API 33+) / `READ_EXTERNAL_STORAGE` (API ≤ 32) permission name without owning a launcher.
+- [x] **C.2** Room database — entities for Track, Album, Artist, Genre, Playlist, PlaylistTrack join. Migration baseline. — `data/db/` holds `TrackEntity`, `AlbumEntity`, `ArtistEntity`, `GenreEntity`, `PlaylistEntity`, `PlaylistTrackEntity` (with cascading `@ForeignKey`s) plus per-entity DAOs and a cross-entity `LibraryDao`. `LibraryDatabase` is `version = 1`, `exportSchema = true` (writes to `app/schemas/`), no `fallbackToDestructiveMigration`. Room 2.8.4 + KSP 2.3.7 added to the version catalog.
 - [ ] **C.3** `LibraryRepository` — single source of truth, exposes Flows for grouped views. Initial scan + incremental rescan via `MediaStore` change observer.
 - [ ] **C.4** Search — full-text over title / artist / album. FTS4 if Room supports cleanly, else `LIKE` fallback. Use `android docs search room fts` if uncertain on the current API.
 - [ ] **C.5** Playlist support — Room-backed custom playlists, M3U / M3U8 import.

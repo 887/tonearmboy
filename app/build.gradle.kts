@@ -2,6 +2,8 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.ksp)
+  alias(libs.plugins.room)
 }
 
 android {
@@ -37,6 +39,16 @@ android {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
       }
     }
+
+    testOptions {
+      unitTests {
+        isIncludeAndroidResources = true
+      }
+    }
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 kotlin {
@@ -89,4 +101,16 @@ dependencies {
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.session)
   implementation(libs.androidx.media3.ui)
+
+  // Room — local cache for the MediaStore-derived library (Phase C).
+  implementation(libs.androidx.room.runtime)
+  implementation(libs.androidx.room.ktx)
+  ksp(libs.androidx.room.compiler)
+
+  // Robolectric-driven JVM unit tests for the data layer (Phase C verification).
+  testImplementation(libs.robolectric)
+  testImplementation(libs.androidx.test.core)
+  testImplementation(libs.androidx.test.ext.junit)
+  testImplementation(libs.androidx.arch.core.testing)
+  testImplementation(libs.androidx.room.testing)
 }
