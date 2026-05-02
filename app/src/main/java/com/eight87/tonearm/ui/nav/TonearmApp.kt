@@ -277,6 +277,9 @@ fun TonearmApp(
           onPlayButtonLongPress = {
             playback.performCustomBarAction(settingsSnapshot.customBarAction)
           },
+          onToggleShuffle = playback::toggleShuffle,
+          onCycleRepeat = playback::cycleRepeatMode,
+          onSeekTo = playback::seekTo,
           albumCoversMode = settingsSnapshot.albumCoversMode,
         )
       }

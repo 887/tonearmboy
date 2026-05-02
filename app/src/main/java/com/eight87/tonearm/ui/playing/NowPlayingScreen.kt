@@ -303,11 +303,16 @@ internal fun NowPlayingMergedSurface(
 
     // -- Item 2: queue section ---------------------------------------
     item(key = "queue_section") {
+      // D.26.3: pass a `fillParentMaxHeight` modifier into the queue
+      // section's no-match placeholder so a zero-match filter doesn't
+      // collapse the LazyColumn content height (which would force the
+      // scroll position back to the top of the surface).
       QueueSection(
         snapshot = queueSnapshot,
         onJumpTo = onJumpToQueueIndex,
         onRemove = onRemoveQueueItem,
         onMove = onMoveQueueItem,
+        noMatchFillModifier = Modifier.fillParentMaxHeight(),
       )
     }
   }

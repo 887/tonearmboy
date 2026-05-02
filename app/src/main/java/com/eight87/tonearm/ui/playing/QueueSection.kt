@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -30,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.UnstableApi
@@ -38,32 +40,26 @@ import com.eight87.tonearm.playback.QueueSnapshot
 import com.eight87.tonearm.ui.common.DragReorderColumn
 
 /**
- * D.24.3 / D.24.4 — queue rendered inline as a section of
- * [NowPlayingScreen]'s scrolling surface (no modal sheet, no duplicate
- * shuffle / repeat / active-track header). The now-playing card at the
- * top of NowPlaying *is* the active-track header now; this section
- * starts directly with the "Up next" label, the filter field, and the
- * upcoming-track list.
+ * D.26.2 — queue rendered as a playlist-style timeline. *Every*
+ * controller queue item is shown (indices `0..mediaItemCount - 1`),
+ * not just the slice after `currentIndex`. The active row is
+ * highlighted in place with `primaryContainer` background, a leading
+ * "now playing" speaker icon, and a `bodyLarge`/medium-weight title;
+ * other rows render the same as before.
  *
- * The "up next" list = everything in the queue strictly after
- * `currentMediaItemIndex`. We deliberately don't render past tracks —
- * scrubbing back to a previous queue position is a `seekToPrevious()`
- * affordance, not a list-item.
+ * Tapping any row calls `onJumpTo(realIndex)` — including tapping the
+ * active row, which is a self-seek (no-op visually since the
+ * controller is already on that index, but harmless). This means the
+ * user can scroll back to a previously-played row and skip "two songs
+ * back" without leaving the queue surface.
  *
- * [QueueSection] renders the items into a parent `LazyColumn` via
- * `items { ... }`-style append; we expose it as a plain `@Composable`
- * that draws into a `Column` slot of [NowPlayingScreen]. The drag
- * handles forward to the shared [DragReorderColumn], and the visual-
- * to-controller index translation lives in [translateVisualToReal].
+ * Drag-drop reorder excludes the active row: its handle is disabled
+ * and dimmed, and the [onMove] callback clamps `from`/`to` to indices
+ * that are not the active one. Media3's behaviour around moving the
+ * playing item is awkward, so we keep it pinned in place.
  *
- * Operations and their index translations:
- *  - tap a row     → `seekToQueueIndex(visual + currentIdx + 1)`
- *  - X-remove      → `removeMediaItem(visual + currentIdx + 1)`
- *  - drag-reorder  → `moveMediaItem(fromVisual + currentIdx + 1,
- *                                   toVisual   + currentIdx + 1)`
- *  - filter        → render-only; while non-empty drag handles dim to
- *                    alpha 0.3 and `enabled=false` so the user can't
- *                    drag inside a filtered subset
+ * Visual-to-controller index translation simplifies to 1:1 when the
+ * full queue is visible (no more `currentIdx + 1` offset).
  */
 @OptIn(UnstableApi::class)
 @Composable
@@ -73,6 +69,17 @@ fun QueueSection(
   onRemove: (Int) -> Unit,
   onMove: (from: Int, to: Int) -> Unit,
   modifier: Modifier = Modifier,
+  /**
+   * D.26.3 — modifier applied to the queue section's outer column so
+   * the parent `LazyColumn` keeps a stable content height when the
+   * filter narrows to zero matches. The caller (inside a lazy item
+   * block) passes `Modifier.fillParentMaxHeight()` so the queue claims
+   * at least the viewport's worth of vertical space; without this,
+   * a zero-match filter would collapse the section to its empty-state
+   * placeholder, shrink the LazyColumn's total content height below
+   * the viewport, and force scroll position back to top.
+   */
+  noMatchFillModifier: Modifier = Modifier,
 ) {
   var filter by remember { mutableStateOf("") }
   val filterActive = filter.isNotBlank()
@@ -80,22 +87,21 @@ fun QueueSection(
   val items = snapshot.items
   val currentIndex = snapshot.currentIndex
 
-  // D.24.5: "up next" is strictly the slice *after* currentIndex. The
-  // visual-to-controller translation is `visual + currentIndex + 1`.
-  data class UpNext(val realIndex: Int, val item: QueueItem)
-  val upNextAll: List<UpNext> = if (currentIndex >= 0) {
-    items.drop(currentIndex + 1).mapIndexed { offset, it ->
-      UpNext(realIndex = currentIndex + 1 + offset, item = it)
-    }
-  } else emptyList()
+  // D.26.2: render the full queue as a positional timeline. Each
+  // visual entry knows its 1:1 controller index so taps / removes /
+  // drags forward without offset arithmetic.
+  data class QueueEntry(val realIndex: Int, val item: QueueItem, val isActive: Boolean)
+  val allEntries: List<QueueEntry> = items.mapIndexed { i, qi ->
+    QueueEntry(realIndex = i, item = qi, isActive = i == currentIndex)
+  }
 
   val needle = filter.trim().lowercase()
-  val upNextVisible: List<UpNext> = if (filterActive) {
-    upNextAll.filter {
+  val visibleEntries: List<QueueEntry> = if (filterActive) {
+    allEntries.filter {
       it.item.title.lowercase().contains(needle) ||
         it.item.artist.lowercase().contains(needle)
     }
-  } else upNextAll
+  } else allEntries
 
   Column(
     modifier = modifier
@@ -105,7 +111,7 @@ fun QueueSection(
   ) {
     HorizontalDivider()
     Text(
-      text = "Up next",
+      text = "Queue",
       style = MaterialTheme.typography.labelMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
       modifier = Modifier.semantics { testTag = "queue_up_next_header" },
@@ -133,29 +139,38 @@ fun QueueSection(
         .semantics { testTag = "queue_filter_field" },
     )
 
-    if (upNextAll.isEmpty()) {
+    if (allEntries.isEmpty()) {
       Box(
         modifier = Modifier.fillMaxWidth().padding(24.dp),
         contentAlignment = Alignment.Center,
       ) {
-        Text("Nothing queued after this track", style = MaterialTheme.typography.bodyMedium)
+        Text("Nothing in the queue", style = MaterialTheme.typography.bodyMedium)
       }
-    } else if (upNextVisible.isEmpty()) {
+    } else if (visibleEntries.isEmpty()) {
+      // D.26.3 — fill the parent viewport so the LazyColumn keeps a
+      // stable content height when the user types a no-match filter.
+      // Without this, item 2 (this section) collapses to its placeholder
+      // size, total content drops below viewport height, and the
+      // LazyColumn snaps back to firstVisibleItemIndex = 0.
       Box(
-        modifier = Modifier.fillMaxWidth().padding(24.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .then(noMatchFillModifier)
+          .padding(24.dp)
+          .semantics { testTag = "queue_no_match_placeholder" },
         contentAlignment = Alignment.Center,
       ) {
         Text("No tracks match your filter", style = MaterialTheme.typography.bodyMedium)
       }
     } else if (filterActive) {
-      // D.24.5: filter is render-only. Drags are disabled because the
-      // visible subset doesn't represent the underlying controller
-      // ordering. Render rows directly in a Column so every match
-      // lays out unconditionally.
+      // D.26.2 (filtered): drag is disabled because the visible subset
+      // doesn't reflect the underlying controller order. Render rows
+      // directly in a Column with their pre-computed real indices.
       Column(modifier = Modifier.fillMaxWidth()) {
-        upNextVisible.forEach { e ->
+        visibleEntries.forEach { e ->
           QueueRow(
             item = e.item,
+            isActive = e.isActive,
             dragHandleModifier = Modifier,
             dragHandleEnabled = false,
             onJumpTo = { onJumpTo(e.realIndex) },
@@ -165,30 +180,33 @@ fun QueueSection(
         }
       }
     } else {
-      // D.24.5: drag-reorder via the shared `DragReorderColumn`. The
-      // helper's `onReordered` returns the new working list — diff
-      // against the input to compute the (from, to) move and forward
-      // it to the controller. The visual list starts at
-      // `currentIndex + 1`, so visual indices need to be bumped by
-      // `currentIndex + 1` to reach controller-queue indices.
+      // D.26.2 (unfiltered): drag-reorder the full queue. The active
+      // row participates in the visual list (it stays in place) but
+      // its drag handle is dimmed + disabled. The `onMove` clamp in
+      // [translateDragMove] additionally guards against the diff
+      // helper producing a (from, to) pair that touches the active
+      // index — even though the disabled handle should make that
+      // unreachable in normal use.
       DragReorderColumn(
-        items = upNextAll,
+        items = allEntries,
         itemKey = { "queue_${it.realIndex}_${it.item.mediaId}" },
         rowHeightDp = QUEUE_ROW_HEIGHT_DP,
         testTagPrefix = "queue",
         onReordered = { reordered ->
-          val before = upNextAll
+          val before = allEntries
           val diff = firstDifference(before, reordered) ?: return@DragReorderColumn
           val (fromVisual, toVisual) = diff
-          val fromReal = translateVisualToReal(currentIndex, fromVisual)
-          val toReal = translateVisualToReal(currentIndex, toVisual)
-          onMove(fromReal, toReal)
+          val clamped = clampMoveAwayFromActive(currentIndex, fromVisual, toVisual)
+            ?: return@DragReorderColumn
+          val (from, to) = clamped
+          onMove(from, to)
         },
       ) { entry, handleModifier ->
         QueueRow(
           item = entry.item,
+          isActive = entry.isActive,
           dragHandleModifier = handleModifier,
-          dragHandleEnabled = true,
+          dragHandleEnabled = !entry.isActive,
           onJumpTo = { onJumpTo(entry.realIndex) },
           onRemove = { onRemove(entry.realIndex) },
         )
@@ -200,24 +218,45 @@ fun QueueSection(
 @Composable
 private fun QueueRow(
   item: QueueItem,
+  isActive: Boolean,
   dragHandleModifier: Modifier,
   dragHandleEnabled: Boolean,
   onJumpTo: () -> Unit,
   onRemove: () -> Unit,
 ) {
+  val rowBackground = if (isActive) {
+    MaterialTheme.colorScheme.primaryContainer
+  } else {
+    MaterialTheme.colorScheme.surface
+  }
+  val rowTag = if (isActive) "queue_row_active" else "queue_row"
   Row(
     modifier = Modifier
       .fillMaxWidth()
       .clickable(onClick = onJumpTo)
-      .background(MaterialTheme.colorScheme.surface)
+      .background(rowBackground)
       .padding(horizontal = 4.dp, vertical = 8.dp)
-      .semantics { testTag = "queue_row" },
+      .semantics { testTag = rowTag },
     verticalAlignment = Alignment.CenterVertically,
   ) {
+    if (isActive) {
+      Icon(
+        imageVector = Icons.Filled.GraphicEq,
+        contentDescription = "Now playing",
+        modifier = Modifier
+          .size(20.dp)
+          .padding(end = 4.dp)
+          .semantics { testTag = "queue_active_indicator" },
+      )
+    }
     Column(modifier = Modifier.weight(1f)) {
       Text(
         text = item.title.ifEmpty { "Unknown" },
-        style = MaterialTheme.typography.bodyLarge,
+        style = if (isActive) {
+          MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+        } else {
+          MaterialTheme.typography.bodyMedium
+        },
         maxLines = 1,
       )
       Text(
@@ -247,16 +286,39 @@ private fun QueueRow(
 }
 
 /**
- * D.24.5 helper — translate a visual up-next position into a controller-
- * queue index. The visual list starts at `currentIndex + 1` (the active
- * track is the now-playing card, never in the list), so any visual
- * position `v` maps to `currentIndex + 1 + v`. When the queue has no
- * active track (`currentIndex == -1`, only valid for an empty queue),
- * we bottom out at `0`.
+ * D.26.2 — translate a visual queue position into a controller index.
+ * Now that the queue list renders every item 1:1, the mapping is the
+ * identity (when [currentIndex] >= 0). When the queue has no active
+ * item we still bottom out at `visual` so the math stays defined.
  */
-internal fun translateVisualToReal(currentIndex: Int, visual: Int): Int {
-  if (currentIndex < 0) return visual
-  return currentIndex + 1 + visual
+internal fun translateVisualToReal(currentIndex: Int, visual: Int): Int = visual
+
+/**
+ * D.26.2 — clamp a drag-reorder pair so neither endpoint touches the
+ * currently-playing index. Returns null if the move is purely
+ * within / against the active row (drop the move silently — the
+ * disabled drag handle should make this unreachable in normal use).
+ *
+ * Rules:
+ *  - if [from] == [currentIndex] the active row was somehow dragged →
+ *    drop the move;
+ *  - if [to] == [currentIndex] we shift the destination by one in
+ *    whichever direction preserves the user's intent (move past the
+ *    active row rather than displacing it);
+ *  - if from == to after clamping, drop the move.
+ */
+internal fun clampMoveAwayFromActive(
+  currentIndex: Int,
+  from: Int,
+  to: Int,
+): Pair<Int, Int>? {
+  if (currentIndex < 0) return from to to
+  if (from == currentIndex) return null
+  val clampedTo = if (to == currentIndex) {
+    if (from < currentIndex) currentIndex - 1 else currentIndex + 1
+  } else to
+  if (from == clampedTo) return null
+  return from to clampedTo
 }
 
 /**

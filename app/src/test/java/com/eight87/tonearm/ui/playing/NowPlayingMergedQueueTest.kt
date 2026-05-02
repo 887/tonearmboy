@@ -27,8 +27,9 @@ import org.robolectric.annotation.Config
  * D.24.2 / D.24.6 — pin the merged NowPlaying + queue surface:
  *  - the LazyColumn renders the now-playing card, the transport row,
  *    and the queue section in a single scroll surface
- *  - the queue section ("Up next" header + filter + upcoming items)
- *    sits directly below the transport, no modal sheet
+ *  - the queue section ("Queue" header + filter + the full queue
+ *    timeline with the active row highlighted in place) sits directly
+ *    below the transport, no modal sheet
  *  - [QUEUE_LIST_INDEX] points at the queue-section item so the top-
  *    app-bar queue button can `animateScrollToItem` to it
  */
@@ -104,12 +105,16 @@ class NowPlayingMergedQueueTest {
   }
 
   @Test
-  fun queue_section_renders_up_next_header_and_filter_and_rows() {
+  fun queue_section_renders_queue_header_and_filter_and_rows() {
     render()
     composeRule.onNodeWithTag("queue_up_next_header", useUnmergedTree = true).assertExists()
-    composeRule.onNodeWithText("Up next").assertExists()
+    composeRule.onNodeWithText("Queue").assertExists()
     composeRule.onNodeWithTag("queue_filter_field", useUnmergedTree = true).assertExists()
-    // Queue snapshot has 4 items, currentIndex=0; up-next is items 1..3.
+    // D.26.2: the queue renders ALL 4 items 1:1. Active row at index 0
+    // carries the `queue_row_active` tag; the remaining 3 carry
+    // `queue_row`.
+    composeRule.onAllNodesWithTag("queue_row_active", useUnmergedTree = true)
+      .assertCountEquals(1)
     composeRule.onAllNodesWithTag("queue_row", useUnmergedTree = true)
       .assertCountEquals(3)
   }

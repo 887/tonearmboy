@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -11,6 +12,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
@@ -97,9 +99,68 @@ class QueuePersistence(private val context: Context) {
     }
   }
 
-  /** Drop the persisted queue entirely. */
+  /**
+   * Drop the persisted queue entirely.
+   *
+   * D.26.4 — preserves [KEY_SHUFFLE_ENABLED] and [KEY_REPEAT_MODE] so
+   * the user's chosen shuffle / repeat survive a queue wipe (the user
+   * expects their toggles to stay set across a stop / clear). Only the
+   * queue JSON + position scalars are wiped.
+   */
   suspend fun clear() {
-    context.tonearmPlaybackDataStore.edit { it.clear() }
+    context.tonearmPlaybackDataStore.edit { prefs ->
+      prefs.remove(KEY_QUEUE_JSON)
+      prefs.remove(KEY_INDEX)
+      prefs.remove(KEY_POSITION)
+    }
+  }
+
+  /**
+   * D.26.4 — persist shuffle on/off. Lives next to the queue snapshot
+   * because it's session-scoped playback state, not a user preference;
+   * the user expects "the way I left the player" to come back.
+   */
+  suspend fun saveShuffle(enabled: Boolean) {
+    context.tonearmPlaybackDataStore.edit { prefs ->
+      prefs[KEY_SHUFFLE_ENABLED] = enabled
+    }
+  }
+
+  /**
+   * D.26.4 — persist repeat mode (`Player.REPEAT_MODE_OFF` / `_ALL` /
+   * `_ONE` as 0 / 1 / 2). Stored as Int for direct round-trip with the
+   * Media3 constants; out-of-range values fall back to OFF on load.
+   */
+  suspend fun saveRepeatMode(mode: Int) {
+    val sanitized = when (mode) {
+      Player.REPEAT_MODE_OFF, Player.REPEAT_MODE_ONE, Player.REPEAT_MODE_ALL -> mode
+      else -> Player.REPEAT_MODE_OFF
+    }
+    context.tonearmPlaybackDataStore.edit { prefs ->
+      prefs[KEY_REPEAT_MODE] = sanitized
+    }
+  }
+
+  /**
+   * D.26.4 — load shuffle on/off. Defaults to `false` when the key is
+   * absent (cold first install).
+   */
+  suspend fun loadShuffle(): Boolean {
+    val prefs = context.tonearmPlaybackDataStore.data.first()
+    return prefs[KEY_SHUFFLE_ENABLED] ?: false
+  }
+
+  /**
+   * D.26.4 — load repeat mode. Defaults to `REPEAT_MODE_OFF` when the
+   * key is absent or carries a non-Media3 value.
+   */
+  suspend fun loadRepeatMode(): Int {
+    val prefs = context.tonearmPlaybackDataStore.data.first()
+    val raw = prefs[KEY_REPEAT_MODE] ?: return Player.REPEAT_MODE_OFF
+    return when (raw) {
+      Player.REPEAT_MODE_OFF, Player.REPEAT_MODE_ONE, Player.REPEAT_MODE_ALL -> raw
+      else -> Player.REPEAT_MODE_OFF
+    }
   }
 
   /** One-shot load, used by the resumption callback. */
@@ -121,6 +182,10 @@ class QueuePersistence(private val context: Context) {
     internal val KEY_QUEUE_JSON = stringPreferencesKey("queue_json")
     internal val KEY_INDEX = intPreferencesKey("queue_index")
     internal val KEY_POSITION = longPreferencesKey("queue_position_ms")
+    /** D.26.4 — persisted shuffle on/off. */
+    internal val KEY_SHUFFLE_ENABLED = booleanPreferencesKey("shuffle_enabled")
+    /** D.26.4 — persisted repeat mode (0/1/2 → REPEAT_MODE_OFF/ONE/ALL). */
+    internal val KEY_REPEAT_MODE = intPreferencesKey("repeat_mode")
 
     internal val JSON = Json {
       ignoreUnknownKeys = true

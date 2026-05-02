@@ -57,15 +57,19 @@ class QueueFilterTest {
   }
 
   @Test
-  fun unfiltered_renders_all_up_next_rows_with_active_drag_handles() {
+  fun unfiltered_renders_all_queue_rows_with_active_drag_handles() {
     render()
-    // Three up-next entries (4 total, currentIndex=0 active).
+    // D.26.2: full timeline. 4 total items, 1 active + 3 non-active.
+    // Each non-active row gets `queue_drag_handle`; the active row gets
+    // `queue_drag_handle_disabled` (handle pinned + dimmed).
+    composeRule.onAllNodesWithTag("queue_row_active", useUnmergedTree = true)
+      .assertCountEquals(1)
     composeRule.onAllNodesWithTag("queue_row", useUnmergedTree = true)
       .assertCountEquals(3)
     composeRule.onAllNodesWithTag("queue_drag_handle", useUnmergedTree = true)
       .assertCountEquals(3)
     composeRule.onAllNodesWithTag("queue_drag_handle_disabled", useUnmergedTree = true)
-      .assertCountEquals(0)
+      .assertCountEquals(1)
   }
 
   @Test
@@ -76,11 +80,15 @@ class QueueFilterTest {
     composeRule.waitForIdle()
     // "Velvet Den" matches by title; "Field Recording" by Velvet Producer
     // artist. "Cipher Light" / "The Synth Foxes" doesn't contain "velvet"
-    // anywhere, so it drops out.
+    // anywhere, so it drops out. The active row "Active Track" / "Active
+    // Artist" also drops out — filter is render-only and doesn't pin
+    // the active row.
     composeRule.onNodeWithText("Velvet Den").assertExists()
     composeRule.onNodeWithText("Field Recording").assertExists()
     composeRule.onAllNodesWithTag("queue_row", useUnmergedTree = true)
       .assertCountEquals(2)
+    composeRule.onAllNodesWithTag("queue_row_active", useUnmergedTree = true)
+      .assertCountEquals(0)
   }
 
   @Test

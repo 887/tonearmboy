@@ -14,14 +14,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * D.21.1 — pin the polished mini-player layout against the Auxio-style
- * comparison feedback the user filed:
+ * D.21.1 / D.26.1 — pin the polished mini-player layout against the
+ * Auxio-style comparison feedback the user filed:
  *  - dedicated cover thumb (testTag `mini_player_cover`)
  *  - title in `bodyLarge` (we assert via the dedicated `mini_player_title`
  *    testTag and the rendered text)
  *  - "artist · album" subtitle in `bodySmall`
- *  - thin progress strip flush against the bottom edge
- *    (testTag `mini_player_progress`)
+ *  - draggable Material 3 Slider with current / total time labels
+ *    (testTag `mini_player_slider`)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -70,14 +70,14 @@ class MiniPlayerStylingTest {
     composeRule.onNodeWithText("The Synth Foxes · Velvet Den").assertIsDisplayed()
     composeRule.onNodeWithText("Cipher Light").assertIsDisplayed()
 
-    // The thin progress strip must exist when state has duration.
-    composeRule.onNodeWithTag("mini_player_progress", useUnmergedTree = true).assertExists()
+    // The draggable slider must exist when state has duration.
+    composeRule.onNodeWithTag("mini_player_slider", useUnmergedTree = true).assertExists()
   }
 
   @Test
-  fun progress_bar_renders_even_when_duration_zero() {
+  fun slider_renders_even_when_duration_zero() {
     // Defensive: a very-short / unknown-duration track should render
-    // an empty (0%) bar rather than crashing on a divide-by-zero.
+    // an empty (0%) slider rather than crashing on a divide-by-zero.
     composeRule.setContent {
       MaterialTheme {
         Surface {
@@ -90,7 +90,7 @@ class MiniPlayerStylingTest {
         }
       }
     }
-    composeRule.onNodeWithTag("mini_player_progress", useUnmergedTree = true).assertExists()
+    composeRule.onNodeWithTag("mini_player_slider", useUnmergedTree = true).assertExists()
   }
 
   @Test

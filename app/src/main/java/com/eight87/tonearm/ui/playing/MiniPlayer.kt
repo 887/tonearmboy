@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -19,23 +18,33 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOn
+import androidx.compose.material.icons.filled.RepeatOneOn
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.ShuffleOn
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearm.playback.PlaybackUiState
 import com.eight87.tonearm.ui.library.CoverArt
@@ -45,16 +54,19 @@ import com.eight87.tonearm.ui.settings.AlbumCoversMode
  * Persistent mini-player. Shown as the slot directly above the bottom
  * navigation bar whenever the controller has media queued.
  *
- * D.24.1 layout — three rows, total height ≤ 96 dp:
+ * D.26.1 layout — three rows + a time-label strip, total height ≤ 144 dp:
  *  - **Info row** (48-dp art + title + "artist · album" + close-X). The
  *    info row's `clickable` opens NowPlaying — tapping art / title /
  *    subtitle is the expand affordance. The close-X stays tappable in
  *    place to stop playback without expanding.
- *  - **Transport row** — centered prev / play-pause / next icon
- *    buttons, sized for the mini-player density. Long-press on
- *    play-pause keeps the existing custom-bar-action behaviour.
- *  - **Progress strip** — slim 2-dp `LinearProgressIndicator` flush
- *    against the bottom edge.
+ *  - **Transport row** — shuffle (left), prev, play-pause, next, repeat
+ *    (right). The five buttons share the row width via
+ *    `Arrangement.SpaceEvenly`. Long-press on play-pause keeps the
+ *    existing custom-bar-action behaviour.
+ *  - **Slider row** — full Material 3 [Slider] with `onValueChange`
+ *    feeding a local drag value and `onValueChangeFinished` calling
+ *    [onSeekTo]. Below the slider, a thin row carries the current and
+ *    total time labels.
  *
  * The `mini_player` testTag is attached to the info row (which carries
  * the `clickable`) so tap-to-expand semantics in tests still resolve to
@@ -70,6 +82,9 @@ fun MiniPlayer(
   onSkipNext: () -> Unit = {},
   onSkipPrevious: () -> Unit = {},
   onPlayButtonLongPress: () -> Unit = {},
+  onToggleShuffle: () -> Unit = {},
+  onCycleRepeat: () -> Unit = {},
+  onSeekTo: (Long) -> Unit = {},
   albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
 ) {
   if (!state.hasMedia) return
@@ -132,14 +147,27 @@ fun MiniPlayer(
     }
 
     // -- Transport row -------------------------------------------------
+    // D.26.1: shuffle (left) — prev — play-pause — next — repeat (right),
+    // distributed across the full surface width with `SpaceEvenly`. The
+    // long-press hook on play-pause continues to fire `customBarAction`.
     Row(
       modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 8.dp)
         .semantics { testTag = "mini_player_transport_row" },
-      horizontalArrangement = Arrangement.Center,
+      horizontalArrangement = Arrangement.SpaceEvenly,
       verticalAlignment = Alignment.CenterVertically,
     ) {
+      IconToggleButton(
+        checked = state.shuffleEnabled,
+        onCheckedChange = { onToggleShuffle() },
+        modifier = Modifier.semantics { testTag = "mini_player_shuffle" },
+      ) {
+        Icon(
+          imageVector = if (state.shuffleEnabled) Icons.Filled.ShuffleOn else Icons.Filled.Shuffle,
+          contentDescription = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
+        )
+      }
       IconButton(
         onClick = onSkipPrevious,
         enabled = state.hasPrevious,
@@ -188,19 +216,70 @@ fun MiniPlayer(
           contentDescription = "Next",
         )
       }
+
+      IconToggleButton(
+        checked = state.repeatMode != Player.REPEAT_MODE_OFF,
+        onCheckedChange = { onCycleRepeat() },
+        modifier = Modifier.semantics { testTag = "mini_player_repeat" },
+      ) {
+        val (icon, desc) = when (state.repeatMode) {
+          Player.REPEAT_MODE_ONE -> Icons.Filled.RepeatOneOn to "Repeat one"
+          Player.REPEAT_MODE_ALL -> Icons.Filled.RepeatOn to "Repeat all"
+          else -> Icons.Filled.Repeat to "Repeat off"
+        }
+        Icon(imageVector = icon, contentDescription = desc)
+      }
     }
 
-    // -- Progress strip ------------------------------------------------
-    val total = state.durationMs
-    val progress = if (total > 0L) {
-      (state.positionMs.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-    } else 0f
-    LinearProgressIndicator(
-      progress = { progress },
+    // -- Slider row ----------------------------------------------------
+    // D.26.1: full draggable Material 3 Slider (replaces the old 2-dp
+    // LinearProgressIndicator). Local drag value buffers the slider
+    // position while the user is dragging so the controller doesn't
+    // overwrite it from `pushState` ticks; on release we commit via
+    // [onSeekTo].
+    val total = state.durationMs.coerceAtLeast(0L)
+    val pos = state.positionMs.coerceIn(0L, total.coerceAtLeast(state.positionMs))
+    var dragValue by remember(state.positionMs) { mutableStateOf<Float?>(null) }
+    val sliderValue = dragValue ?: pos.toFloat()
+    val sliderMax = total.toFloat().coerceAtLeast(1f)
+
+    Slider(
+      value = sliderValue.coerceIn(0f, sliderMax),
+      onValueChange = { dragValue = it },
+      onValueChangeFinished = {
+        dragValue?.let { onSeekTo(it.toLong()) }
+        dragValue = null
+      },
+      valueRange = 0f..sliderMax,
       modifier = Modifier
         .fillMaxWidth()
-        .height(2.dp)
-        .semantics { testTag = "mini_player_progress" },
+        .padding(horizontal = 12.dp)
+        .semantics { testTag = "mini_player_slider" },
     )
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 2.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+      Text(
+        text = formatMiniPlayerMillis(sliderValue.toLong()),
+        style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier.semantics { testTag = "mini_player_position_label" },
+      )
+      Text(
+        text = formatMiniPlayerMillis(total),
+        style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier.semantics { testTag = "mini_player_duration_label" },
+      )
+    }
   }
+}
+
+private fun formatMiniPlayerMillis(ms: Long): String {
+  if (ms <= 0) return "0:00"
+  val totalSeconds = ms / 1000
+  val minutes = totalSeconds / 60
+  val seconds = totalSeconds % 60
+  return "%d:%02d".format(minutes, seconds)
 }

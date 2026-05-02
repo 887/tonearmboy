@@ -98,6 +98,11 @@ class PlaybackService : MediaSessionService() {
     // restore itself doesn't immediately re-write the same JSON back
     // through `onTimelineChanged`.
     restorePersistedQueueIntoPlayer(player)
+    // D.26.4 — also restore shuffle + repeat mode so they survive
+    // restart. Done before attaching the listener so the restore
+    // doesn't echo back through `onShuffleModeEnabledChanged` /
+    // `onRepeatModeChanged` and immediately re-write the same values.
+    restorePersistedShuffleAndRepeat(player)
 
     player.addListener(QueuePersistenceListener())
     schedulePositionPersistTicker()
@@ -218,6 +223,19 @@ class PlaybackService : MediaSessionService() {
         persistPositionImmediate()
       }
     }
+
+    // D.26.4 — write back shuffle / repeat on every flip. These hooks
+    // fire from in-app toggles, the notification's secondary action,
+    // System UI Quick Settings, and Bluetooth headset commands; the
+    // single listener catches all sources without per-call-site
+    // duplication.
+    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+      serviceScope.launch { queuePersistence.saveShuffle(shuffleModeEnabled) }
+    }
+
+    override fun onRepeatModeChanged(repeatMode: Int) {
+      serviceScope.launch { queuePersistence.saveRepeatMode(repeatMode) }
+    }
   }
 
   /**
@@ -252,6 +270,29 @@ class PlaybackService : MediaSessionService() {
       "tonearm",
       "queue restored items=${snapshot.items.size} index=${resolved.startIndex} positionMs=${resolved.startPositionMs}",
     )
+  }
+
+  /**
+   * D.26.4 — apply persisted shuffle / repeat onto the freshly created
+   * player on cold start. Called from `onCreate` before the persistence
+   * listener attaches so we don't immediately echo the values back
+   * through `onShuffleModeEnabledChanged` / `onRepeatModeChanged`.
+   */
+  private fun restorePersistedShuffleAndRepeat(player: Player) {
+    try {
+      runBlocking {
+        val shuffle = queuePersistence.loadShuffle()
+        val repeat = queuePersistence.loadRepeatMode()
+        player.shuffleModeEnabled = shuffle
+        player.repeatMode = repeat
+        android.util.Log.i(
+          "tonearm",
+          "shuffle/repeat restored shuffle=$shuffle repeat=$repeat",
+        )
+      }
+    } catch (t: Throwable) {
+      android.util.Log.w("tonearm", "shuffle/repeat restore failed", t)
+    }
   }
 
   private fun persistQueueSnapshotAsync() {
