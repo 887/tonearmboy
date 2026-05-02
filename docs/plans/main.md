@@ -464,7 +464,7 @@ Screenshots `130`-`133` captured against the headless AVD `medium_phone` (Androi
 
 ---
 
-## Phase D.23 — system MediaStyle controls + lock screen + notification permissions — shipped in commit `<pending>`
+## Phase D.23 — system MediaStyle controls + lock screen + notification permissions — shipped in commit `0f775c1`
 
 Real-device feedback round 4 from the system Quick Settings media card screenshot: the repeat-cycle button on the right is rendered by SystemUI but tapping it doesn't change the repeat mode. Also: no album art visible in the system card, lock screen, or notification — even on tracks that have MediaStore album covers. POST_NOTIFICATIONS is declared in the manifest but never requested at runtime, which on API 33+ silently denies the foreground-service notification ribbon.
 
