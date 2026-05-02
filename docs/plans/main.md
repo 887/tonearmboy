@@ -581,7 +581,7 @@ Three sub-steps:
 
 ---
 
-## Phase D.26 — mini-player full transport + queue-as-playlist + state persistence — shipped in commit `<pending>`
+## Phase D.26 — mini-player full transport + queue-as-playlist + state persistence — shipped in commit `77669b8`
 
 Real-device feedback round 7 (the user is now using tonearm as their daily player; this round is daily-driver polish):
 
@@ -635,7 +635,7 @@ Five sub-steps:
   - `182-d26-queue-filter-stays-put.png` — filter typed to "no-match", scroll position preserved (capture before + after as a side-by-side or two screenshots)
   - `183-d26-shuffle-on-after-restart.png` — verify shuffle survives an app force-stop + relaunch
 
-**Shipped:** D.26.1–D.26.5 in commit `<pending>`. Verified end-to-end on the headless AVD `medium_phone` (Android 16 / API 36): mini-player renders shuffle / prev / play / next / repeat with a draggable Material 3 slider + time labels (screenshot `180`); queue list shows all entries with the active row highlighted by a `primaryContainer` background + leading speaker icon + bodyLarge title (screenshot `181`); typing a no-match filter at scrolled position keeps the LazyColumn scroll position in place via the `fillParentMaxHeight` placeholder (screenshot `182`); shuffle + repeat survive `am force-stop` + relaunch via `QueuePersistence` keys `shuffle_enabled` / `repeat_mode` (screenshot `183`). Tapping a previously-played row in the queue now scrolls back to that track without removing the row from the visible list — the user's "scroll back two songs" flow works end-to-end.
+**Shipped:** D.26.1–D.26.5 in commit `77669b8`. Verified end-to-end on the headless AVD `medium_phone` (Android 16 / API 36): mini-player renders shuffle / prev / play / next / repeat with a draggable Material 3 slider + time labels (screenshot `180`); queue list shows all entries with the active row highlighted by a `primaryContainer` background + leading speaker icon + bodyLarge title (screenshot `181`); typing a no-match filter at scrolled position keeps the LazyColumn scroll position in place via the `fillParentMaxHeight` placeholder (screenshot `182`); shuffle + repeat survive `am force-stop` + relaunch via `QueuePersistence` keys `shuffle_enabled` / `repeat_mode` (screenshot `183`). Tapping a previously-played row in the queue now scrolls back to that track without removing the row from the visible list — the user's "scroll back two songs" flow works end-to-end.
 
 ---
 
