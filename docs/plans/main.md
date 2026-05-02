@@ -120,6 +120,58 @@ Goal: full system integration. Player controllable from notification, lock scree
 
 ---
 
+## Phase D.8 — Harmony chrome rework
+
+Goal: replace the horizontal top tabs with Harmony's vertical-rail pattern, dynamic per-section title, palette-extracted theme, and a custom-tabs system. Splits across small commits — each ships standalone, builds clean before merge.
+
+- [ ] **D.8a** Vertical tab rail (left edge, ~52 dp wide, vertically-rotated text labels) replaces the horizontal `PrimaryTabRow`. Settings gear pinned at the bottom of the rail. Active tab highlighted with bold + thin accent indicator on the right edge of the rail. Top-left header shows the active section's name via `LocalSectionTitle` `CompositionLocal` ("Library Songs" / "Library Albums" / "Discover" if any / "Settings" / album-or-playlist title in detail screens). Top-right (search/sort/overflow) unchanged. **Folded in: D.8e auto-discover-album-art toggle stub** in Settings → Content (persists in DataStore, snackbars on tap, real fetch lives in H.7).
+- [ ] **D.8b** Palette tinting from album art via `androidx.palette:palette-ktx`. New `LocalAlbumPalette` `CompositionLocal` that biases Material 3 `surface` / `surfaceVariant` / `background` toward the dominant `darkMutedSwatch` (or `darkVibrantSwatch` if muted is null) of the currently-playing track's album art. Falls back to the static `TonearmTheme` when no track plays or extraction fails. New "Tint chrome by album art" toggle in Look and Feel sub-page (default on, persists in DataStore). Per-album-id palette cache.
+- [ ] **D.8c** Room schema for custom tabs: `CustomTabEntity(id, name, position, contentType: SONGS|ALBUMS|ARTISTS|GENRES, criteriaJson)`. Migration v1→v2. `CustomTabDao` with full CRUD. `FilterCriteria` data class with `kotlinx.serialization` JSON encoding (genres / artists / albums multi-select; year min+max; dateAddedAfter epoch; hasAlbumArt nullable; pathContains). New `LibraryRepository` methods: `customTabs()`, `tracksMatching(criteria)`, `albumsMatching(criteria)`, `artistsMatching(criteria)`, `genresMatching(criteria)`, `upsertCustomTab(tab)`, `deleteCustomTab(id)`. Robolectric tests for each matching predicate + DAO CRUD.
+- [ ] **D.8d** `CustomTabEditorSheet` (`ModalBottomSheet`): name field, content-type segmented toggle, collapsible filter sections — Genres (multi-select checkbox list of all known genres in the library), Artists (multi-select with show-all expand), Albums (multi-select), Year range slider auto-bounded from library scan, Date-added segmented (Any / Last 7 days / Last 30 days / Last year / Custom), Has-album-art radio (Any / Only with / Only without), Path-contains text field. Save / Cancel. After save, the tab appears in the rail (after built-ins, before Settings gear) and renders its filtered content using the existing `AlbumsGridScreen` / `TracksListScreen` etc. composables. **"Add custom tab"** button at the bottom of Settings → Personalize → Library tabs. Edit / Delete affordances for existing custom tabs in the same screen; built-ins remain toggle-only.
+- [x] **D.8e** Folded into D.8a — auto-discover-album-art toggle stub lands in the same commit. Real fetch is `H.7`.
+- [ ] **D.8f** Phase D.8 verification: extend `scripts/ui-smoke-test.sh` with rail / dynamic-title / custom-tab assertions. Live screenshots on the AVD via `mobile` MCP after `scripts/fetch-test-music.sh --push`: `01-rail-songs`, `02-rail-albums-with-cover`, `03-rail-albums-without-cover`, `04-tinted-velvet-den`, `05-tinted-field-recordings`, `06-custom-tab-editor`, `07-custom-tab-rendered`, `08-auto-discover-toggle`, `09-tabs-config-with-add-button` — replace any same-numbered files under `docs/screenshots/phase-d/`.
+
+**Shipped:** _(in progress — D.8a starts now)_
+
+---
+
+## Phase D.9 — Auxio settings completion
+
+Goal: implement the Auxio-pattern settings that the Phase D Auxio refactor stubbed with "Coming in v1.1" snackbars. Each setting wired end-to-end against the new Harmony chrome, unit-tested, exercised by the UI smoke test. **No `v1.1` deferrals — every setting either ships fully here or moves to a Phase H sub-step with explicit reason.**
+
+- [ ] **D.9a Playback preferences:**
+    - [ ] **D.9a.1** Custom playback bar action — picker (Skip to next / Shuffle toggle / Repeat mode toggle / None). Long-press on the mini-player play button triggers the chosen action. Persists in DataStore.
+    - [ ] **D.9a.2** Custom notification action — picker (Repeat mode / Shuffle / None). Adds a custom MediaSession command surfaced as the secondary action button in the `MediaStyle` notification.
+    - [ ] **D.9a.3** Pause on repeat — toggle. When a track is set to `REPEAT_MODE_ONE`, pauses at the end of the first play instead of looping.
+    - [ ] **D.9a.4** When playing from the library — picker (Play from all songs / Play from item only / Play from current filter). Determines what queue is built when user taps a track from a flat list view.
+    - [ ] **D.9a.5** When playing from item details — picker (Play from shown item / Play from album / Play from artist). Determines queue scope when tapping inside a detail screen.
+    - [ ] **D.9a.6** Hide collaborators — toggle. When on, only show primary `album_artist` (filter at `LibraryRepository` query time). When off, show all credited artists.
+- [ ] **D.9b Audio quality:**
+    - [ ] **D.9b.1** ReplayGain strategy — picker (Off / Track / Album / Smart). Wires Media3 `Renderer` audio gain via `Player.setVolume` adjusted by parsed `REPLAYGAIN_TRACK_GAIN` / `REPLAYGAIN_ALBUM_GAIN` tags. "Smart" = album mode when full album in the queue, track mode otherwise.
+    - [ ] **D.9b.2** ReplayGain pre-amp — slider, -15 dB to +15 dB in 0.1 dB steps. Adds a constant offset on top of the strategy gain.
+    - [ ] **D.9b.3** Album covers — picker (Balanced / On / Off). Controls Coil image loader policy: Balanced = fit-by-quality + scale by container, On = always load, Off = never load (text-only fallback).
+    - [ ] **D.9b.4** Force square album covers — toggle (already wired in Phase D refactor — verify still works after the rail rework).
+- [ ] **D.9c Tag handling:**
+    - [ ] **D.9c.1** Multi-value separators — picker / multi-select (`;` `/` `,` `&` `feat.` `ft.`). During scan, splits these characters/strings in `artist`, `album_artist`, `genre` tags into multiple values.
+    - [ ] **D.9c.2** Intelligent sorting — already wired in D refactor. Extend to handle leading articles in non-English languages (French "le/la/les", German "der/die/das", Spanish "el/la/los/las"). Update the sort comparator to strip these.
+- [ ] **D.9d Library management:**
+    - [ ] **D.9d.1** Music sources sub-page — manage which directories are scanned via Storage Access Framework (`Intent.ACTION_OPEN_DOCUMENT_TREE`). Persisted as a list of `DocumentFile` URIs in DataStore. The library scan iterates these instead of the default `/sdcard/Music`. Multi-volume support (SD card, USB OTG). UI: visible list with Add and Remove affordances.
+    - [ ] **D.9d.2** Automatic reloading — toggle. When on, starts a low-priority foreground service (`LibraryWatcherService`) with a `MediaStore.Audio.Media.EXTERNAL_CONTENT_URI` `ContentObserver`. On change, schedules a WorkManager `LibraryRescanWorker` with a 30s debounce. Notification text: "Watching for library changes — tap to disable". When off, the service stops and the observer is unregistered.
+
+**Shipped:** _(not yet)_
+
+---
+
+## Phase D.10 — Tests + UI smoke for D.8 / D.9
+
+- [ ] **D.10.1** Robolectric unit tests for each D.9 wired feature: action triggers, ReplayGain gain calc, separator splitting, collaborator filtering, MediaStore observer integration, SAF directory persistence.
+- [ ] **D.10.2** Extended `scripts/ui-smoke-test.sh`: assert each new setting persists across app restart; assert ReplayGain pre-amp slider changes audio output (via `dumpsys audio`); assert custom playback bar action fires correctly on long-press; assert custom notification action button shows in the expanded notification.
+- [ ] **D.10.3** Auxio-equivalent screenshots — direct side-by-side parity with the Auxio reference screenshots the user provided. One screenshot per D.9 setting page in tonearm.
+
+**Shipped:** _(not yet)_
+
+---
+
 ## Phase F — file deletion (the differentiator)
 
 Goal: delete audio files from inside the player, with the system consent dialog and proper cache invalidation.
