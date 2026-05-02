@@ -28,3 +28,6 @@ Thumbs.db
 
 # Claude Code agent worktrees
 .claude/worktrees/
+
+# Downloaded test fixtures (re-fetchable via scripts/fetch-test-music.sh)
+test-music/

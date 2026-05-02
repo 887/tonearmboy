@@ -73,10 +73,36 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 ## Populate the library + smoke-test
 
 ```bash
-scripts/library-smoke-test.sh    # pushes 4 tagged-MP3 fixtures, triggers MediaStore rescan
+scripts/library-smoke-test.sh    # synthetic sine-wave fixtures, exercises Phase C scan path
 scripts/playback-smoke-test.sh   # exercises Phase E (notification, lock-screen, headset, foreground, process death)
 scripts/ui-smoke-test.sh         # exercises Phase D (top tabs, settings sub-pages, sort sheet, overflow menus)
 ```
+
+## Real test music (CC-BY-SA)
+
+For visual QA — browsing albums, scrubbing, watching cover art render — synthetic
+sine waves aren't enough. The test-music scripts pull four CC-BY-SA tracks from
+[SoundHelix](https://www.soundhelix.com/audio-examples) (credit Tobias Bappert),
+tag them with proper ID3v2 metadata, and embed cover art on half so you have one
+album with art and one album without:
+
+```bash
+scripts/fetch-test-music.sh           # downloads + tags into test-music/ (gitignored)
+scripts/push-test-music.sh            # pushes to the running AVD, triggers MediaStore scan
+scripts/fetch-test-music.sh --push    # fetch + push in one shot
+```
+
+Tracks land at `/sdcard/Music/tonearm-test/` on the device. After pushing, open
+tonearm and hit **Settings → Rescan music** if the library doesn't pick them up
+automatically (the deprecated `MEDIA_SCANNER_SCAN_FILE` broadcast is best-effort
+on modern Android).
+
+The two albums:
+
+- **Velvet Den** — *The Synth Foxes* — 2 tracks, embedded cover art
+- **Field Recordings** — *Quiet Hours* — 2 tracks, no cover (tests the auto-discover-art path)
+
+`test-music/` is gitignored — re-fetch on a fresh checkout via the script.
 
 ## Test
 
