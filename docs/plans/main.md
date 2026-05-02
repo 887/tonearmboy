@@ -98,7 +98,7 @@ Goal: full Compose UI, navigable, themed.
 - APK runs on `emulator-5554`; all seven screens render, mini-player floats over Library/Tracks while a track is queued, Now Playing reflects player state. Screenshots committed under `docs/screenshots/phase-d/`.
 - `scripts/ui-smoke-test.sh` (new) installs the APK, navigates Library → Tracks → first row, asserts the "Now Playing" topbar title appears via `uiautomator dump`. Passes.
 
-**Shipped:** D.1–D.7 in commit `9f5e736`.
+**Shipped:** D.1–D.7 in commit `9f5e736` + Auxio top-tabs refactor in commit `76488ad`.
 
 ---
 
