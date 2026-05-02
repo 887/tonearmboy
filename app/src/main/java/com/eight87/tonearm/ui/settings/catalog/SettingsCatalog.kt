@@ -6,9 +6,13 @@ import androidx.compose.material.icons.outlined.CropSquare
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.FastRewind
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Equalizer
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.automirrored.outlined.ViewList
@@ -176,6 +180,15 @@ object SettingsCatalog {
   const val ID_REMEMBER_PAUSE = "audio.remember_pause"
   const val ID_REPLAYGAIN_STRATEGY = "audio.replaygain_strategy"
   const val ID_REPLAYGAIN_PREAMP = "audio.replaygain_preamp"
+  // Phase H.3 — sleep timer.
+  const val ID_SLEEP_TIMER = "audio.sleep_timer"
+  // Phase H.4 — system equalizer hand-off.
+  const val ID_SYSTEM_EQUALIZER = "audio.system_equalizer"
+
+  // Phase H.5 — playlist backup actions on the Settings root, in the
+  // Library group alongside Music sources / Refresh / Rescan.
+  const val ID_LIBRARY_EXPORT_PLAYLISTS = "library.export_playlists"
+  const val ID_LIBRARY_IMPORT_PLAYLISTS = "library.import_playlists"
 
   // Section labels used in breadcrumbs and group headers.
   private const val SECTION_LOOK_AND_FEEL = "Look and Feel"
@@ -276,6 +289,33 @@ object SettingsCatalog {
       kind = RowKind.Action,
       destination = com.eight87.tonearm.ui.nav.SettingsRootDest,
       breadcrumb = listOf(SECTION_SETTINGS, "Library", "Rescan music"),
+    ),
+    // Phase H.5 — playlist backup actions. JSON envelope written via
+    // SAF; tracks identified by (title, artist, album) so the file
+    // round-trips across devices and re-scans.
+    SettingsCatalogEntry(
+      id = ID_LIBRARY_EXPORT_PLAYLISTS,
+      label = "Export playlists",
+      subtitle = "Save all playlists to a JSON file.",
+      keywords = listOf("backup", "json", "save", "playlist"),
+      icon = Icons.Outlined.FileDownload,
+      section = Section.Root,
+      group = Group.Library,
+      kind = RowKind.Action,
+      destination = com.eight87.tonearm.ui.nav.SettingsRootDest,
+      breadcrumb = listOf(SECTION_SETTINGS, "Library", "Export playlists"),
+    ),
+    SettingsCatalogEntry(
+      id = ID_LIBRARY_IMPORT_PLAYLISTS,
+      label = "Import playlists",
+      subtitle = "Load playlists from a JSON file.",
+      keywords = listOf("restore", "json", "load", "playlist"),
+      icon = Icons.Outlined.FileUpload,
+      section = Section.Root,
+      group = Group.Library,
+      kind = RowKind.Action,
+      destination = com.eight87.tonearm.ui.nav.SettingsRootDest,
+      breadcrumb = listOf(SECTION_SETTINGS, "Library", "Import playlists"),
     ),
     // D.16.4 — About sub-page entry. Lives in its own About category at
     // the very bottom of Settings root (NOT under Library — that was a
@@ -580,6 +620,37 @@ object SettingsCatalog {
       kind = RowKind.Picker,
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_AUDIO, "Volume normalization", "ReplayGain pre-amp"),
+    ),
+    // Phase H.3 — sleep timer. Picker-style row that opens a presets
+    // dialog (15 / 30 / 45 / 60 / 90 min + custom + "wait for end of
+    // song"). Reuses RowKind.OpenDialog so the row hosts the dialog
+    // inline instead of pushing a sub-page.
+    SettingsCatalogEntry(
+      id = ID_SLEEP_TIMER,
+      label = "Sleep timer",
+      subtitle = "Pause playback after a delay.",
+      keywords = listOf("sleep", "timer", "pause", "bedtime", "off"),
+      icon = Icons.Outlined.Bedtime,
+      section = Section.Audio,
+      group = Group.Playback,
+      kind = RowKind.OpenDialog,
+      destination = SettingsAudio,
+      breadcrumb = listOf(SECTION_AUDIO, "Playback", "Sleep timer"),
+    ),
+    // Phase H.4 — System equalizer hand-off. Tapping fires
+    // ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL on the active audio
+    // session; if no app handles it the snackbar falls back.
+    SettingsCatalogEntry(
+      id = ID_SYSTEM_EQUALIZER,
+      label = "System equalizer",
+      subtitle = "Open the system audio effect panel.",
+      keywords = listOf("equalizer", "eq", "audio effects", "system"),
+      icon = Icons.Outlined.Equalizer,
+      section = Section.Audio,
+      group = Group.VolumeNormalization,
+      kind = RowKind.Action,
+      destination = SettingsAudio,
+      breadcrumb = listOf(SECTION_AUDIO, "Volume normalization", "System equalizer"),
     ),
   )
 

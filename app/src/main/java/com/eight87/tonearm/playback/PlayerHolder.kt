@@ -3,8 +3,12 @@ package com.eight87.tonearm.playback
 import android.content.Context
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Process-wide owner of the [ExoPlayer] instance used by [PlaybackService].
@@ -18,6 +22,22 @@ import androidx.media3.exoplayer.ExoPlayer
 object PlayerHolder {
   @Volatile private var instance: ExoPlayer? = null
 
+  /**
+   * Phase H.4 — current audio session id of the active [ExoPlayer], or
+   * [androidx.media3.common.C.AUDIO_SESSION_ID_UNSET] when no player
+   * exists or no audio track has been prepared yet. Surfaced as a
+   * StateFlow so [PlaybackUiController] can re-emit it for the system
+   * EQ row without touching the ExoPlayer instance from the UI thread.
+   */
+  private val _audioSessionId = MutableStateFlow(C.AUDIO_SESSION_ID_UNSET)
+  val audioSessionId: StateFlow<Int> = _audioSessionId.asStateFlow()
+
+  private val sessionIdListener = object : Player.Listener {
+    override fun onAudioSessionIdChanged(audioSessionId: Int) {
+      _audioSessionId.value = audioSessionId
+    }
+  }
+
   /** Returns the process-wide [ExoPlayer], creating it on first call. */
   @UnstableApi
   fun getOrCreate(context: Context): ExoPlayer {
@@ -28,6 +48,10 @@ object PlayerHolder {
       if (maybe != null) return maybe
       val created = build(context.applicationContext)
       instance = created
+      // Capture the initial id (may be UNSET until ExoPlayer attaches
+      // an AudioTrack) and listen for subsequent changes.
+      _audioSessionId.value = created.audioSessionId
+      created.addListener(sessionIdListener)
       return created
     }
   }
@@ -35,8 +59,10 @@ object PlayerHolder {
   /** Releases and clears the player. Safe to call multiple times. */
   fun release() {
     synchronized(this) {
+      instance?.removeListener(sessionIdListener)
       instance?.release()
       instance = null
+      _audioSessionId.value = C.AUDIO_SESSION_ID_UNSET
     }
   }
 

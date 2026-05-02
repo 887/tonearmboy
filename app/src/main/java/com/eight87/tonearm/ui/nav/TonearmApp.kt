@@ -39,6 +39,7 @@ import com.eight87.tonearm.ui.settings.SettingsPersonalizeScreen
 import com.eight87.tonearm.ui.settings.SettingsScreen
 import com.eight87.tonearm.ui.settings.catalog.LocalHighlightedSettingId
 import com.eight87.tonearm.ui.settings.catalog.SettingsSearchScreen
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -149,6 +150,101 @@ fun TonearmApp(
   // dialog can be opened from the Settings root row (OpenDialog
   // catalog kind) without pushing a new destination onto the stack.
   var showMusicSourcesDialog by remember { mutableStateOf(false) }
+
+  // Phase H.5 — playlist export/import state.
+  var pendingExportEnvelope by remember {
+    mutableStateOf<com.eight87.tonearm.data.playlist.PlaylistBackupEnvelope?>(null)
+  }
+  var pendingImport by remember {
+    mutableStateOf<PlaylistImportPending?>(null)
+  }
+  val context = androidx.compose.ui.platform.LocalContext.current
+  val createDocLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+    contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument(
+      "application/json",
+    ),
+  ) { uri: android.net.Uri? ->
+    val envelope = pendingExportEnvelope
+    pendingExportEnvelope = null
+    if (uri == null || envelope == null) return@rememberLauncherForActivityResult
+    graph.applicationScope.launch {
+      runCatching {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+          context.contentResolver.openOutputStream(uri)?.use { out ->
+            out.write(
+              com.eight87.tonearm.data.playlist.PlaylistBackupCodec
+                .encode(envelope).toByteArray(Charsets.UTF_8),
+            )
+          }
+        }
+      }.fold(
+        onSuccess = {
+          snackbarHostState.showSnackbar("Exported ${envelope.playlists.size} playlists")
+        },
+        onFailure = {
+          snackbarHostState.showSnackbar("Export failed: ${it.message ?: "unknown error"}")
+        },
+      )
+    }
+  }
+  val openDocLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+    contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+  ) { uri: android.net.Uri? ->
+    if (uri == null) return@rememberLauncherForActivityResult
+    graph.applicationScope.launch {
+      runCatching {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+          val raw = context.contentResolver.openInputStream(uri)?.use {
+            it.bufferedReader(Charsets.UTF_8).readText()
+          } ?: error("Could not read selected file")
+          val envelope = com.eight87.tonearm.data.playlist.PlaylistBackupCodec.decode(raw)
+          val tracks = graph.libraryRepository.observeTracks().first()
+          val resolution = com.eight87.tonearm.data.playlist
+            .resolvePlaylistImport(envelope, tracks)
+          val existing = graph.libraryRepository.observePlaylists().first()
+          val existingNames = existing.map { it.name }.toSet()
+          val collisions = resolution.resolved.keys.filter { it in existingNames }
+          envelope to resolution to collisions
+        }
+      }.fold(
+        onSuccess = { (pair, collisions) ->
+          val (env, resolution) = pair
+          if (collisions.isEmpty()) {
+            // No collisions, apply with Merge as the default policy
+            // (irrelevant since none collide, but keeps the path simple).
+            val summary = com.eight87.tonearm.data.playlist.applyPlaylistImport(
+              repository = graph.libraryRepository,
+              envelope = env,
+              resolution = resolution,
+              collisionPolicy = com.eight87.tonearm.data.playlist
+                .PlaylistImportCollisionPolicy.Merge,
+            )
+            snackbarHostState.showSnackbar(
+              importSummaryMessage(summary),
+            )
+          } else {
+            pendingImport = PlaylistImportPending(env, resolution, collisions)
+          }
+        },
+        onFailure = {
+          snackbarHostState.showSnackbar("Import failed: ${it.message ?: "unknown error"}")
+        },
+      )
+    }
+  }
+  val onExportPlaylists: () -> Unit = {
+    graph.applicationScope.launch {
+      val envelope = com.eight87.tonearm.data.playlist
+        .buildPlaylistBackup(graph.libraryRepository)
+      pendingExportEnvelope = envelope
+      createDocLauncher.launch(
+        com.eight87.tonearm.data.playlist.PlaylistBackupCodec.defaultFileName(),
+      )
+    }
+  }
+  val onImportPlaylists: () -> Unit = {
+    openDocLauncher.launch(arrayOf("application/json"))
+  }
   val playlists by graph.libraryRepository.observePlaylists()
     .collectAsStateWithLifecycle(initialValue = emptyList())
   val onRefreshMusic: () -> Unit = {
@@ -382,6 +478,8 @@ fun TonearmApp(
             onMusicSources = { showMusicSourcesDialog = true },
             onRefreshMusic = onRefreshMusic,
             onRescanMusic = onRescanMusic,
+            onExportPlaylists = onExportPlaylists,
+            onImportPlaylists = onImportPlaylists,
             onAbout = { backStack.push(SettingsAbout) },
             onOpenSearch = { backStack.push(SettingsSearch) },
             snackbarHostState = snackbarHostState,
@@ -457,6 +555,7 @@ fun TonearmApp(
             onBack = { backStack.pop() },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,
+            playback = playback,
           )
         }
       },
@@ -497,8 +596,54 @@ fun TonearmApp(
         onDismiss = { showMusicSourcesDialog = false },
       )
     }
+
+    // Phase H.5 — playlist-import name-collision resolver. Surfaces
+    // when the imported envelope contains playlists whose names already
+    // exist in the library. The user picks Overwrite / Merge / Cancel
+    // and we apply the import on the chosen policy.
+    pendingImport?.let { pending ->
+      com.eight87.tonearm.ui.settings.PlaylistImportCollisionDialog(
+        collidingNames = pending.collisions,
+        onPick = { policy ->
+          val captured = pending
+          pendingImport = null
+          graph.applicationScope.launch {
+            val summary = com.eight87.tonearm.data.playlist.applyPlaylistImport(
+              repository = graph.libraryRepository,
+              envelope = captured.envelope,
+              resolution = captured.resolution,
+              collisionPolicy = policy,
+            )
+            snackbarHostState.showSnackbar(importSummaryMessage(summary))
+          }
+        },
+        onDismiss = { pendingImport = null },
+      )
+    }
   }
   }
+}
+
+/**
+ * Phase H.5 — pending state passed to the name-collision dialog.
+ */
+private data class PlaylistImportPending(
+  val envelope: com.eight87.tonearm.data.playlist.PlaylistBackupEnvelope,
+  val resolution: com.eight87.tonearm.data.playlist.PlaylistImportResolution,
+  val collisions: List<String>,
+)
+
+/** Phase H.5 — render the import summary string for the snackbar. */
+private fun importSummaryMessage(
+  summary: com.eight87.tonearm.data.playlist.PlaylistImportSummary,
+): String {
+  val parts = mutableListOf<String>()
+  parts += "Imported ${summary.importedCount} playlists"
+  if (summary.skippedCount > 0) parts += "${summary.skippedCount} skipped"
+  if (summary.unmatchedTrackCount > 0) {
+    parts += "${summary.unmatchedTrackCount} tracks not found"
+  }
+  return parts.joinToString(", ")
 }
 
 @OptIn(UnstableApi::class)

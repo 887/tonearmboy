@@ -53,6 +53,38 @@ class PlaybackUiController(private val applicationContext: Context) {
   val state: StateFlow<PlaybackUiState> = _state.asStateFlow()
 
   /**
+   * Phase H.4 — re-exposed audio session id from [PlayerHolder]. The
+   * settings "System equalizer" row reads this before launching the
+   * `ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL` intent so the system EQ
+   * applies its filter to *our* audio session.
+   *
+   * Defaults to [androidx.media3.common.C.AUDIO_SESSION_ID_UNSET] until
+   * the player attaches an `AudioTrack`. The system EQ activity treats
+   * UNSET as "global" / "output mix", which is fine but less precise
+   * than addressing our actual session — the row only fires the intent
+   * once we have a real id.
+   */
+  val audioSessionId: StateFlow<Int> = PlayerHolder.audioSessionId
+
+  /**
+   * Phase H.3 — process-wide sleep timer. Lives on this controller's
+   * scope so cancellation lines up with [release] / [shutdown]. The UI
+   * calls into [sleepTimer] directly; the controller does not wrap it
+   * because the timer's API surface is small and stable.
+   */
+  val sleepTimer: SleepTimer by lazy {
+    SleepTimer(
+      scope = scope,
+      pauseAction = {
+        // Run on the Main looper since MediaController is bound there.
+        scope.launch { controller?.pause() }
+      },
+      addPlayerListener = { l -> controller?.addListener(l) },
+      removePlayerListener = { l -> controller?.removeListener(l) },
+    )
+  }
+
+  /**
    * D.22.3 — coarse handshake state with the [PlaybackService].
    * `Connecting` until [connect] resolves; `Connected` once the
    * Media3 `MediaController.Builder.buildAsync` future delivers and

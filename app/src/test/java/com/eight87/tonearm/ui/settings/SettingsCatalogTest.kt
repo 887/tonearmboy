@@ -74,6 +74,12 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_REMEMBER_PAUSE,
       SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
       SettingsCatalog.ID_REPLAYGAIN_PREAMP,
+      // Phase H.3 / H.4.
+      SettingsCatalog.ID_SLEEP_TIMER,
+      SettingsCatalog.ID_SYSTEM_EQUALIZER,
+      // Phase H.5 — root-level Library actions.
+      SettingsCatalog.ID_LIBRARY_EXPORT_PLAYLISTS,
+      SettingsCatalog.ID_LIBRARY_IMPORT_PLAYLISTS,
     )
     val catalogIds = SettingsCatalog.entries.map { it.id }.toSet()
     expectedIds.forEach { id ->

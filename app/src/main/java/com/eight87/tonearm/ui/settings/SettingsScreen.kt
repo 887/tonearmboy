@@ -60,6 +60,8 @@ fun SettingsScreen(
   onMusicSources: () -> Unit,
   onRefreshMusic: () -> Unit,
   onRescanMusic: () -> Unit,
+  onExportPlaylists: () -> Unit,
+  onImportPlaylists: () -> Unit,
   onAbout: () -> Unit,
   onOpenSearch: () -> Unit,
   snackbarHostState: SnackbarHostState,
@@ -78,6 +80,9 @@ fun SettingsScreen(
     SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES, onClick = onMusicSources),
     SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_REFRESH, onClick = onRefreshMusic),
     SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_RESCAN, onClick = { confirmRescan = true }),
+    // Phase H.5 — export/import playlists.
+    SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_EXPORT_PLAYLISTS, onClick = onExportPlaylists),
+    SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_IMPORT_PLAYLISTS, onClick = onImportPlaylists),
     SettingsRowBinding.Action(SettingsCatalog.ID_ABOUT, onClick = onAbout),
   )
 

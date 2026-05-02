@@ -591,17 +591,44 @@ internal fun albumCoversLabel(mode: AlbumCoversMode): String = when (mode) {
 // Audio
 // =============================================================================
 
+@OptIn(UnstableApi::class)
 @Composable
 fun SettingsAudioScreen(
   repository: SettingsRepository,
   onBack: () -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
+  // Phase H.3 / H.4 — wired from `TonearmApp` so the Audio sub-page can
+  // host the Sleep timer dialog and launch the System equalizer intent.
+  // Optional so existing tests / preview surfaces can keep instantiating
+  // without the playback controller; nullable means "fall back to a
+  // 'Coming in v1.1' style snackbar".
+  playback: com.eight87.tonearm.playback.PlaybackUiController? = null,
 ) {
   val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
   val scope = rememberCoroutineScope()
+  val context = LocalContext.current
   var rgStrategyPicker by remember { mutableStateOf(false) }
   var rgPreampDialog by remember { mutableStateOf(false) }
+  var sleepDialog by remember { mutableStateOf(false) }
+
+  // Phase H.3 — observe the timer state so the dialog (and the row
+  // subtitle) can render the live countdown without polling.
+  val sleepState by (playback?.sleepTimer?.state
+    ?: kotlinx.coroutines.flow.MutableStateFlow(
+      com.eight87.tonearm.playback.SleepTimerState.Idle,
+    )).collectAsState(initial = com.eight87.tonearm.playback.SleepTimerState.Idle)
+
+  val sleepRowSubtitle = when (val s = sleepState) {
+    is com.eight87.tonearm.playback.SleepTimerState.Running -> {
+      val minutes = (s.remainingMs / 60_000L).coerceAtLeast(0)
+      "Active — about ${minutes} min remaining"
+    }
+    com.eight87.tonearm.playback.SleepTimerState.WaitingForTrackEnd ->
+      "Waiting for end of song"
+    com.eight87.tonearm.playback.SleepTimerState.Idle ->
+      "Pause playback after a delay."
+  }
 
   val bindings = listOf(
     SettingsRowBinding.Toggle(
@@ -624,6 +651,12 @@ fun SettingsAudioScreen(
       checked = snapshot.rememberPause,
       onCheckedChange = { scope.launch { repository.setRememberPause(it) } },
     ),
+    // Phase H.3 — sleep timer row.
+    SettingsRowBinding.Picker(
+      id = SettingsCatalog.ID_SLEEP_TIMER,
+      currentLabel = sleepRowSubtitle,
+      onClick = { sleepDialog = true },
+    ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
       currentLabel = replayGainStrategyLabel(snapshot.replayGainStrategy),
@@ -634,6 +667,31 @@ fun SettingsAudioScreen(
       currentLabel = formatPreampDb(snapshot.replayGainPreampDb),
       onClick = { rgPreampDialog = true },
     ),
+    // Phase H.4 — system equalizer row.
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_SYSTEM_EQUALIZER,
+      onClick = {
+        val sessionId = playback?.audioSessionId?.value
+          ?: androidx.media3.common.C.AUDIO_SESSION_ID_UNSET
+        val intent = SystemEqualizer.buildIntent(sessionId, context.packageName)
+        if (SystemEqualizer.resolves(context, intent)) {
+          runCatching { context.startActivity(intent) }
+            .onFailure {
+              scope.launch {
+                snackbarHostState.showSnackbar(
+                  "No system equalizer available on this device.",
+                )
+              }
+            }
+        } else {
+          scope.launch {
+            snackbarHostState.showSnackbar(
+              "No system equalizer available on this device.",
+            )
+          }
+        }
+      },
+    ),
   )
 
   SettingsSubScaffold("Audio", "settings_audio", onBack, snackbarHostState) { mod ->
@@ -642,6 +700,24 @@ fun SettingsAudioScreen(
       section = Section.Audio,
       bindings = bindings,
       modifier = mod,
+    )
+  }
+
+  if (sleepDialog) {
+    SleepTimerDialog(
+      state = sleepState,
+      onStart = { durationMs, waitForEndOfTrack ->
+        playback?.sleepTimer?.start(durationMs, waitForEndOfTrack)
+        sleepDialog = false
+        scope.launch {
+          val mins = durationMs / 60_000L
+          snackbarHostState.showSnackbar("Sleep timer set for $mins min")
+        }
+      },
+      onCancel = {
+        playback?.sleepTimer?.cancel()
+      },
+      onDismiss = { sleepDialog = false },
     )
   }
 
