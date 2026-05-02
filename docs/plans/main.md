@@ -613,7 +613,7 @@ Goal: Claude can drive the app end-to-end without an emulator. Local unit tests 
 
 ## Phase H — extras (post-v1)
 
-**Shipped in commit `<pending>`** (verified on `emulator-5554` with two adjacent 6 s, 44.1 kHz / stereo MP3 fixtures: the auto-advance from item id 2 → 3 → 4 happened while `state=PLAYING(3)`, never flipping to BUFFERING — Media3's gapless behaviour confirmed).
+**Shipped in commit `b638622`** (verified on `emulator-5554` with two adjacent 6 s, 44.1 kHz / stereo MP3 fixtures: the auto-advance from item id 2 → 3 → 4 happened while `state=PLAYING(3)`, never flipping to BUFFERING — Media3's gapless behaviour confirmed).
 
 - [x] **H.1** Gapless playback (Media3 supports natively; verify with cross-faded tracks). — Media3 ExoPlayer gaplessly transitions between consecutive items by default when they share output format; no custom code required. Verified on `emulator-5554` (Android 16) with two adjacent 6 s, 44.1 kHz / stereo MP3 fixtures (`tonearm-gapless-1.mp3` → `tonearm-gapless-2.mp3` → `Pawprints in Snow`). The MediaSession's `onSessionPlaybackStateChanged` log shows `state=PLAYING(3)` across two `active item id` advances (2→3 at +6 s, 3→4 at +12 s) with no `BUFFERING(6)` between — only the initial track-load BUFFERING at queue start. No code change needed.
 - [x] **H.2** ReplayGain (track + album modes, configurable preamp). — Already shipped in D.9b.1 / D.9b.2 (`PlaybackUiController.applyReplayGainNow`, ReplayGain strategy picker, pre-amp dB picker, smart-album coverage helper). Ticked retroactively per the H phase brief.
@@ -639,7 +639,7 @@ Goal: Claude can drive the app end-to-end without an emulator. Local unit tests 
 - [x] **H.7.3** `PlaylistExportImportTest` — round-trip a fixture library: export → reset Room → import → assert all playlists + track counts restored. Plus a fuzzy-match test where the imported track has slightly different casing on the artist name (assert it still matches). — `app/src/test/java/com/eight87/tonearm/data/playlist/PlaylistExportImportTest.kt`; 7 cases including JSON round-trip, exact match, case-insensitive match, title-only fallback, album-tiebreak across duplicate titles, unmatched count, ISO file-name format.
 - [x] **H.7.4** Screenshots: `170-h-sleep-timer-presets.png`, `171-h-sleep-timer-running.png`, `172-h-system-eq-launched.png` (the system EQ panel itself), `173-h-export-playlists-success.png`, `174-h-import-playlists-merge-dialog.png`. — Captured under `docs/screenshots/phase-h/`. (`172` shows the snackbar fallback because the AVD has no system EQ activity registered, which is the documented stripped-ROM code path.)
 
-**Shipped:** commit `<pending>` — Phase H closeout.
+**Shipped:** commit `b638622` — Phase H closeout.
 
 ---
 
