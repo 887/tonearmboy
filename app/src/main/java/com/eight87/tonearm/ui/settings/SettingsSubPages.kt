@@ -1,6 +1,5 @@
 package com.eight87.tonearm.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,10 +14,8 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -39,12 +36,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearm.ui.settings.catalog.Section
+import com.eight87.tonearm.ui.settings.catalog.SettingsCatalog
+import com.eight87.tonearm.ui.settings.catalog.SettingsCatalogPage
+import com.eight87.tonearm.ui.settings.catalog.SettingsRowBinding
 import kotlinx.coroutines.launch
 
-/**
- * Common scaffold used by every settings sub-page: TopAppBar with a back
- * arrow + a `LazyColumn` content slot.
- */
+// =============================================================================
+// Shared sub-page scaffold: back arrow + section title + catalog-driven body.
+// Sub-pages do NOT host their own search bar — search is global, lives only at
+// the Settings root.
+// =============================================================================
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsSubScaffold(
@@ -52,7 +55,7 @@ private fun SettingsSubScaffold(
   testTagName: String,
   onBack: () -> Unit,
   snackbarHostState: SnackbarHostState,
-  content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
+  body: @Composable (Modifier) -> Unit,
 ) {
   Scaffold(
     topBar = {
@@ -67,19 +70,18 @@ private fun SettingsSubScaffold(
     },
     snackbarHost = { SnackbarHost(snackbarHostState) },
   ) { innerPadding ->
-    LazyColumn(
-      modifier = Modifier
+    body(
+      Modifier
         .fillMaxSize()
         .padding(innerPadding)
         .semantics { testTag = testTagName },
-      content = content,
     )
   }
 }
 
-// =========================================================================
+// =============================================================================
 // Look and Feel
-// =========================================================================
+// =============================================================================
 
 @Composable
 fun SettingsLookAndFeelScreen(
@@ -93,37 +95,36 @@ fun SettingsLookAndFeelScreen(
   var themePicker by remember { mutableStateOf(false) }
   var schemePicker by remember { mutableStateOf(false) }
 
-  SettingsSubScaffold("Look and Feel", "settings_look_and_feel", onBack, snackbarHostState) {
-    item {
-      SettingsRow(
-        title = "Theme",
-        subtitle = themeLabel(snapshot.theme),
-        onClick = { themePicker = true },
-      )
-    }
-    item {
-      SettingsRow(
-        title = "Color scheme",
-        subtitle = colorSchemeLabel(snapshot.colorScheme),
-        onClick = { schemePicker = true },
-      )
-    }
-    item {
-      SettingsToggleRow(
-        title = "Black theme",
-        subtitle = "Use pure black for the dark theme background.",
-        checked = snapshot.blackTheme,
-        onCheckedChange = { scope.launch { repository.setBlackTheme(it) } },
-      )
-    }
-    item {
-      SettingsToggleRow(
-        title = "Round mode",
-        subtitle = "Apply rounded corners to additional UI elements.",
-        checked = snapshot.roundMode,
-        onCheckedChange = { scope.launch { repository.setRoundMode(it) } },
-      )
-    }
+  val bindings = listOf(
+    SettingsRowBinding.Picker(
+      id = SettingsCatalog.ID_THEME,
+      currentLabel = themeLabel(snapshot.theme),
+      onClick = { themePicker = true },
+    ),
+    SettingsRowBinding.Picker(
+      id = SettingsCatalog.ID_COLOR_SCHEME,
+      currentLabel = colorSchemeLabel(snapshot.colorScheme),
+      onClick = { schemePicker = true },
+    ),
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_BLACK_THEME,
+      checked = snapshot.blackTheme,
+      onCheckedChange = { scope.launch { repository.setBlackTheme(it) } },
+    ),
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_ROUND_MODE,
+      checked = snapshot.roundMode,
+      onCheckedChange = { scope.launch { repository.setRoundMode(it) } },
+    ),
+  )
+
+  SettingsSubScaffold("Look and Feel", "settings_look_and_feel", onBack, snackbarHostState) { mod ->
+    SettingsCatalogPage(
+      testTagName = "settings_look_and_feel_body",
+      section = Section.LookAndFeel,
+      bindings = bindings,
+      modifier = mod,
+    )
   }
 
   if (themePicker) {
@@ -159,9 +160,9 @@ private fun colorSchemeLabel(s: ColorScheme): String = when (s) {
   ColorScheme.Brand -> "Brand palette"
 }
 
-// =========================================================================
+// =============================================================================
 // Personalize
-// =========================================================================
+// =============================================================================
 
 @Composable
 fun SettingsPersonalizeScreen(
@@ -174,53 +175,42 @@ fun SettingsPersonalizeScreen(
   val scope = rememberCoroutineScope()
   var showLibraryTabs by remember { mutableStateOf(false) }
 
-  SettingsSubScaffold("Personalize", "settings_personalize", onBack, snackbarHostState) {
-    item { SectionHeader("Display") }
-    item {
-      SettingsRow(
-        title = "Library tabs",
-        subtitle = describeLibraryTabs(snapshot.libraryTabs),
-        onClick = { showLibraryTabs = true },
-      )
-    }
-    item {
-      SettingsRow(
-        title = "Custom playback bar action",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("Custom playback bar action") },
-      )
-    }
-    item {
-      SettingsRow(
-        title = "Custom notification action",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("Custom notification action") },
-      )
-    }
+  val bindings = listOf(
+    SettingsRowBinding.Picker(
+      id = SettingsCatalog.ID_LIBRARY_TABS,
+      currentLabel = describeLibraryTabs(snapshot.libraryTabs),
+      onClick = { showLibraryTabs = true },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_CUSTOM_PLAYBACK_BAR_ACTION,
+      onClick = { onComingSoon("Custom playback bar action") },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_CUSTOM_NOTIFICATION_ACTION,
+      onClick = { onComingSoon("Custom notification action") },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_PLAY_FROM_LIBRARY,
+      onClick = { onComingSoon("When playing from the library") },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_PLAY_FROM_ITEM_DETAILS,
+      onClick = { onComingSoon("When playing from item details") },
+    ),
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_REMEMBER_SHUFFLE,
+      checked = snapshot.rememberShuffle,
+      onCheckedChange = { scope.launch { repository.setRememberShuffle(it) } },
+    ),
+  )
 
-    item { SectionHeader("Behavior") }
-    item {
-      SettingsRow(
-        title = "When playing from the library",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("When playing from the library") },
-      )
-    }
-    item {
-      SettingsRow(
-        title = "When playing from item details",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("When playing from item details") },
-      )
-    }
-    item {
-      SettingsToggleRow(
-        title = "Remember shuffle",
-        subtitle = "Restore the previous shuffle state on relaunch.",
-        checked = snapshot.rememberShuffle,
-        onCheckedChange = { scope.launch { repository.setRememberShuffle(it) } },
-      )
-    }
+  SettingsSubScaffold("Personalize", "settings_personalize", onBack, snackbarHostState) { mod ->
+    SettingsCatalogPage(
+      testTagName = "settings_personalize_body",
+      section = Section.Personalize,
+      bindings = bindings,
+      modifier = mod,
+    )
   }
 
   if (showLibraryTabs) {
@@ -247,10 +237,6 @@ private fun LibraryTabsEditor(
   onDismiss: () -> Unit,
   onConfirm: (List<LibraryTab>) -> Unit,
 ) {
-  // Working copy: ordered list of tabs with a "visible" flag. Hidden
-  // tabs disappear from the strip; visible ones render in the order of
-  // the list. Reordering is via up/down arrows for accessibility — a
-  // drag handle would need extra deps.
   val initialState = remember(current) {
     val seen = current.toMutableSet()
     val ordered = current.toMutableList()
@@ -299,8 +285,6 @@ private fun LibraryTabsEditor(
     },
     confirmButton = {
       TextButton(onClick = {
-        // Visible tabs first (in order), then hidden tabs (preserved
-        // for round-trip but not surfaced).
         val visibleTabs = rows.filter { it.second }.map { it.first }
         onConfirm(visibleTabs)
       }) { Text("OK") }
@@ -317,9 +301,9 @@ private fun tabLabel(tab: LibraryTab): String = when (tab) {
   LibraryTab.Playlists -> "Playlists"
 }
 
-// =========================================================================
+// =============================================================================
 // Content
-// =========================================================================
+// =============================================================================
 
 @Composable
 fun SettingsContentScreen(
@@ -331,78 +315,60 @@ fun SettingsContentScreen(
   val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
   val scope = rememberCoroutineScope()
 
-  SettingsSubScaffold("Content", "settings_content", onBack, snackbarHostState) {
-    item { SectionHeader("Music") }
-    item {
-      SettingsRow(
-        title = "Automatic reloading",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("Automatic reloading") },
-      )
-    }
-    item {
-      SettingsRow(
-        title = "Multi-value separators",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("Multi-value separators") },
-      )
-    }
-    item {
-      SettingsToggleRow(
-        title = "Intelligent sorting",
-        subtitle = "Ignore leading 'the', 'a', 'an' when computing sort order.",
-        checked = snapshot.intelligentSorting,
-        onCheckedChange = { scope.launch { repository.setIntelligentSorting(it) } },
-      )
-    }
-    item {
-      SettingsRow(
-        title = "Hide collaborators",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("Hide collaborators") },
-      )
-    }
+  val bindings = listOf(
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_AUTOMATIC_RELOADING,
+      onClick = { onComingSoon("Automatic reloading") },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_MULTI_VALUE_SEPARATORS,
+      onClick = { onComingSoon("Multi-value separators") },
+    ),
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_INTELLIGENT_SORTING,
+      checked = snapshot.intelligentSorting,
+      onCheckedChange = { scope.launch { repository.setIntelligentSorting(it) } },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_HIDE_COLLABORATORS,
+      onClick = { onComingSoon("Hide collaborators") },
+    ),
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
+      checked = snapshot.autoDiscoverAlbumArt,
+      onCheckedChange = { value ->
+        scope.launch { repository.setAutoDiscoverAlbumArt(value) }
+        scope.launch {
+          snackbarHostState.showSnackbar(
+            "Coming in v1.1 — for now, manual cover-art import only.",
+          )
+        }
+      },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_ALBUM_COVERS,
+      onClick = { onComingSoon("Album covers") },
+    ),
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_FORCE_SQUARE_COVERS,
+      checked = snapshot.forceSquareCovers,
+      onCheckedChange = { scope.launch { repository.setForceSquareCovers(it) } },
+    ),
+  )
 
-    item { SectionHeader("Images") }
-    item {
-      SettingsRow(
-        title = "Album covers",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("Album covers") },
-      )
-    }
-    item {
-      SettingsToggleRow(
-        title = "Force square album covers",
-        subtitle = "Render covers as squares instead of rounded rectangles.",
-        checked = snapshot.forceSquareCovers,
-        onCheckedChange = { scope.launch { repository.setForceSquareCovers(it) } },
-      )
-    }
-    item {
-      // D.8e: persists the user's intent for the Phase H.7 fetch flow.
-      // Toggling it on (or tapping the row) shows an informational
-      // snackbar — the actual cover-art fetch lands in Phase H.
-      SettingsToggleRow(
-        title = "Auto-discover missing album art",
-        subtitle = "Fetch covers from MusicBrainz Cover Art Archive for albums missing local art (Phase H).",
-        checked = snapshot.autoDiscoverAlbumArt,
-        onCheckedChange = { value ->
-          scope.launch { repository.setAutoDiscoverAlbumArt(value) }
-          scope.launch {
-            snackbarHostState.showSnackbar(
-              "Coming in v1.1 — for now, manual cover-art import only.",
-            )
-          }
-        },
-      )
-    }
+  SettingsSubScaffold("Content", "settings_content", onBack, snackbarHostState) { mod ->
+    SettingsCatalogPage(
+      testTagName = "settings_content_body",
+      section = Section.Content,
+      bindings = bindings,
+      modifier = mod,
+    )
   }
 }
 
-// =========================================================================
+// =============================================================================
 // Audio
-// =========================================================================
+// =============================================================================
 
 @Composable
 fun SettingsAudioScreen(
@@ -414,61 +380,49 @@ fun SettingsAudioScreen(
   val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
   val scope = rememberCoroutineScope()
 
-  SettingsSubScaffold("Audio", "settings_audio", onBack, snackbarHostState) {
-    item { SectionHeader("Playback") }
-    item {
-      SettingsToggleRow(
-        title = "Headset autoplay",
-        subtitle = "Begin playback automatically when headphones connect.",
-        checked = snapshot.headsetAutoplay,
-        onCheckedChange = { scope.launch { repository.setHeadsetAutoplay(it) } },
-      )
-    }
-    item {
-      SettingsToggleRow(
-        title = "Rewind before skipping back",
-        subtitle = "Tap previous within a few seconds rewinds; otherwise jumps to the previous track.",
-        checked = snapshot.rewindBeforeSkipBack,
-        onCheckedChange = { scope.launch { repository.setRewindBeforeSkipBack(it) } },
-      )
-    }
-    item {
-      SettingsRow(
-        title = "Pause on repeat",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("Pause on repeat") },
-      )
-    }
-    item {
-      SettingsToggleRow(
-        title = "Remember pause",
-        subtitle = "Restore the paused position on relaunch.",
-        checked = snapshot.rememberPause,
-        onCheckedChange = { scope.launch { repository.setRememberPause(it) } },
-      )
-    }
+  val bindings = listOf(
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_HEADSET_AUTOPLAY,
+      checked = snapshot.headsetAutoplay,
+      onCheckedChange = { scope.launch { repository.setHeadsetAutoplay(it) } },
+    ),
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_REWIND_BEFORE_SKIP,
+      checked = snapshot.rewindBeforeSkipBack,
+      onCheckedChange = { scope.launch { repository.setRewindBeforeSkipBack(it) } },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_PAUSE_ON_REPEAT,
+      onClick = { onComingSoon("Pause on repeat") },
+    ),
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_REMEMBER_PAUSE,
+      checked = snapshot.rememberPause,
+      onCheckedChange = { scope.launch { repository.setRememberPause(it) } },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
+      onClick = { onComingSoon("ReplayGain strategy") },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_REPLAYGAIN_PREAMP,
+      onClick = { onComingSoon("ReplayGain pre-amp") },
+    ),
+  )
 
-    item { SectionHeader("Volume normalization") }
-    item {
-      SettingsRow(
-        title = "ReplayGain strategy",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("ReplayGain strategy") },
-      )
-    }
-    item {
-      SettingsRow(
-        title = "ReplayGain pre-amp",
-        subtitle = "Coming in v1.1.",
-        onClick = { onComingSoon("ReplayGain pre-amp") },
-      )
-    }
+  SettingsSubScaffold("Audio", "settings_audio", onBack, snackbarHostState) { mod ->
+    SettingsCatalogPage(
+      testTagName = "settings_audio_body",
+      section = Section.Audio,
+      bindings = bindings,
+      modifier = mod,
+    )
   }
 }
 
-// =========================================================================
+// =============================================================================
 // Generic radio-list picker dialog used across sub-pages.
-// =========================================================================
+// =============================================================================
 
 @Composable
 private fun <T> RadioPicker(

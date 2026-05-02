@@ -52,3 +52,7 @@ data object SettingsContent : Destination
 
 @Serializable
 data object SettingsAudio : Destination
+
+/** Full-screen global settings search overlay (entered from the Settings root). */
+@Serializable
+data object SettingsSearch : Destination

@@ -26,6 +26,8 @@ import com.eight87.tonearm.ui.settings.SettingsContentScreen
 import com.eight87.tonearm.ui.settings.SettingsLookAndFeelScreen
 import com.eight87.tonearm.ui.settings.SettingsPersonalizeScreen
 import com.eight87.tonearm.ui.settings.SettingsScreen
+import com.eight87.tonearm.ui.settings.catalog.LocalHighlightedSettingId
+import com.eight87.tonearm.ui.settings.catalog.SettingsSearchScreen
 import kotlinx.coroutines.launch
 
 /**
@@ -49,6 +51,11 @@ fun TonearmApp(graph: AppGraph) {
 
   // Single shared title cell driven by per-screen LaunchedEffects.
   val sectionTitle = remember { mutableStateOf("tonearm") }
+
+  // Settings search seeds this state with the id of the row to flash
+  // when navigating to its destination sub-page; the receiving row
+  // animates a 300 ms background colour change and then clears it.
+  val highlightedSettingId = remember { mutableStateOf<String?>(null) }
 
   // Keep the MediaController bound for the lifetime of the activity.
   // The full-screen NowPlaying re-uses this same connection.
@@ -74,7 +81,10 @@ fun TonearmApp(graph: AppGraph) {
     }
   }
 
-  CompositionLocalProvider(LocalSectionTitle provides sectionTitle) {
+  CompositionLocalProvider(
+    LocalSectionTitle provides sectionTitle,
+    LocalHighlightedSettingId provides highlightedSettingId,
+  ) {
   Scaffold(
     bottomBar = {
       if (showMiniPlayer) {
@@ -149,7 +159,24 @@ fun TonearmApp(graph: AppGraph) {
             onMusicSources = { onComingSoon("Music sources") },
             onRefreshMusic = onRefreshMusic,
             onRescanMusic = onRescanMusic,
+            onOpenSearch = { backStack.push(SettingsSearch) },
             snackbarHostState = snackbarHostState,
+          )
+        }
+        entry<SettingsSearch> {
+          LaunchedEffect(Unit) { sectionTitle.value = "Search settings" }
+          SettingsSearchScreen(
+            onBack = { backStack.pop() },
+            onResult = { destination, id ->
+              // Pop the search overlay, then push (or stay on) the
+              // destination sub-page. Seed the highlight so the
+              // matched row briefly flashes when it composes.
+              highlightedSettingId.value = id
+              backStack.pop()
+              if (destination !is SettingsRootDest) {
+                backStack.push(destination)
+              }
+            },
           )
         }
         entry<SettingsLookAndFeel> {

@@ -1,25 +1,20 @@
 package com.eight87.tonearm.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -28,27 +23,31 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearm.ui.settings.catalog.Section
+import com.eight87.tonearm.ui.settings.catalog.SettingsCard
+import com.eight87.tonearm.ui.settings.catalog.SettingsCatalog
+import com.eight87.tonearm.ui.settings.catalog.SettingsCatalogPage
+import com.eight87.tonearm.ui.settings.catalog.SettingsDimens
+import com.eight87.tonearm.ui.settings.catalog.SettingsRow
+import com.eight87.tonearm.ui.settings.catalog.SettingsRowBinding
+import com.eight87.tonearm.ui.settings.catalog.SettingsRowDivider
+import com.eight87.tonearm.ui.settings.catalog.SettingsSearchBar
+import com.eight87.tonearm.ui.settings.catalog.groupTitleFor
 
 /**
- * Settings root, mirroring Auxio's eight-entry layout:
+ * Settings root. Top-level chrome:
  *
- *   1. Look and Feel
- *   2. Personalize
- *   3. Content
- *   4. Audio
- *   --- Library ---
- *   5. Music sources (stub)
- *   6. Refresh music
- *   7. Rescan music
+ *   - back arrow + "Settings" title in the [TopAppBar]
+ *   - global search bar pinned just under it
+ *   - grouped rounded cards: Appearance / Behaviour / Library
  *
- * Each top-of-list entry navigates to its sub-page; the Library section
- * exposes the music-source / refresh / rescan actions inline because
- * they are leaf actions, not sub-pages.
+ * The cards and rows come from [SettingsCatalog]. Tapping the search
+ * bar pushes [com.eight87.tonearm.ui.nav.SettingsSearch] which holds
+ * the full-screen search overlay.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,9 +60,24 @@ fun SettingsScreen(
   onMusicSources: () -> Unit,
   onRefreshMusic: () -> Unit,
   onRescanMusic: () -> Unit,
+  onOpenSearch: () -> Unit,
   snackbarHostState: SnackbarHostState,
 ) {
   var confirmRescan by remember { mutableStateOf(false) }
+
+  // Bindings for every Section.Root entry. The page renderer falls back
+  // to a stub render for entries with no binding, but every row at the
+  // root has either a navigation tap (sub-page entries) or a leaf
+  // action (refresh, rescan), or a stub (music sources).
+  val bindings = listOf(
+    SettingsRowBinding.Action(SettingsCatalog.ID_APPEARANCE_LOOK_AND_FEEL, onClick = onLookAndFeel),
+    SettingsRowBinding.Action(SettingsCatalog.ID_APPEARANCE_PERSONALIZE, onClick = onPersonalize),
+    SettingsRowBinding.Action(SettingsCatalog.ID_BEHAVIOUR_CONTENT, onClick = onContent),
+    SettingsRowBinding.Action(SettingsCatalog.ID_BEHAVIOUR_AUDIO, onClick = onAudio),
+    SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES, onClick = onMusicSources),
+    SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_REFRESH, onClick = onRefreshMusic),
+    SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_RESCAN, onClick = { confirmRescan = true }),
+  )
 
   Scaffold(
     topBar = {
@@ -78,32 +92,56 @@ fun SettingsScreen(
     },
     snackbarHost = { SnackbarHost(snackbarHostState) },
   ) { innerPadding ->
-    LazyColumn(
+    Column(
       modifier = Modifier
         .fillMaxSize()
         .padding(innerPadding)
+        .verticalScroll(rememberScrollState())
         .semantics { testTag = "settings_screen" },
+      verticalArrangement = Arrangement.spacedBy(SettingsDimens.CardSpacing),
     ) {
-      item { SettingsRow("Look and Feel", "Theme, colour scheme, black mode, round mode.", onClick = onLookAndFeel) }
-      item { SettingsRow("Personalize", "Library tabs, behaviour, custom actions.", onClick = onPersonalize) }
-      item { SettingsRow("Content", "Sorting, separators, album covers.", onClick = onContent) }
-      item { SettingsRow("Audio", "Playback, volume normalization.", onClick = onAudio) }
+      // Search bar: 16 dp horizontal inset, sits above the first card.
+      SettingsSearchBar(
+        onOpen = onOpenSearch,
+        modifier = Modifier.padding(
+          start = SettingsDimens.PagePadding,
+          end = SettingsDimens.PagePadding,
+          top = 12.dp,
+        ),
+      )
 
-      item { SectionHeader("Library") }
-      item { SettingsRow("Music sources", "Manage where music is loaded from.", onClick = onMusicSources) }
-      item {
-        SettingsRow(
-          title = "Refresh music",
-          subtitle = "Reload the library, using cached tags when possible.",
-          onClick = onRefreshMusic,
-        )
-      }
-      item {
-        SettingsRow(
-          title = "Rescan music",
-          subtitle = "Clear the cache and re-read everything. Slower but more complete.",
-          onClick = { confirmRescan = true },
-        )
+      // Grouped cards. We render the page inline (not via the
+      // [SettingsCatalogPage] helper) so the search bar and the cards
+      // share one scroll container.
+      val pageEntries = SettingsCatalog.bySection(Section.Root)
+      val grouped = pageEntries.groupBy { it.group }
+      val bindingsById = bindings.associateBy { it.id }
+      grouped.forEach { (group, items) ->
+        SettingsCard(
+          title = groupTitleFor(group),
+          modifier = Modifier.padding(horizontal = SettingsDimens.PagePadding),
+        ) {
+          items.forEachIndexed { index, entry ->
+            val binding = bindingsById[entry.id]
+            when (binding) {
+              is SettingsRowBinding.Action -> SettingsRow(
+                id = entry.id,
+                icon = entry.icon,
+                label = entry.label,
+                subtitle = binding.subtitleOverride ?: entry.subtitle,
+                onClick = binding.onClick,
+              )
+              else -> SettingsRow(
+                id = entry.id,
+                icon = entry.icon,
+                label = entry.label,
+                subtitle = entry.subtitle,
+                onClick = null,
+              )
+            }
+            if (index < items.size - 1) SettingsRowDivider()
+          }
+        }
       }
     }
   }
@@ -121,56 +159,4 @@ fun SettingsScreen(
       },
     )
   }
-}
-
-// ---- shared row primitives ------------------------------------------------
-
-@Composable
-internal fun SectionHeader(label: String) {
-  Text(
-    text = label,
-    style = MaterialTheme.typography.labelLarge,
-    color = MaterialTheme.colorScheme.primary,
-    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-  )
-}
-
-@Composable
-internal fun SettingsRow(
-  title: String,
-  subtitle: String? = null,
-  onClick: (() -> Unit)? = null,
-  trailing: @Composable (() -> Unit)? = null,
-) {
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .let { if (onClick != null) it.clickable(onClick = onClick) else it }
-      .padding(horizontal = 16.dp, vertical = 12.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Column(modifier = Modifier.weight(1f).padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-      Text(title, style = MaterialTheme.typography.titleSmall)
-      if (subtitle != null) {
-        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-      }
-    }
-    if (trailing != null) trailing()
-  }
-  HorizontalDivider()
-}
-
-@Composable
-internal fun SettingsToggleRow(
-  title: String,
-  subtitle: String?,
-  checked: Boolean,
-  onCheckedChange: (Boolean) -> Unit,
-) {
-  SettingsRow(
-    title = title,
-    subtitle = subtitle,
-    onClick = { onCheckedChange(!checked) },
-    trailing = { Switch(checked = checked, onCheckedChange = onCheckedChange) },
-  )
 }

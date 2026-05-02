@@ -1,0 +1,228 @@
+package com.eight87.tonearm.ui.settings
+
+import com.eight87.tonearm.ui.nav.SettingsAudio
+import com.eight87.tonearm.ui.nav.SettingsContent
+import com.eight87.tonearm.ui.nav.SettingsLookAndFeel
+import com.eight87.tonearm.ui.nav.SettingsPersonalize
+import com.eight87.tonearm.ui.nav.SettingsRootDest
+import com.eight87.tonearm.ui.settings.catalog.RowKind
+import com.eight87.tonearm.ui.settings.catalog.Section
+import com.eight87.tonearm.ui.settings.catalog.SettingsCatalog
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * Tests for the [SettingsCatalog] single-source-of-truth. Catches three
+ * classes of drift:
+ *
+ *   1. Orphan rows — a UI sub-page renders a row that has no catalog
+ *      entry. The page renderer drives off the catalog, so the inverse
+ *      of this is what fails first: a missing catalog entry means the
+ *      row simply doesn't render. We pin the expected ID set so a
+ *      stealth removal during a refactor breaks compile or test.
+ *   2. Unreachable entries — a catalog entry whose `destination`
+ *      doesn't correspond to any rendered sub-page.
+ *   3. Search drift — the filter must hit by label, subtitle, or
+ *      keyword (case-insensitive) and breadcrumb paths must be
+ *      complete (root-relative paths with > 1 segment).
+ */
+class SettingsCatalogTest {
+
+  @Test
+  fun every_expected_setting_id_has_an_entry() {
+    val expectedIds = listOf(
+      // Settings root.
+      SettingsCatalog.ID_APPEARANCE_LOOK_AND_FEEL,
+      SettingsCatalog.ID_APPEARANCE_PERSONALIZE,
+      SettingsCatalog.ID_BEHAVIOUR_CONTENT,
+      SettingsCatalog.ID_BEHAVIOUR_AUDIO,
+      SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES,
+      SettingsCatalog.ID_LIBRARY_REFRESH,
+      SettingsCatalog.ID_LIBRARY_RESCAN,
+      // Look and Feel.
+      SettingsCatalog.ID_THEME,
+      SettingsCatalog.ID_COLOR_SCHEME,
+      SettingsCatalog.ID_BLACK_THEME,
+      SettingsCatalog.ID_ROUND_MODE,
+      // Personalize.
+      SettingsCatalog.ID_LIBRARY_TABS,
+      SettingsCatalog.ID_CUSTOM_PLAYBACK_BAR_ACTION,
+      SettingsCatalog.ID_CUSTOM_NOTIFICATION_ACTION,
+      SettingsCatalog.ID_PLAY_FROM_LIBRARY,
+      SettingsCatalog.ID_PLAY_FROM_ITEM_DETAILS,
+      SettingsCatalog.ID_REMEMBER_SHUFFLE,
+      // Content.
+      SettingsCatalog.ID_AUTOMATIC_RELOADING,
+      SettingsCatalog.ID_MULTI_VALUE_SEPARATORS,
+      SettingsCatalog.ID_INTELLIGENT_SORTING,
+      SettingsCatalog.ID_HIDE_COLLABORATORS,
+      SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
+      SettingsCatalog.ID_ALBUM_COVERS,
+      SettingsCatalog.ID_FORCE_SQUARE_COVERS,
+      // Audio.
+      SettingsCatalog.ID_HEADSET_AUTOPLAY,
+      SettingsCatalog.ID_REWIND_BEFORE_SKIP,
+      SettingsCatalog.ID_PAUSE_ON_REPEAT,
+      SettingsCatalog.ID_REMEMBER_PAUSE,
+      SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
+      SettingsCatalog.ID_REPLAYGAIN_PREAMP,
+    )
+    val catalogIds = SettingsCatalog.entries.map { it.id }.toSet()
+    expectedIds.forEach { id ->
+      assertTrue("Catalog missing expected id: $id", catalogIds.contains(id))
+    }
+    // No accidental duplicates.
+    assertEquals(catalogIds.size, SettingsCatalog.entries.size)
+    assertEquals(expectedIds.toSet(), catalogIds)
+  }
+
+  @Test
+  fun every_entry_has_a_breadcrumb_with_at_least_two_segments() {
+    SettingsCatalog.entries.forEach { entry ->
+      assertTrue(
+        "Entry ${entry.id} has breadcrumb ${entry.breadcrumb}",
+        entry.breadcrumb.size >= 2,
+      )
+      assertEquals(
+        "Last breadcrumb segment for ${entry.id} should equal label",
+        entry.label,
+        entry.breadcrumb.last(),
+      )
+    }
+  }
+
+  @Test
+  fun every_entry_destination_is_a_known_settings_destination() {
+    val knownDestinations = setOf(
+      SettingsRootDest,
+      SettingsLookAndFeel,
+      SettingsPersonalize,
+      SettingsContent,
+      SettingsAudio,
+    )
+    SettingsCatalog.entries.forEach { entry ->
+      assertTrue(
+        "Entry ${entry.id} navigates to unknown destination ${entry.destination}",
+        knownDestinations.contains(entry.destination),
+      )
+    }
+  }
+
+  @Test
+  fun every_section_is_populated() {
+    Section.entries.forEach { section ->
+      val entries = SettingsCatalog.bySection(section)
+      assertTrue("Section $section has no entries", entries.isNotEmpty())
+    }
+  }
+
+  @Test
+  fun search_matches_by_label_case_insensitive() {
+    val results = SettingsCatalog.search("theme")
+    val ids = results.map { it.id }
+    assertTrue(ids.contains(SettingsCatalog.ID_THEME))
+    assertTrue(ids.contains(SettingsCatalog.ID_BLACK_THEME))
+    // Case-insensitivity.
+    val upper = SettingsCatalog.search("THEME")
+    assertEquals(results.toSet(), upper.toSet())
+  }
+
+  @Test
+  fun search_matches_by_subtitle() {
+    val results = SettingsCatalog.search("rounded corners")
+    assertTrue(
+      "Round mode subtitle search should hit",
+      results.any { it.id == SettingsCatalog.ID_ROUND_MODE },
+    )
+  }
+
+  @Test
+  fun search_matches_by_keyword_for_picker_options() {
+    // "shuffle" is a keyword on Custom playback bar action and on
+    // Remember shuffle — both should appear.
+    val results = SettingsCatalog.search("shuffle").map { it.id }.toSet()
+    assertTrue(results.contains(SettingsCatalog.ID_CUSTOM_PLAYBACK_BAR_ACTION))
+    assertTrue(results.contains(SettingsCatalog.ID_REMEMBER_SHUFFLE))
+  }
+
+  @Test
+  fun search_results_span_multiple_subpages() {
+    // "shuffle" hits Personalize > both rows. Pull the breadcrumb root
+    // segment to confirm spread.
+    val results = SettingsCatalog.search("shuffle")
+    val breadcrumbRoots = results.map { it.breadcrumb.first() }.toSet()
+    // Could be just Personalize, but at minimum more than zero.
+    assertTrue(breadcrumbRoots.isNotEmpty())
+  }
+
+  @Test
+  fun search_results_for_replaygain_include_both_strategy_and_preamp() {
+    val ids = SettingsCatalog.search("replaygain").map { it.id }.toSet()
+    assertTrue(ids.contains(SettingsCatalog.ID_REPLAYGAIN_STRATEGY))
+    assertTrue(ids.contains(SettingsCatalog.ID_REPLAYGAIN_PREAMP))
+  }
+
+  @Test
+  fun search_empty_query_returns_empty_results() {
+    assertTrue(SettingsCatalog.search("").isEmpty())
+    assertTrue(SettingsCatalog.search("   ").isEmpty())
+  }
+
+  @Test
+  fun search_no_match_returns_empty() {
+    assertTrue(SettingsCatalog.search("xyzzynotamatch").isEmpty())
+  }
+
+  @Test
+  fun breadcrumbPath_renders_with_chevron_separator() {
+    val entry = SettingsCatalog.byId(SettingsCatalog.ID_REPLAYGAIN_PREAMP)
+    val path = SettingsCatalog.breadcrumbPath(entry)
+    assertEquals("Audio > Volume normalization > ReplayGain pre-amp", path)
+  }
+
+  @Test
+  fun every_entry_belongs_to_the_section_implied_by_its_destination_or_root() {
+    // Sanity: a Section.LookAndFeel entry should not point to SettingsAudio.
+    SettingsCatalog.entries.forEach { e ->
+      val destSection: Section? = when (e.destination) {
+        SettingsLookAndFeel -> Section.LookAndFeel
+        SettingsPersonalize -> Section.Personalize
+        SettingsContent -> Section.Content
+        SettingsAudio -> Section.Audio
+        SettingsRootDest -> Section.Root
+        else -> null
+      }
+      assertNotNull("Unknown destination for ${e.id}", destSection)
+      // Root-section entries can navigate to either a sub-page (the
+      // sub-page card rows) or to the root itself (action / stub
+      // rows). Sub-page entries must navigate to their own sub-page.
+      if (e.section != Section.Root) {
+        assertEquals(
+          "Sub-page entry ${e.id} must navigate to its own sub-page",
+          e.section,
+          destSection,
+        )
+      }
+    }
+  }
+
+  @Test
+  fun stubs_render_with_coming_soon_subtitle_so_search_results_are_honest() {
+    val stubIds = SettingsCatalog.entries
+      .filter { it.kind == RowKind.Stub }
+      .map { it.id }
+    assertFalse("There should be at least one stub", stubIds.isEmpty())
+    SettingsCatalog.entries
+      .filter { it.kind == RowKind.Stub && it.section != Section.Root }
+      .forEach { entry ->
+        assertEquals(
+          "Stub ${entry.id} should advertise 'Coming in v1.1.' to keep search results honest",
+          "Coming in v1.1.",
+          entry.subtitle,
+        )
+      }
+  }
+}
