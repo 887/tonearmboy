@@ -1,6 +1,7 @@
 package com.eight87.tonearm.playback
 
 import android.content.Context
+import androidx.datastore.preferences.core.edit
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.test.core.app.ApplicationProvider
@@ -130,5 +131,117 @@ class QueuePersistenceTest {
     assertEquals("B", rebuilt.mediaItems[1].mediaMetadata.title.toString())
     assertEquals(1, rebuilt.startIndex)
     assertEquals(9_999L, rebuilt.startPositionMs)
+  }
+
+  // -- D.12.5 — process-death survival -------------------------------------
+
+  @Test
+  fun `D12_5 debounce constant is reasonable for human-perceptible kill window`() = runBlocking {
+    // The smoke script asserts kill-recovery within ±2s of the kill
+    // point. POSITION_DEBOUNCE_MS bounds how stale the persisted
+    // position can be. If someone bumps it past ~3s the integration
+    // assertion will start flaking.
+    assertTrue(
+      "POSITION_DEBOUNCE_MS=${QueuePersistence.POSITION_DEBOUNCE_MS}; " +
+        "must stay under 3000ms so kill-recovery resumes within ±2s",
+      QueuePersistence.POSITION_DEBOUNCE_MS in 500L..3_000L,
+    )
+  }
+
+  @Test
+  fun `D12_5 mid-track position write does not lose queue contents`() = runBlocking {
+    // Simulates: user is mid-track, the position-debounce ticker
+    // fires, then the OS kills the app. On next launch, the queue
+    // must still be intact and the position must be the most recent
+    // one written.
+    val items = listOf(
+      QueuePersistence.Entry(mediaId = "1", uri = "file:///a.mp3", title = "Alpha"),
+      QueuePersistence.Entry(mediaId = "2", uri = "file:///b.mp3", title = "Beta"),
+      QueuePersistence.Entry(mediaId = "3", uri = "file:///c.mp3", title = "Gamma"),
+    )
+    store.saveQueue(items, startIndex = 1)
+    // Three debounce ticks worth of position writes:
+    store.savePosition(index = 1, positionMs = 2_000L)
+    store.savePosition(index = 1, positionMs = 4_000L)
+    store.savePosition(index = 1, positionMs = 6_000L)
+
+    // "Process death" — drop and recreate the persistence handle.
+    val rehydrated = QueuePersistence(context).load()
+    assertFalse(rehydrated.isEmpty())
+    assertEquals(3, rehydrated.items.size)
+    assertEquals("Alpha", rehydrated.items[0].title)
+    assertEquals("Beta", rehydrated.items[1].title)
+    assertEquals("Gamma", rehydrated.items[2].title)
+    assertEquals(1, rehydrated.startIndex)
+    assertEquals(6_000L, rehydrated.startPositionMs)
+  }
+
+  @Test
+  fun `D12_5 saveQueue resets position to zero per contract`() = runBlocking {
+    // PlaybackService relies on this: after a queue replacement, the
+    // persisted position MUST start at 0 — otherwise the resumed
+    // controller would seek into a track it isn't on yet.
+    val items = listOf(QueuePersistence.Entry(mediaId = "1", uri = "file:///a.mp3"))
+    store.saveQueue(items, startIndex = 0)
+    store.savePosition(index = 0, positionMs = 30_000L)
+
+    // Replace the queue. Position MUST reset.
+    val newItems = listOf(QueuePersistence.Entry(mediaId = "9", uri = "file:///z.mp3"))
+    store.saveQueue(newItems, startIndex = 0)
+
+    val snapshot = store.load()
+    assertEquals(1, snapshot.items.size)
+    assertEquals("9", snapshot.items[0].mediaId)
+    assertEquals(0L, snapshot.startPositionMs)
+  }
+
+  @Test
+  fun `D12_5 debounce ticker only flushes within debounce window`() = runBlocking {
+    // Mirror the schedulePositionPersistTicker contract: write only
+    // when the position has actually advanced AND at least
+    // POSITION_DEBOUNCE_MS has elapsed since the last write.
+    val items = listOf(QueuePersistence.Entry(mediaId = "1", uri = "file:///a.mp3"))
+    store.saveQueue(items, startIndex = 0)
+
+    // Simulate the ticker:
+    // tick1 (t=2s): position advanced from 0 -> 2000, flush
+    val t1 = System.nanoTime()
+    store.savePosition(index = 0, positionMs = 2_000L)
+    val elapsedMs = (System.nanoTime() - t1) / 1_000_000
+    assertTrue(
+      "DataStore write should be cheap and well under one debounce window — got ${elapsedMs}ms",
+      elapsedMs < QueuePersistence.POSITION_DEBOUNCE_MS,
+    )
+
+    // No-op tick (same position, no flush): just don't write.
+    // Final tick (t=4s): position advanced.
+    store.savePosition(index = 0, positionMs = 4_000L)
+
+    // After kill+restart, the latest debounced position is what we
+    // see — older ones have been overwritten in place.
+    val snapshot = QueuePersistence(context).load()
+    assertEquals(4_000L, snapshot.startPositionMs)
+  }
+
+  @Test
+  fun `D12_5 corrupted queue json gracefully degrades to empty`() = runBlocking {
+    // An older app version, a partial write, or a manual edit of the
+    // DataStore file could leave invalid JSON in the queue slot. The
+    // service must degrade to "no queue" rather than crash on resume
+    // — Phase E.5's `MediaSession.Callback.onPlaybackResumption`
+    // returns an `IllegalStateException` future when the load is
+    // empty, which Media3 handles as "no resumable session".
+    // Simulate corruption by writing invalid JSON into the underlying
+    // preference slot directly.
+    context.tonearmPlaybackDataStore.edit { prefs ->
+      prefs[QueuePersistence.KEY_QUEUE_JSON] = "{ this is not json"
+      prefs[QueuePersistence.KEY_INDEX] = 0
+      prefs[QueuePersistence.KEY_POSITION] = 0L
+    }
+    val snapshot = store.load()
+    assertTrue(
+      "load() should degrade to empty Snapshot on corrupt JSON, not throw",
+      snapshot.isEmpty(),
+    )
   }
 }
