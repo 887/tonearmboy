@@ -414,7 +414,7 @@ User compared tonearm's currently-playing surfaces side-by-side with Auxio. Two 
 
 ---
 
-## Phase D.22 — cold-start coordination (scan + session resume) — shipped in commit `<pending>`
+## Phase D.22 — cold-start coordination (scan + session resume) — shipped in commit `e31153d`
 
 Real-device feedback round 3: three failure modes after task-switcher swipe-away, all rooted in the splash → permission gate → scan → session-reconnect handshake on cold start.
 
