@@ -80,3 +80,12 @@ data object SettingsMusicSources : Destination
 /** Full-screen global settings search overlay (entered from the Settings root). */
 @Serializable
 data object SettingsSearch : Destination
+
+/**
+ * D.16.4 — About sub-page. Reachable from the Settings root Library
+ * card. Shows app name + version + build SHA + build date, GitHub link,
+ * MIT license note, and a credits list. Also hosts the build-version
+ * easter-egg tap counter (D.16.5).
+ */
+@Serializable
+data object SettingsAbout : Destination

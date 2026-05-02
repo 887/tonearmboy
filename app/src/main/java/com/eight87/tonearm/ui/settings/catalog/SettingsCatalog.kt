@@ -8,6 +8,7 @@ import androidx.compose.material.icons.outlined.FastRewind
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Headphones
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.automirrored.outlined.ViewList
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
+import com.eight87.tonearm.ui.nav.SettingsAbout
 import com.eight87.tonearm.ui.nav.SettingsAudio
 import com.eight87.tonearm.ui.nav.SettingsContent
 import com.eight87.tonearm.ui.nav.SettingsLookAndFeel
@@ -139,6 +141,7 @@ object SettingsCatalog {
   const val ID_LIBRARY_MUSIC_SOURCES = "library.music_sources"
   const val ID_LIBRARY_REFRESH = "library.refresh"
   const val ID_LIBRARY_RESCAN = "library.rescan"
+  const val ID_LIBRARY_ABOUT = "library.about"
 
   const val ID_THEME = "look_and_feel.theme"
   const val ID_COLOR_SCHEME = "look_and_feel.color_scheme"
@@ -261,6 +264,20 @@ object SettingsCatalog {
       kind = RowKind.Action,
       destination = com.eight87.tonearm.ui.nav.SettingsRootDest,
       breadcrumb = listOf(SECTION_SETTINGS, "Library", "Rescan music"),
+    ),
+    // D.16.4 — About sub-page entry. Sits at the bottom of the Library
+    // card on Settings root.
+    SettingsCatalogEntry(
+      id = ID_LIBRARY_ABOUT,
+      label = "About",
+      subtitle = "Version, build, license, and credits.",
+      keywords = listOf("about", "version", "build", "license", "credits", "github"),
+      icon = Icons.Outlined.Info,
+      section = Section.Root,
+      group = Group.Library,
+      kind = RowKind.Navigate,
+      destination = SettingsAbout,
+      breadcrumb = listOf(SECTION_SETTINGS, "Library", "About"),
     ),
 
     // ---------------------------------------------------------------

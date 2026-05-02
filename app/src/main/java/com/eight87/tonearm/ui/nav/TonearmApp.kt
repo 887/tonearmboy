@@ -31,6 +31,7 @@ import com.eight87.tonearm.ui.search.SearchScreen
 import com.eight87.tonearm.ui.settings.SettingsSnapshot
 import com.eight87.tonearm.ui.settings.SettingsAudioScreen
 import com.eight87.tonearm.ui.settings.SettingsContentScreen
+import com.eight87.tonearm.ui.settings.AboutScreen
 import com.eight87.tonearm.ui.settings.SettingsLookAndFeelScreen
 import com.eight87.tonearm.ui.settings.SettingsMusicSourcesScreen
 import com.eight87.tonearm.ui.settings.SettingsPersonalizeScreen
@@ -161,9 +162,17 @@ fun TonearmApp(graph: AppGraph) {
             },
             onPlaylistClick = { id -> backStack.push(PlaylistDetail(id)) },
             onOpenSearch = { backStack.push(Search) },
+            // D.16.3 — top-right wheel goes straight to the Settings root.
             onOpenSettings = { backStack.push(SettingsRootDest) },
-            onRefreshMusic = onRefreshMusic,
-            onRescanMusic = onRescanMusic,
+            // D.16.2 — the rail's bottom-left gear is the "tab
+            // customization" shortcut: it pushes the Personalize sub-page
+            // (which holds Library tabs) directly. We push the Settings
+            // root underneath so the user's back-stack reflects the
+            // canonical Settings → Personalize hierarchy.
+            onOpenLibraryTabsConfig = {
+              backStack.push(SettingsRootDest)
+              backStack.push(SettingsPersonalize)
+            },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,
             onOpenAlbum = { name, albumArtist -> backStack.push(AlbumDetail(name, albumArtist)) },
@@ -318,7 +327,15 @@ fun TonearmApp(graph: AppGraph) {
             onMusicSources = { backStack.push(SettingsMusicSources) },
             onRefreshMusic = onRefreshMusic,
             onRescanMusic = onRescanMusic,
+            onAbout = { backStack.push(SettingsAbout) },
             onOpenSearch = { backStack.push(SettingsSearch) },
+            snackbarHostState = snackbarHostState,
+          )
+        }
+        entry<SettingsAbout> {
+          LaunchedEffect(Unit) { sectionTitle.value = "About" }
+          AboutScreen(
+            onBack = { backStack.pop() },
             snackbarHostState = snackbarHostState,
           )
         }

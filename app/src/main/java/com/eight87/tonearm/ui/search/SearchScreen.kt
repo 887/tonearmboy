@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import com.eight87.tonearm.data.LibraryRepository
 import com.eight87.tonearm.data.model.Track
+import com.eight87.tonearm.ui.library.libraryListCard
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flowOf
 
@@ -87,7 +88,15 @@ fun SearchScreen(
           Text("No matches for \"$rawQuery\".", style = MaterialTheme.typography.bodyMedium)
         }
       } else {
-        LazyColumn(modifier = Modifier.fillMaxSize().semantics { testTag = "search_results" }) {
+        // D.16.1 — wrap search result rows in the M3 Expressive grouped
+        // card so the chrome lines up with library + settings surfaces.
+        LazyColumn(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 16.dp)
+            .libraryListCard()
+            .semantics { testTag = "search_results" },
+        ) {
           items(results, key = { it.id }) { t ->
             Column(
               modifier = Modifier

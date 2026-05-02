@@ -1,3 +1,7 @@
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
@@ -5,6 +9,22 @@ plugins {
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
 }
+
+// D.16.4 — capture build-time metadata that the About screen renders.
+// `git rev-parse --short HEAD` is shelled out at configuration time so
+// the value is baked into BuildConfig.GIT_SHA. The ISO-8601 build date
+// is captured at the same time; both fall back to sentinels if the
+// underlying command fails (e.g. building from a tarball without git).
+val gitShortSha: String = runCatching {
+  val proc = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+    .redirectErrorStream(true)
+    .start()
+  proc.waitFor()
+  proc.inputStream.bufferedReader().readText().trim().ifEmpty { "unknown" }
+}.getOrDefault("unknown")
+
+val buildDateUtc: String = DateTimeFormatter.ISO_LOCAL_DATE
+  .format(LocalDate.now(ZoneOffset.UTC))
 
 android {
     namespace = "com.eight87.tonearm"
@@ -15,6 +35,13 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+
+        // D.16.4.1 / D.16.4.2 — surface build identity to runtime code.
+        // BuildConfig is the conventional Android channel; we emit string
+        // constants that the About screen reads via reflection-free code
+        // (`BuildConfig.GIT_SHA`, `BuildConfig.BUILD_DATE`).
+        buildConfigField("String", "GIT_SHA", "\"$gitShortSha\"")
+        buildConfigField("String", "BUILD_DATE", "\"$buildDateUtc\"")
     }
 
     buildTypes {
@@ -30,7 +57,7 @@ android {
     buildFeatures {
       compose = true
       aidl = false
-      buildConfig = false
+      buildConfig = true
       shaders = false
     }
 

@@ -62,7 +62,14 @@ fun PlaylistDetailScreen(
         Text("No tracks in this playlist yet.", style = MaterialTheme.typography.bodyMedium)
       }
     } else {
-      LazyColumn(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+      // D.16.1 — playlist tracks inside the M3 Expressive card chrome.
+      LazyColumn(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(innerPadding)
+          .padding(vertical = 16.dp)
+          .libraryListCard(),
+      ) {
         items(tracks, key = { it.id }) { track ->
           val itemIndex = tracks.indexOf(track)
           Column(

@@ -1,5 +1,6 @@
 package com.eight87.tonearm.ui.settings
 
+import com.eight87.tonearm.ui.nav.SettingsAbout
 import com.eight87.tonearm.ui.nav.SettingsAudio
 import com.eight87.tonearm.ui.nav.SettingsContent
 import com.eight87.tonearm.ui.nav.SettingsLookAndFeel
@@ -43,6 +44,8 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES,
       SettingsCatalog.ID_LIBRARY_REFRESH,
       SettingsCatalog.ID_LIBRARY_RESCAN,
+      // D.16.4 — About sub-page entry.
+      SettingsCatalog.ID_LIBRARY_ABOUT,
       // Look and Feel.
       SettingsCatalog.ID_THEME,
       SettingsCatalog.ID_COLOR_SCHEME,
@@ -104,6 +107,7 @@ class SettingsCatalogTest {
       SettingsContent,
       SettingsAudio,
       SettingsMusicSources,
+      SettingsAbout,
     )
     SettingsCatalog.entries.forEach { entry ->
       assertTrue(
@@ -197,6 +201,7 @@ class SettingsCatalogTest {
         // Music sources is its own root-level destination; it's
         // navigable from the Settings root entry of the same id.
         SettingsMusicSources -> Section.Root
+        SettingsAbout -> Section.Root
         SettingsRootDest -> Section.Root
         else -> null
       }

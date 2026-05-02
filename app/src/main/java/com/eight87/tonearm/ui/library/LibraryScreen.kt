@@ -28,7 +28,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -72,7 +72,44 @@ import com.eight87.tonearm.ui.settings.SettingsRepository
 import com.eight87.tonearm.ui.settings.SortDirection
 import com.eight87.tonearm.ui.settings.SortKey
 import com.eight87.tonearm.ui.settings.TabSort
+import com.eight87.tonearm.ui.settings.catalog.SettingsDimens
 import kotlinx.coroutines.launch
+
+// D.16.1 — shared chrome contract for library lists / grids / details.
+//
+// Every per-row composable (`TrackRow`, `ArtistRow`, …) accepts a
+// `containerStyle` so callers can decide whether the row sits inside a
+// settings-style card or runs edge-to-edge. The default is the M3
+// Expressive grouped card; the EdgeToEdge variant is preserved for
+// places where the card chrome would fight the surrounding surface
+// (e.g. the album-detail tracks list lives inside its own card already).
+//
+// See the M3 Expressive note in CLAUDE.md ("M3 Expressive layout") for
+// the larger discussion of insets and the boundary between the rail
+// and the content area.
+enum class ContainerStyle { SettingsCard, EdgeToEdge }
+
+/**
+ * D.16.1 — modifier that gives a list/grid the M3 Expressive grouped-
+ * card look: rounded corners, the same `surfaceContainer` background
+ * that [com.eight87.tonearm.ui.settings.catalog.SettingsCard] uses, and
+ * the canonical 16 dp horizontal page padding that makes the chrome
+ * "sit in the middle" rather than running edge-to-edge.
+ *
+ * We ship this as a Modifier (rather than a wrapping Card composable)
+ * because library content is a `LazyColumn` / `LazyVerticalGrid`
+ * — placing those inside a `Card { Column { … } }` would force them
+ * into bounded height, breaking scroll. Same visual, lighter chrome.
+ */
+@Composable
+internal fun Modifier.libraryListCard(): Modifier {
+  val bg = MaterialTheme.colorScheme.surfaceContainer
+  return this
+    .padding(horizontal = SettingsDimens.PagePadding)
+    .clip(RoundedCornerShape(SettingsDimens.CardCornerRadius))
+    .background(bg)
+    .semantics { testTag = "library_list_card" }
+}
 
 /**
  * The library is the **root** destination. It holds the top app bar
@@ -92,9 +129,12 @@ fun LibraryScreen(
   onTrackClick: (List<Track>, Int) -> Unit,
   onPlaylistClick: (Long) -> Unit,
   onOpenSearch: () -> Unit,
+  // D.16.3 — top-right wheel goes directly to Settings root.
   onOpenSettings: () -> Unit,
-  onRefreshMusic: () -> Unit,
-  onRescanMusic: () -> Unit,
+  // D.16.2 — bottom-left rail gear goes to the Library-tabs config
+  // (Settings → Personalize). Two distinct entry points to the Settings
+  // *system*, keyed to two different intents.
+  onOpenLibraryTabsConfig: () -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
   // D.15: navigation hooks for the new detail screens + track-row overflow.
@@ -123,7 +163,6 @@ fun LibraryScreen(
   val scope = rememberCoroutineScope()
 
   var showSortSheet by remember { mutableStateOf(false) }
-  var showOverflow by remember { mutableStateOf(false) }
 
   // Drive the dynamic top-bar title for the active tab.
   val sectionTitle = LocalSectionTitle.current
@@ -148,29 +187,18 @@ fun LibraryScreen(
             onClick = { showSortSheet = true },
             modifier = Modifier.semantics { testTag = "topbar_sort" },
           ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort") }
-          Box {
-            IconButton(
-              onClick = { showOverflow = true },
-              modifier = Modifier.semantics { testTag = "topbar_overflow" },
-            ) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
-            DropdownMenu(expanded = showOverflow, onDismissRequest = { showOverflow = false }) {
-              DropdownMenuItem(
-                text = { Text("Settings") },
-                leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                onClick = { showOverflow = false; onOpenSettings() },
-                modifier = Modifier.semantics { testTag = "menu_settings" },
-              )
-              DropdownMenuItem(
-                text = { Text("Refresh music") },
-                onClick = { showOverflow = false; onRefreshMusic() },
-                modifier = Modifier.semantics { testTag = "menu_refresh" },
-              )
-              DropdownMenuItem(
-                text = { Text("Rescan music") },
-                onClick = { showOverflow = false; onRescanMusic() },
-                modifier = Modifier.semantics { testTag = "menu_rescan" },
-              )
-            }
+          // D.16.3 — direct Settings entry. The kebab dropdown is gone;
+          // Refresh / Rescan now live exclusively under Settings → Library
+          // (where the catalog already advertises them) so the top-bar
+          // is no longer surface-noise for rarely-used actions.
+          IconButton(
+            onClick = onOpenSettings,
+            modifier = Modifier.semantics { testTag = "topbar_settings" },
+          ) {
+            Icon(
+              Icons.Outlined.Settings,
+              contentDescription = "Settings",
+            )
           }
         },
       )
@@ -185,7 +213,11 @@ fun LibraryScreen(
         tabs = visibleTabs,
         selectedIndex = selectedIndex,
         onSelect = { selectedIndex = it },
-        onOpenSettings = onOpenSettings,
+        // D.16.2 — rail gear is now a *shortcut* to the Library-tabs
+        // configuration screen, not the Settings root. The user already
+        // identified the gear-on-the-rail as "tab settings", so this
+        // matches accepted intent.
+        onOpenSettings = onOpenLibraryTabsConfig,
       )
       Box(modifier = Modifier.fillMaxSize()) {
         when (activeTab) {
@@ -329,12 +361,18 @@ fun AlbumsGridScreen(
     return
   }
   val sorted = remember(albums, sort, intelligentSorting) { sortAlbums(albums, sort, intelligentSorting) }
+  // D.16.1 — page-padded grid. Tiles still render with rounded corners,
+  // but the *grid section* sits inset from the rail / right edge so the
+  // chrome lines up with Settings cards.
   LazyVerticalGrid(
     columns = GridCells.Adaptive(minSize = 140.dp),
     contentPadding = contentPadding,
     horizontalArrangement = Arrangement.spacedBy(8.dp),
     verticalArrangement = Arrangement.spacedBy(8.dp),
-    modifier = Modifier.fillMaxSize().semantics { testTag = "albums_grid" },
+    modifier = Modifier
+      .fillMaxSize()
+      .padding(horizontal = SettingsDimens.PagePadding)
+      .semantics { testTag = "albums_grid" },
   ) {
     items(sorted, key = { it.id }) { album ->
       AlbumCell(
@@ -414,7 +452,15 @@ fun ArtistsListScreen(
   val grouped = remember(sorted) {
     sorted.groupBy { initialKey(sortNameKey(it.name, intelligentSorting)) }.toSortedMap()
   }
-  LazyColumn(modifier = Modifier.fillMaxSize().semantics { testTag = "artists_list" }) {
+  // D.16.1 — wrap rows inside the grouped-card chrome. Sticky alphabet
+  // headers compose as full-width rows inside the card so they keep the
+  // page-padding inset.
+  LazyColumn(
+    modifier = Modifier
+      .fillMaxSize()
+      .libraryListCard()
+      .semantics { testTag = "artists_list" },
+  ) {
     grouped.forEach { (initial, group) ->
       stickyHeader { SectionHeader(initial) }
       items(group, key = { it.id }) { artist -> ArtistRow(artist, onClick = { onArtistClick(artist) }) }
@@ -461,7 +507,10 @@ fun TracksListScreen(
   val listState = rememberLazyListState()
   val scope = rememberCoroutineScope()
   Row(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_list" }) {
-    LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
+    // D.16.1 — tracks card. The alphabet scroller stays *outside* the
+    // card so it floats over the right margin, the way Settings'
+    // sub-page surfaces float their accent strip.
+    LazyColumn(state = listState, modifier = Modifier.weight(1f).libraryListCard()) {
       if (orderedKeys.isNotEmpty()) {
         orderedKeys.forEach { key ->
           val group = grouped.getValue(key)
@@ -639,7 +688,12 @@ fun GenresListScreen(
     return
   }
   val sorted = remember(genres, sort) { sortGenres(genres, sort) }
-  LazyColumn(modifier = Modifier.fillMaxSize().semantics { testTag = "genres_list" }) {
+  LazyColumn(
+    modifier = Modifier
+      .fillMaxSize()
+      .libraryListCard()
+      .semantics { testTag = "genres_list" },
+  ) {
     items(sorted, key = { it.id }) { g -> GenreRow(g, onClick = { onGenreClick(g) }) }
   }
 }
@@ -670,7 +724,12 @@ fun PlaylistsListScreen(
     if (playlists.isEmpty()) {
       EmptyState("No playlists yet. Tap + to create one.")
     } else {
-      LazyColumn(modifier = Modifier.fillMaxSize().semantics { testTag = "playlists_list" }) {
+      LazyColumn(
+        modifier = Modifier
+          .fillMaxSize()
+          .libraryListCard()
+          .semantics { testTag = "playlists_list" },
+      ) {
         items(playlists, key = { it.id }) { p ->
           Box {
             Column(

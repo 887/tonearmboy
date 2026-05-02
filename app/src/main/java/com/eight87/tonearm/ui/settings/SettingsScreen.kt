@@ -60,6 +60,7 @@ fun SettingsScreen(
   onMusicSources: () -> Unit,
   onRefreshMusic: () -> Unit,
   onRescanMusic: () -> Unit,
+  onAbout: () -> Unit,
   onOpenSearch: () -> Unit,
   snackbarHostState: SnackbarHostState,
 ) {
@@ -77,6 +78,7 @@ fun SettingsScreen(
     SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES, onClick = onMusicSources),
     SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_REFRESH, onClick = onRefreshMusic),
     SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_RESCAN, onClick = { confirmRescan = true }),
+    SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_ABOUT, onClick = onAbout),
   )
 
   Scaffold(

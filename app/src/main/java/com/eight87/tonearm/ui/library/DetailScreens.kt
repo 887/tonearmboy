@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -52,6 +53,7 @@ import com.eight87.tonearm.data.model.Album
 import com.eight87.tonearm.data.model.Track
 import com.eight87.tonearm.ui.nav.LocalSectionTitle
 import com.eight87.tonearm.ui.settings.AlbumCoversMode
+import com.eight87.tonearm.ui.settings.catalog.SettingsDimens
 
 /**
  * D.15 — detail screens for Albums / Artists / Genres.
@@ -108,15 +110,23 @@ fun AlbumDetailScreen(
       )
     },
   ) { innerPadding ->
+    // D.16.1 — detail screen body sits inside the same card chrome as
+    // settings: cover and metadata in one card at the top, the tracks
+    // list in another card below.
     LazyColumn(
       modifier = Modifier
         .fillMaxSize()
         .padding(innerPadding)
         .semantics { testTag = "album_detail" },
+      verticalArrangement = Arrangement.spacedBy(SettingsDimens.CardSpacing),
+      contentPadding = PaddingValues(vertical = SettingsDimens.CardSpacing),
     ) {
       item {
         Column(
-          modifier = Modifier.fillMaxWidth().padding(16.dp),
+          modifier = Modifier
+            .fillMaxWidth()
+            .libraryDetailCard()
+            .padding(16.dp),
           horizontalAlignment = Alignment.CenterHorizontally,
         ) {
           CoverArt(
@@ -145,15 +155,20 @@ fun AlbumDetailScreen(
             style = MaterialTheme.typography.bodySmall,
           )
         }
-        HorizontalDivider()
       }
-      items(tracks, key = { it.id }) { track ->
-        val itemIndex = tracks.indexOf(track)
-        DetailTrackRow(
-          track = track,
-          onClick = { onTrackClick(tracks, itemIndex) },
-          onAction = { action -> onTrackAction(track, action) },
-        )
+      // Tracks card body. Each row composes inside a single card; we
+      // wrap the section in a stickyHeader-free Column so the rounded
+      // corners don't repeat on every row.
+      item {
+        Column(modifier = Modifier.libraryDetailCard()) {
+          tracks.forEachIndexed { index, track ->
+            DetailTrackRow(
+              track = track,
+              onClick = { onTrackClick(tracks, index) },
+              onAction = { action -> onTrackAction(track, action) },
+            )
+          }
+        }
       }
     }
   }
@@ -200,69 +215,79 @@ fun ArtistDetailScreen(
       )
     },
   ) { innerPadding ->
-    Column(
+    // D.16.1 — same chrome split as AlbumDetail. Header card with
+    // metadata; horizontal albums section in its own card; tracks list
+    // in a third card so each section reads as a coherent group.
+    LazyColumn(
       modifier = Modifier
         .fillMaxSize()
         .padding(innerPadding)
         .semantics { testTag = "artist_detail" },
+      verticalArrangement = Arrangement.spacedBy(SettingsDimens.CardSpacing),
+      contentPadding = PaddingValues(vertical = SettingsDimens.CardSpacing),
     ) {
-      Column(modifier = Modifier.padding(16.dp)) {
-        Text(artistName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-        Text(
-          text = "${albums.size} albums · ${tracks.size} tracks",
-          style = MaterialTheme.typography.bodySmall,
-        )
+      item {
+        Column(modifier = Modifier.libraryDetailCard().padding(16.dp)) {
+          Text(artistName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+          Text(
+            text = "${albums.size} albums · ${tracks.size} tracks",
+            style = MaterialTheme.typography.bodySmall,
+          )
+        }
       }
-      HorizontalDivider()
       if (albums.isNotEmpty()) {
-        Text(
-          text = "Albums",
-          style = MaterialTheme.typography.titleSmall,
-          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
-        LazyHorizontalGrid(
-          rows = GridCells.Fixed(1),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-          modifier = Modifier
-            .fillMaxWidth()
-            .height(160.dp)
-            .padding(horizontal = 16.dp)
-            .semantics { testTag = "artist_detail_albums" },
-        ) {
-          items(albums, key = { it.id }) { album ->
-            Column(
+        item {
+          Column(modifier = Modifier.libraryDetailCard().padding(vertical = 8.dp)) {
+            Text(
+              text = "Albums",
+              style = MaterialTheme.typography.titleSmall,
+              modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            LazyHorizontalGrid(
+              rows = GridCells.Fixed(1),
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
               modifier = Modifier
-                .clickable { onAlbumClick(album) }
-                .padding(4.dp),
+                .fillMaxWidth()
+                .height(160.dp)
+                .padding(horizontal = 16.dp)
+                .semantics { testTag = "artist_detail_albums" },
             ) {
-              CoverArt(
-                albumId = album.mediaStoreAlbumId,
-                size = 48.dp,
-                mode = albumCoversMode,
-                contentDescription = album.name,
-                modifier = Modifier
-                  .size(120.dp)
-                  .clip(RoundedCornerShape(8.dp)),
-              )
-              Text(album.name, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+              items(albums, key = { it.id }) { album ->
+                Column(
+                  modifier = Modifier
+                    .clickable { onAlbumClick(album) }
+                    .padding(4.dp),
+                ) {
+                  CoverArt(
+                    albumId = album.mediaStoreAlbumId,
+                    size = 48.dp,
+                    mode = albumCoversMode,
+                    contentDescription = album.name,
+                    modifier = Modifier
+                      .size(120.dp)
+                      .clip(RoundedCornerShape(8.dp)),
+                  )
+                  Text(album.name, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                }
+              }
             }
           }
         }
-        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
       }
-      Text(
-        text = "Tracks",
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-      )
-      LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(tracks, key = { it.id }) { track ->
-          val itemIndex = tracks.indexOf(track)
-          DetailTrackRow(
-            track = track,
-            onClick = { onTrackClick(tracks, itemIndex) },
-            onAction = { action -> onTrackAction(track, action) },
+      item {
+        Column(modifier = Modifier.libraryDetailCard()) {
+          Text(
+            text = "Tracks",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
           )
+          tracks.forEachIndexed { index, track ->
+            DetailTrackRow(
+              track = track,
+              onClick = { onTrackClick(tracks, index) },
+              onAction = { action -> onTrackAction(track, action) },
+            )
+          }
         }
       }
     }
@@ -301,29 +326,34 @@ fun GenreDetailScreen(
       )
     },
   ) { innerPadding ->
+    // D.16.1 — header + tracks each in their own card.
     LazyColumn(
       modifier = Modifier
         .fillMaxSize()
         .padding(innerPadding)
         .semantics { testTag = "genre_detail" },
+      verticalArrangement = Arrangement.spacedBy(SettingsDimens.CardSpacing),
+      contentPadding = PaddingValues(vertical = SettingsDimens.CardSpacing),
     ) {
       item {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().libraryDetailCard().padding(16.dp)) {
           Text(genreName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
           Text(
             text = "${tracks.size} tracks",
             style = MaterialTheme.typography.bodySmall,
           )
         }
-        HorizontalDivider()
       }
-      items(tracks, key = { it.id }) { track ->
-        val itemIndex = tracks.indexOf(track)
-        DetailTrackRow(
-          track = track,
-          onClick = { onTrackClick(tracks, itemIndex) },
-          onAction = { action -> onTrackAction(track, action) },
-        )
+      item {
+        Column(modifier = Modifier.libraryDetailCard()) {
+          tracks.forEachIndexed { index, track ->
+            DetailTrackRow(
+              track = track,
+              onClick = { onTrackClick(tracks, index) },
+              onAction = { action -> onTrackAction(track, action) },
+            )
+          }
+        }
       }
     }
   }
@@ -372,6 +402,23 @@ private fun DetailTrackRow(
     }
   }
   HorizontalDivider()
+}
+
+/**
+ * D.16.1 — detail-screen variant of the library card chrome. Same
+ * `surfaceContainer` background + rounded corners + page padding as
+ * `Modifier.libraryListCard()`, factored separately so the detail
+ * screens (which use plain `Column` + `LazyColumn item {}` blocks
+ * rather than top-level lazy lists) don't pay for `clip` twice.
+ */
+@Composable
+internal fun Modifier.libraryDetailCard(): Modifier {
+  val bg = MaterialTheme.colorScheme.surfaceContainer
+  return this
+    .padding(horizontal = SettingsDimens.PagePadding)
+    .clip(RoundedCornerShape(SettingsDimens.CardCornerRadius))
+    .background(bg)
+    .semantics { testTag = "library_detail_card" }
 }
 
 internal fun formatDuration(durationMs: Long): String {
