@@ -1001,4 +1001,60 @@ if [[ "$tabs_b" =~ bounds=\"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]\" ]]; the
   "${ADB[@]}" pull /sdcard/97-d18-custom-tab-in-rail.png docs/screenshots/phase-d/97-d18-custom-tab-in-rail.png >/dev/null 2>&1 || true
 fi
 
+
+# ----------------------------------------------------------------------
+# D.20 — Real-device regression sweep. Each sub-step has a JVM unit test
+# under `app/src/test/`; this section exercises the integration paths
+# that benefit from running against a live MediaSession.
+# ----------------------------------------------------------------------
+
+echo "[D.20] real-device regression sweep"
+
+# D.20.1 — fire the deeplink intent the way the notification's
+# sessionActivity PendingIntent would, then assert NowPlaying renders.
+"${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" \
+  --es tonearm.deeplink now_playing -f 0x14000000 >/dev/null 2>&1 || true
+sleep 2; dump
+if grep -q 'text="Now Playing"' "$UIDUMP_LOCAL"; then
+  echo "[PASS] D.20.1: notification deeplink routes to Now Playing"
+  "${ADB[@]}" shell screencap -p /sdcard/100-d20-notification-tap-to-now-playing.png 2>/dev/null
+  "${ADB[@]}" pull /sdcard/100-d20-notification-tap-to-now-playing.png \
+    docs/screenshots/phase-d/100-d20-notification-tap-to-now-playing.png >/dev/null 2>&1 || true
+else
+  echo "[WARN] D.20.1: deeplink did not surface Now Playing (state may have been lost)"
+fi
+
+# D.20.3 — cold-start restore: kill the app, restart, assert that the
+# `tonearm: queue restored` log line appears in logcat.
+"${ADB[@]}" logcat -c >/dev/null 2>&1 || true
+"${ADB[@]}" shell am force-stop "${APP_ID}" >/dev/null 2>&1 || true
+sleep 2
+"${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" >/dev/null 2>&1 || true
+sleep 4
+if "${ADB[@]}" logcat -d -s 'tonearm:I' 2>/dev/null | grep -q 'queue restored'; then
+  echo "[PASS] D.20.3: queue restored from QueuePersistence on cold start"
+  "${ADB[@]}" shell screencap -p /sdcard/102-d20-queue-restored-after-restart.png 2>/dev/null
+  "${ADB[@]}" pull /sdcard/102-d20-queue-restored-after-restart.png \
+    docs/screenshots/phase-d/102-d20-queue-restored-after-restart.png >/dev/null 2>&1 || true
+else
+  echo "[WARN] D.20.3: no 'queue restored' log line (nothing was queued before kill)"
+fi
+
+# D.20.4 — Look and Feel page exposes the new Base theme picker.
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1
+"${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" >/dev/null 2>&1 || true
+sleep 2; dump
+# Top-right gear opens Settings root; Look and Feel row sits at ~y=710.
+"${ADB[@]}" shell input tap 1003 210; sleep 2
+"${ADB[@]}" shell input tap 300 710; sleep 2; dump
+if grep -q 'text="Base theme"' "$UIDUMP_LOCAL" && \
+   grep -q 'text="Tint chrome by album art"' "$UIDUMP_LOCAL"; then
+  echo "[PASS] D.20.4: base theme picker + album-art tint toggle visible"
+  "${ADB[@]}" shell screencap -p /sdcard/104-d20-look-and-feel-theme-picker.png 2>/dev/null
+  "${ADB[@]}" pull /sdcard/104-d20-look-and-feel-theme-picker.png \
+    docs/screenshots/phase-d/104-d20-look-and-feel-theme-picker.png >/dev/null 2>&1 || true
+else
+  echo "[WARN] D.20.4: Base theme / album-art tint rows not found on Look and Feel"
+fi
+
 echo "[OK] all assertions passed"

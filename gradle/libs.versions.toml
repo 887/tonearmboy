@@ -24,6 +24,7 @@ kotlinxSerializationJson = "1.7.3"
 coil3 = "3.1.0"
 work = "2.10.0"
 coreSplashscreen = "1.0.1"
+androidxPalette = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -70,6 +71,10 @@ androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "
 # Theme.SplashScreen parent + windowSplashScreenAnimatedIcon attrs
 # resolve, and so installSplashScreen() is callable from MainActivity.
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
+# D.20.4 — Palette ktx for album-art-driven theming. Extracts dominant
+# swatches (darkMuted, darkVibrant, etc.) from the playing track's
+# cover bitmap so `LocalAlbumPalette` can bias the chrome ColorScheme.
+androidx-palette-ktx = { module = "androidx.palette:palette-ktx", version.ref = "androidxPalette" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

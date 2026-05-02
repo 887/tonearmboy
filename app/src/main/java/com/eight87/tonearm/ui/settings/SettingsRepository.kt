@@ -27,6 +27,37 @@ enum class ColorScheme {
 }
 
 /**
+ * D.20.4 — three-way base theme picker that replaces the old
+ * `ColorScheme` + `blackTheme` toggle pair as the source of truth for
+ * the chrome's foundation. The album-art tint sits *on top* of this
+ * (controlled by [SettingsSnapshot.albumArtTintEnabled]).
+ *
+ *  - [DefaultAndroid] — Material You / dynamic colour on API 31+,
+ *    falls back to the static palette below on older devices.
+ *  - [DefaultColors] — the static brand palette regardless of API.
+ *  - [PureBlack] — true-black surface family for AMOLED screens. The
+ *    primary / secondary / tertiary still come from the dynamic or
+ *    brand palette underneath; only `surface` / `background` go black.
+ *
+ * The legacy `ColorScheme` and `blackTheme` keys are still readable
+ * via `SettingsSnapshot` for backward compatibility, but the
+ * `Look and Feel` UI binds to [BaseTheme] from here on.
+ */
+enum class BaseTheme {
+  DefaultAndroid,
+  DefaultColors,
+  PureBlack,
+  ;
+
+  companion object {
+    val Default: BaseTheme = DefaultAndroid
+
+    fun fromStored(raw: String?): BaseTheme =
+      entries.firstOrNull { it.name == raw } ?: Default
+  }
+}
+
+/**
  * D.9a.1 — long-press action on the mini-player play button.
  * Persisted as the enum name; default is [SkipNext].
  */
@@ -306,6 +337,19 @@ data class SettingsSnapshot(
    * foreground service costs battery; the user opts in.
    */
   val automaticReloading: Boolean,
+  /**
+   * D.20.4 — base-theme foundation, picked in Look and Feel.
+   * Default is [BaseTheme.DefaultAndroid] (Material You).
+   */
+  val baseTheme: BaseTheme,
+  /**
+   * D.20.4 — when true, the chrome ColorScheme is biased toward the
+   * playing track's `darkMutedSwatch` (or `darkVibrantSwatch` if
+   * muted is null). Default is **on** because the visual is the
+   * point of D.8b. Sits on top of [baseTheme]; turning it off
+   * collapses to the foundation.
+   */
+  val albumArtTintEnabled: Boolean,
 ) {
   companion object {
     val Default: SettingsSnapshot = SettingsSnapshot(
@@ -334,6 +378,8 @@ data class SettingsSnapshot(
       musicSourceUris = emptySet(),
       musicSourceMode = MusicSourceMode.Default,
       automaticReloading = false,
+      baseTheme = BaseTheme.Default,
+      albumArtTintEnabled = true,
     )
   }
 }
@@ -540,6 +586,16 @@ class SettingsRepository(private val context: Context) {
     store.edit { it[KEY_AUTOMATIC_RELOADING] = value }
   }
 
+  // --- D.20.4: base theme + album-art tint --------------------------------
+
+  suspend fun setBaseTheme(value: BaseTheme) {
+    store.edit { it[KEY_BASE_THEME] = value.name }
+  }
+
+  suspend fun setAlbumArtTintEnabled(value: Boolean) {
+    store.edit { it[KEY_ALBUM_ART_TINT_ENABLED] = value }
+  }
+
   /**
    * Hot Flow of [SettingsSnapshot.hideCollaborators]; used by
    * [com.eight87.tonearm.data.LibraryRepository] to filter the artists
@@ -594,6 +650,8 @@ class SettingsRepository(private val context: Context) {
     musicSourceUris = this[KEY_MUSIC_SOURCE_URIS] ?: emptySet(),
     musicSourceMode = MusicSourceMode.fromStored(this[KEY_MUSIC_SOURCE_MODE]),
     automaticReloading = this[KEY_AUTOMATIC_RELOADING] ?: SettingsSnapshot.Default.automaticReloading,
+    baseTheme = BaseTheme.fromStored(this[KEY_BASE_THEME]),
+    albumArtTintEnabled = this[KEY_ALBUM_ART_TINT_ENABLED] ?: SettingsSnapshot.Default.albumArtTintEnabled,
   )
 
   companion object {
@@ -621,6 +679,8 @@ class SettingsRepository(private val context: Context) {
     internal val KEY_MUSIC_SOURCE_URIS = stringSetPreferencesKey("music_source_uris")
     internal val KEY_MUSIC_SOURCE_MODE = stringPreferencesKey("music_source_mode")
     internal val KEY_AUTOMATIC_RELOADING = booleanPreferencesKey("automatic_reloading")
+    internal val KEY_BASE_THEME = stringPreferencesKey("base_theme")
+    internal val KEY_ALBUM_ART_TINT_ENABLED = booleanPreferencesKey("album_art_tint_enabled")
 
     /** D.9b.2 — pre-amp slider bounds, fixed at [-15, +15] dB. */
     const val REPLAYGAIN_PREAMP_MIN_DB: Float = -15f

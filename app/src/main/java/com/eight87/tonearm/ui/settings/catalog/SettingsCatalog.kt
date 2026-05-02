@@ -155,6 +155,8 @@ object SettingsCatalog {
   const val ID_COLOR_SCHEME = "look_and_feel.color_scheme"
   const val ID_BLACK_THEME = "look_and_feel.black_theme"
   const val ID_ROUND_MODE = "look_and_feel.round_mode"
+  const val ID_BASE_THEME = "look_and_feel.base_theme"
+  const val ID_ALBUM_ART_TINT = "look_and_feel.album_art_tint"
 
   const val ID_LIBRARY_TABS = "personalize.library_tabs"
   const val ID_CUSTOM_PLAYBACK_BAR_ACTION = "personalize.custom_playback_bar_action"
@@ -309,29 +311,35 @@ object SettingsCatalog {
       destination = SettingsLookAndFeel,
       breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Theme"),
     ),
+    // D.20.4 — base-theme picker. Subsumes the legacy "Color scheme"
+    // + "Black theme" pair into a single three-way decision; the
+    // album-art tint toggle below sits on top.
     SettingsCatalogEntry(
-      id = ID_COLOR_SCHEME,
-      label = "Color scheme",
-      subtitle = null,
-      keywords = listOf("dynamic", "material you", "brand", "palette"),
+      id = ID_BASE_THEME,
+      label = "Base theme",
+      subtitle = "Foundation colors. Album art tint sits on top.",
+      keywords = listOf(
+        "dynamic", "material you", "brand", "palette",
+        "amoled", "oled", "pure black", "static",
+      ),
       icon = Icons.Outlined.ColorLens,
       section = Section.LookAndFeel,
       group = Group.Theme,
       kind = RowKind.Picker,
       destination = SettingsLookAndFeel,
-      breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Color scheme"),
+      breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Base theme"),
     ),
     SettingsCatalogEntry(
-      id = ID_BLACK_THEME,
-      label = "Black theme",
-      subtitle = "Use pure black for the dark theme background.",
-      keywords = listOf("amoled", "oled", "pure black"),
-      icon = Icons.Outlined.DarkMode,
+      id = ID_ALBUM_ART_TINT,
+      label = "Tint chrome by album art",
+      subtitle = "Bias surfaces toward the playing track's dominant color.",
+      keywords = listOf("palette", "tint", "album", "cover", "art", "color"),
+      icon = Icons.Outlined.Palette,
       section = Section.LookAndFeel,
       group = Group.Theme,
       kind = RowKind.Toggle,
       destination = SettingsLookAndFeel,
-      breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Black theme"),
+      breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Tint chrome by album art"),
     ),
     SettingsCatalogEntry(
       id = ID_ROUND_MODE,

@@ -49,6 +49,13 @@ class QueuePersistence(private val context: Context) {
     val album: String? = null,
     val albumArtist: String? = null,
     val artworkUri: String? = null,
+    /**
+     * D.20.4 — MediaStore album id, when the source surface attached
+     * one. Persisted so the album-palette tint keeps working after a
+     * cold restore. Null is fine: tracks without a MediaStore album
+     * (Field Recordings) just don't get the tint.
+     */
+    val mediaStoreAlbumId: Long? = null,
   )
 
   /** A snapshot of everything we restore on reconnect. */
@@ -121,8 +128,17 @@ class QueuePersistence(private val context: Context) {
     }
     internal val LIST_SERIALIZER = ListSerializer(Entry.serializer())
 
-    /** Minimum ms between persisted position updates while playing. */
-    const val POSITION_DEBOUNCE_MS: Long = 2_000L
+    /**
+     * D.20.3 — minimum ms between persisted position updates while
+     * playing. Originally 2_000; reduced to 500 so that when the user
+     * closes the app (or the OS reaps it) the persisted position is
+     * within ~0.5 s of where they were rather than potentially missing
+     * the last 2 s. Combined with the synchronous flush in
+     * `PlaybackService.onDestroy` / `onTaskRemoved`, the worst-case
+     * gap is now bounded by the time between the last tick and the
+     * shutdown call rather than the debounce window.
+     */
+    const val POSITION_DEBOUNCE_MS: Long = 500L
 
     /**
      * Convert a Media3 [MediaItem] into the persisted [Entry]. Only
@@ -131,6 +147,11 @@ class QueuePersistence(private val context: Context) {
     fun fromMediaItem(item: MediaItem): Entry {
       val md = item.mediaMetadata
       val uri = item.localConfiguration?.uri?.toString().orEmpty()
+      // D.20.4 — round-trip the MediaStore album id extra so the
+      // palette tint can extract a cover bitmap after a cold restore.
+      val albumId = md.extras
+        ?.getLong("tonearm.mediaStoreAlbumId", -1L)
+        ?.takeIf { it >= 0 }
       return Entry(
         mediaId = item.mediaId,
         uri = uri,
@@ -139,6 +160,7 @@ class QueuePersistence(private val context: Context) {
         album = md.albumTitle?.toString(),
         albumArtist = md.albumArtist?.toString(),
         artworkUri = md.artworkUri?.toString(),
+        mediaStoreAlbumId = albumId,
       )
     }
   }
@@ -146,12 +168,20 @@ class QueuePersistence(private val context: Context) {
 
 /** Serialisation helper — used by the companion's [Snapshot.toMediaItemsWithStartPosition]. */
 internal fun QueuePersistence.Entry.toMediaItem(): MediaItem {
+  // D.20.4 — restore the MediaStore album-id extra so the palette
+  // tint can find a cover bitmap. The metadata Builder doesn't take
+  // a Bundle directly until you call setExtras, so we materialise
+  // it lazily.
+  val extras = mediaStoreAlbumId?.let { id ->
+    android.os.Bundle().apply { putLong("tonearm.mediaStoreAlbumId", id) }
+  }
   val metadata = MediaMetadata.Builder()
     .setTitle(title)
     .setArtist(artist)
     .setAlbumTitle(album)
     .setAlbumArtist(albumArtist)
     .also { if (artworkUri != null) it.setArtworkUri(Uri.parse(artworkUri)) }
+    .also { if (extras != null) it.setExtras(extras) }
     .build()
   return MediaItem.Builder()
     .setMediaId(mediaId)

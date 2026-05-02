@@ -48,8 +48,10 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_ABOUT,
       // Look and Feel.
       SettingsCatalog.ID_THEME,
-      SettingsCatalog.ID_COLOR_SCHEME,
-      SettingsCatalog.ID_BLACK_THEME,
+      // D.20.4 — base-theme picker + album-art tint toggle replace the
+      // legacy ID_COLOR_SCHEME + ID_BLACK_THEME pair.
+      SettingsCatalog.ID_BASE_THEME,
+      SettingsCatalog.ID_ALBUM_ART_TINT,
       SettingsCatalog.ID_ROUND_MODE,
       // Personalize.
       SettingsCatalog.ID_LIBRARY_TABS,
@@ -130,7 +132,8 @@ class SettingsCatalogTest {
     val results = SettingsCatalog.search("theme")
     val ids = results.map { it.id }
     assertTrue(ids.contains(SettingsCatalog.ID_THEME))
-    assertTrue(ids.contains(SettingsCatalog.ID_BLACK_THEME))
+    // D.20.4 — base theme replaces black theme as the multi-hit row.
+    assertTrue(ids.contains(SettingsCatalog.ID_BASE_THEME))
     // Case-insensitivity.
     val upper = SettingsCatalog.search("THEME")
     assertEquals(results.toSet(), upper.toSet())

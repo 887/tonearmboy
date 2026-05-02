@@ -98,7 +98,7 @@ fun SettingsLookAndFeelScreen(
   val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
   val scope = rememberCoroutineScope()
   var themePicker by remember { mutableStateOf(false) }
-  var schemePicker by remember { mutableStateOf(false) }
+  var baseThemePicker by remember { mutableStateOf(false) }
 
   val bindings = listOf(
     SettingsRowBinding.Picker(
@@ -106,15 +106,17 @@ fun SettingsLookAndFeelScreen(
       currentLabel = themeLabel(snapshot.theme),
       onClick = { themePicker = true },
     ),
+    // D.20.4 — base-theme picker (Default Android / Default colors /
+    // Pure black). Replaces the old ColorScheme + blackTheme pair.
     SettingsRowBinding.Picker(
-      id = SettingsCatalog.ID_COLOR_SCHEME,
-      currentLabel = colorSchemeLabel(snapshot.colorScheme),
-      onClick = { schemePicker = true },
+      id = SettingsCatalog.ID_BASE_THEME,
+      currentLabel = baseThemeLabel(snapshot.baseTheme),
+      onClick = { baseThemePicker = true },
     ),
     SettingsRowBinding.Toggle(
-      id = SettingsCatalog.ID_BLACK_THEME,
-      checked = snapshot.blackTheme,
-      onCheckedChange = { scope.launch { repository.setBlackTheme(it) } },
+      id = SettingsCatalog.ID_ALBUM_ART_TINT,
+      checked = snapshot.albumArtTintEnabled,
+      onCheckedChange = { scope.launch { repository.setAlbumArtTintEnabled(it) } },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_ROUND_MODE,
@@ -142,14 +144,14 @@ fun SettingsLookAndFeelScreen(
       onDismiss = { themePicker = false },
     )
   }
-  if (schemePicker) {
+  if (baseThemePicker) {
     RadioPicker(
-      title = "Color scheme",
-      options = ColorScheme.entries,
-      label = ::colorSchemeLabel,
-      current = snapshot.colorScheme,
-      onPick = { scope.launch { repository.setColorScheme(it) }; schemePicker = false },
-      onDismiss = { schemePicker = false },
+      title = "Base theme",
+      options = BaseTheme.entries,
+      label = ::baseThemeLabel,
+      current = snapshot.baseTheme,
+      onPick = { scope.launch { repository.setBaseTheme(it) }; baseThemePicker = false },
+      onDismiss = { baseThemePicker = false },
     )
   }
 }
@@ -160,9 +162,10 @@ private fun themeLabel(p: ThemePreference): String = when (p) {
   ThemePreference.Dark -> "Dark"
 }
 
-private fun colorSchemeLabel(s: ColorScheme): String = when (s) {
-  ColorScheme.Dynamic -> "Dynamic (Material You)"
-  ColorScheme.Brand -> "Brand palette"
+internal fun baseThemeLabel(b: BaseTheme): String = when (b) {
+  BaseTheme.DefaultAndroid -> "Default Android (Material You)"
+  BaseTheme.DefaultColors -> "Default colors"
+  BaseTheme.PureBlack -> "Pure black"
 }
 
 // =============================================================================

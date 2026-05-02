@@ -80,6 +80,18 @@ class PlaybackService : MediaSessionService() {
         .setCallback(SessionCallback())
         .build()
 
+    // D.20.3 — restore the persisted queue + position into the player
+    // on cold start so the next in-app `MediaController` connect sees
+    // the previous state. `MediaSession.Callback.onPlaybackResumption`
+    // is only invoked by the system / Bluetooth resume request — an
+    // in-app controller binding doesn't trigger it, which is why the
+    // queue appeared empty after closing and reopening the app.
+    //
+    // We do this BEFORE attaching the persistence listener so the
+    // restore itself doesn't immediately re-write the same JSON back
+    // through `onTimelineChanged`.
+    restorePersistedQueueIntoPlayer(player)
+
     player.addListener(QueuePersistenceListener())
     schedulePositionPersistTicker()
 
@@ -100,6 +112,12 @@ class PlaybackService : MediaSessionService() {
     mediaSession
 
   override fun onTaskRemoved(rootIntent: Intent?) {
+    // D.20.3 — flush the latest queue + position synchronously before
+    // the service tears down. The 500 ms debounce ticker may have a
+    // pending unwritten position; without this flush, swiping the app
+    // from recents loses the last few seconds of progress (the user-
+    // reported queue + position regression).
+    persistQueueSnapshotBlocking()
     // Media3-canonical behaviour: if the user swipes the app away
     // while nothing is playing, pause and tear down the foreground
     // service. While playing, we leave it running so audio keeps
@@ -108,6 +126,12 @@ class PlaybackService : MediaSessionService() {
   }
 
   override fun onDestroy() {
+    // D.20.3 — synchronous flush before the player + session release,
+    // mirroring `onTaskRemoved`. `runBlocking` is acceptable here:
+    // service `onDestroy` runs on the main thread, the DataStore write
+    // is small (single JSON string + two scalar prefs), and skipping
+    // it loses user-visible state on a process exit.
+    persistQueueSnapshotBlocking()
     positionPersistJob?.cancel()
     serviceScope.cancel()
     mediaSession?.run {
@@ -119,8 +143,43 @@ class PlaybackService : MediaSessionService() {
     super.onDestroy()
   }
 
+  /**
+   * D.20.3 — synchronous variant of [persistQueueSnapshotAsync] used
+   * during shutdown paths so the latest queue + position lands on disk
+   * before the service goes away. We do not call this on every
+   * transition (the async path is the hot path for Player.Listener
+   * callbacks); only on `onTaskRemoved` and `onDestroy`.
+   */
+  private fun persistQueueSnapshotBlocking() {
+    val player = mediaSession?.player ?: return
+    val items = collectQueueEntries(player)
+    val index = player.currentMediaItemIndex
+    val position = player.currentPosition.coerceAtLeast(0)
+    runBlocking {
+      if (items.isEmpty()) {
+        queuePersistence.clear()
+      } else {
+        queuePersistence.saveQueue(items, index)
+        queuePersistence.savePosition(index, position)
+      }
+    }
+    lastPersistedIndex = index
+    lastPersistedPositionMs = position
+  }
+
   private fun buildSessionActivityPendingIntent(): PendingIntent {
-    val intent = Intent(this, MainActivity::class.java)
+    // D.20.1 — when the user taps the MediaStyle notification, route them
+    // to the Now Playing surface instead of whichever screen they were
+    // last on. The deep-link extra is read by `MainActivity.handleIntent`
+    // (which runs on both `onCreate` and `onNewIntent`) and pushes
+    // `Destinations.NowPlaying` onto the back stack. We use
+    // `FLAG_ACTIVITY_SINGLE_TOP | FLAG_ACTIVITY_CLEAR_TOP` so a tap on
+    // an already-running activity reuses it and dispatches `onNewIntent`
+    // rather than spawning a duplicate.
+    val intent = Intent(this, MainActivity::class.java).apply {
+      putExtra(EXTRA_DEEPLINK, DEEPLINK_NOW_PLAYING)
+      flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    }
     return PendingIntent.getActivity(
       this,
       0,
@@ -152,6 +211,40 @@ class PlaybackService : MediaSessionService() {
         persistPositionImmediate()
       }
     }
+  }
+
+  /**
+   * D.20.3 — load the persisted snapshot synchronously and seed the
+   * player with it (paused, seeked to the persisted position). Called
+   * from `onCreate` exactly once per service lifetime. We do not start
+   * playback on restore — the user explicitly closed the app, so the
+   * canonical Auxio behaviour is "show the queue, don't auto-play".
+   */
+  private fun restorePersistedQueueIntoPlayer(player: Player) {
+    val snapshot = try {
+      runBlocking { queuePersistence.load() }
+    } catch (t: Throwable) {
+      android.util.Log.w("tonearm", "queue restore failed", t)
+      return
+    }
+    if (snapshot.isEmpty()) return
+    val resolved = snapshot.toMediaItemsWithStartPosition()
+    player.setMediaItems(
+      resolved.mediaItems,
+      resolved.startIndex,
+      resolved.startPositionMs,
+    )
+    // Don't auto-play; let the user press play. Calling `prepare()`
+    // here is fine — Media3 buffers without producing audio until
+    // `playWhenReady` flips, and the UI's pushState() reads current
+    // metadata immediately so the mini-player surface populates.
+    player.prepare()
+    lastPersistedIndex = resolved.startIndex
+    lastPersistedPositionMs = resolved.startPositionMs
+    android.util.Log.i(
+      "tonearm",
+      "queue restored items=${snapshot.items.size} index=${resolved.startIndex} positionMs=${resolved.startPositionMs}",
+    )
   }
 
   private fun persistQueueSnapshotAsync() {
@@ -308,6 +401,7 @@ class PlaybackService : MediaSessionService() {
       // pre-resolved future. Media3 documents a "complete the future
       // as quickly as possible" requirement; the JSON we parse is at
       // most a few KB.
+      android.util.Log.i("tonearm", "onPlaybackResumption invoked isForPlayback=$isForPlayback")
       return try {
         val snapshot = runBlocking { queuePersistence.load() }
         if (snapshot.isEmpty()) {
@@ -331,5 +425,13 @@ class PlaybackService : MediaSessionService() {
     /** D.9a.2 custom session command identifiers. */
     const val COMMAND_REPEAT_TOGGLE = "com.eight87.tonearm.action.REPEAT_TOGGLE"
     const val COMMAND_SHUFFLE_TOGGLE = "com.eight87.tonearm.action.SHUFFLE_TOGGLE"
+
+    /**
+     * D.20.1 — extra carried on the `setSessionActivity` PendingIntent
+     * so MainActivity can route the user to Now Playing on notification
+     * tap instead of the last-active screen.
+     */
+    const val EXTRA_DEEPLINK = "tonearm.deeplink"
+    const val DEEPLINK_NOW_PLAYING = "now_playing"
   }
 }

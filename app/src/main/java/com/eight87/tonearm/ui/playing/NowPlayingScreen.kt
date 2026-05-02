@@ -27,7 +27,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,10 +42,6 @@ import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearm.playback.PlaybackUiController
 import com.eight87.tonearm.ui.library.CoverArt
 import com.eight87.tonearm.ui.settings.AlbumCoversMode
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 /**
  * Full-screen Now Playing.
@@ -70,15 +65,14 @@ fun NowPlayingScreen(
   val state by playback.state.collectAsStateWithLifecycle()
   val queueSnapshot by playback.queue.collectAsStateWithLifecycle()
   var showQueue by remember { mutableStateOf(false) }
-  val scope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
 
-  // Connect on first composition; do not release on dispose because
-  // the activity owns the long-lived connection (mini-player needs it
-  // to stay live across screens).
-  DisposableEffect(playback) {
-    scope.launch { playback.connect() }
-    onDispose { /* do not release; activity owns the connection */ }
-  }
+  // D.20.2 — the activity-owned `LaunchedEffect(Unit) { playback.connect() }`
+  // in `TonearmApp` is the single connect site. Calling `connect()`
+  // again here was redundant (the controller is idempotent) and the
+  // `remember { CoroutineScope(...) }` we used to hold the call was
+  // never cancelled, leaking the scope each time the screen recomposed
+  // off-and-on. The mini-player tap is now a pure NavKey push: open
+  // the screen, read the StateFlow that's already warm.
 
   Scaffold(
     topBar = {

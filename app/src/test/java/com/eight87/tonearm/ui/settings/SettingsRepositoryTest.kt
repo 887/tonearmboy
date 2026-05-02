@@ -55,6 +55,8 @@ class SettingsRepositoryTest {
     repo.setMusicSourceUris(emptySet())
     repo.setMusicSourceMode(MusicSourceMode.Default)
     repo.setAutomaticReloading(false)
+    repo.setBaseTheme(BaseTheme.Default)
+    repo.setAlbumArtTintEnabled(true)
   }
 
   @After

@@ -17,6 +17,7 @@ import androidx.compose.material3.Scaffold
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.eight87.tonearm.AppGraph
+import com.eight87.tonearm.playback.PlaybackService
 import com.eight87.tonearm.ui.library.AlbumDetailScreen
 import com.eight87.tonearm.ui.library.AlbumDetailTrackAction
 import com.eight87.tonearm.ui.library.ArtistDetailScreen
@@ -51,9 +52,36 @@ import kotlinx.coroutines.launch
  */
 @OptIn(UnstableApi::class)
 @Composable
-fun TonearmApp(graph: AppGraph) {
+fun TonearmApp(
+  graph: AppGraph,
+  /**
+   * D.20.1 — bumped each time `MainActivity.handleIntent` receives a
+   * notification deeplink. Triggers a `LaunchedEffect` that pushes
+   * the matching destination onto the back stack.
+   */
+  deeplinkNonce: Int = 0,
+  pendingDeeplink: String? = null,
+  onDeeplinkConsumed: () -> Unit = {},
+) {
   val backStack = remember { TonearmBackStack(LibraryRoot) }
   val current = backStack.backStack.lastOrNull() ?: LibraryRoot
+
+  // D.20.1 — react to a notification deeplink. The activity hands us
+  // a nonce so re-tapping the notification (or tapping it after a
+  // back-press out of NowPlaying) re-triggers the push. We use
+  // `popToOrPush` so the back stack stays sane: if NowPlaying is
+  // already on top, do nothing; if it's deeper, pop to it.
+  LaunchedEffect(deeplinkNonce, pendingDeeplink) {
+    when (pendingDeeplink) {
+      PlaybackService.DEEPLINK_NOW_PLAYING -> {
+        if (current !is NowPlaying) {
+          backStack.popToOrPush(NowPlaying)
+        }
+        onDeeplinkConsumed()
+      }
+      else -> Unit
+    }
+  }
 
   val playback = graph.playbackUiController
   val playbackState by playback.state.collectAsStateWithLifecycle()

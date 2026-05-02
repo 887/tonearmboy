@@ -163,6 +163,11 @@ dependencies {
   // is the local MediaStore album-art content URI, no network needed.
   implementation(libs.coil3.compose)
 
+  // D.20.4 — Palette ktx for album-art-driven theming. Used by
+  // `AlbumPaletteExtractor` to derive dark-muted / dark-vibrant
+  // swatches from the playing track's cover bitmap.
+  implementation(libs.androidx.palette.ktx)
+
   // Robolectric-driven JVM unit tests for the data layer (Phase C verification).
   testImplementation(libs.robolectric)
   testImplementation(libs.androidx.test.core)

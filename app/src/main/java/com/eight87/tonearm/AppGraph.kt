@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearm.data.LibraryRepository
 import com.eight87.tonearm.playback.PlaybackUiController
+import com.eight87.tonearm.theme.AlbumPaletteSource
 import com.eight87.tonearm.ui.settings.SettingsRepository
 import com.eight87.tonearm.ui.settings.ThemePreferenceStore
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +39,15 @@ class AppGraph(private val applicationContext: Context) {
 
   val settingsRepository: SettingsRepository by lazy {
     SettingsRepository(applicationContext)
+  }
+
+  /**
+   * D.20.4 — process-scoped palette source. Activity feeds it the
+   * playing track's MediaStore album id and the result drives
+   * `LocalAlbumPalette` for the chrome.
+   */
+  val albumPaletteSource: AlbumPaletteSource by lazy {
+    AlbumPaletteSource(applicationContext)
   }
 
   companion object {
