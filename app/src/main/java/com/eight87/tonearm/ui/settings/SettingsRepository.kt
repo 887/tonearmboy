@@ -24,6 +24,79 @@ enum class ColorScheme {
   }
 }
 
+/**
+ * D.9a.1 — long-press action on the mini-player play button.
+ * Persisted as the enum name; default is [SkipNext].
+ */
+enum class CustomBarAction {
+  SkipNext,
+  ShuffleToggle,
+  RepeatToggle,
+  None,
+  ;
+
+  companion object {
+    val Default: CustomBarAction = SkipNext
+
+    fun fromStored(raw: String?): CustomBarAction =
+      entries.firstOrNull { it.name == raw } ?: Default
+  }
+}
+
+/**
+ * D.9a.2 — secondary action surfaced in the `MediaStyle` notification.
+ * Persisted as the enum name; default is [RepeatMode].
+ */
+enum class CustomNotificationAction {
+  RepeatMode,
+  Shuffle,
+  None,
+  ;
+
+  companion object {
+    val Default: CustomNotificationAction = RepeatMode
+
+    fun fromStored(raw: String?): CustomNotificationAction =
+      entries.firstOrNull { it.name == raw } ?: Default
+  }
+}
+
+/**
+ * D.9a.4 — queue-build strategy when a track is tapped from a flat list
+ * inside a library tab (Songs, Genres detail, custom tabs, etc.).
+ */
+enum class PlayFromLibrary {
+  AllSongs,
+  ItemOnly,
+  CurrentFilter,
+  ;
+
+  companion object {
+    val Default: PlayFromLibrary = AllSongs
+
+    fun fromStored(raw: String?): PlayFromLibrary =
+      entries.firstOrNull { it.name == raw } ?: Default
+  }
+}
+
+/**
+ * D.9a.5 — queue-build strategy when a track is tapped from a detail
+ * surface (album / artist / playlist).
+ */
+enum class PlayFromItemDetails {
+  ShownItem,
+  Album,
+  Artist,
+  ;
+
+  companion object {
+    val Default: PlayFromItemDetails = ShownItem
+
+    fun fromStored(raw: String?): PlayFromItemDetails =
+      entries.firstOrNull { it.name == raw } ?: Default
+  }
+}
+
 /** Library tabs in canonical order. */
 enum class LibraryTab {
   Songs,
@@ -93,6 +166,12 @@ data class SettingsSnapshot(
   val rewindBeforeSkipBack: Boolean,
   val rememberPause: Boolean,
   val autoDiscoverAlbumArt: Boolean,
+  val customBarAction: CustomBarAction,
+  val customNotificationAction: CustomNotificationAction,
+  val pauseOnRepeat: Boolean,
+  val playFromLibrary: PlayFromLibrary,
+  val playFromItemDetails: PlayFromItemDetails,
+  val hideCollaborators: Boolean,
 ) {
   companion object {
     val Default: SettingsSnapshot = SettingsSnapshot(
@@ -108,6 +187,12 @@ data class SettingsSnapshot(
       rewindBeforeSkipBack = true,
       rememberPause = false,
       autoDiscoverAlbumArt = false,
+      customBarAction = CustomBarAction.Default,
+      customNotificationAction = CustomNotificationAction.Default,
+      pauseOnRepeat = false,
+      playFromLibrary = PlayFromLibrary.Default,
+      playFromItemDetails = PlayFromItemDetails.Default,
+      hideCollaborators = false,
     )
   }
 }
@@ -177,6 +262,39 @@ class SettingsRepository(private val context: Context) {
     store.edit { it[KEY_AUTO_DISCOVER_ALBUM_ART] = value }
   }
 
+  suspend fun setCustomBarAction(value: CustomBarAction) {
+    store.edit { it[KEY_CUSTOM_BAR_ACTION] = value.name }
+  }
+
+  suspend fun setCustomNotificationAction(value: CustomNotificationAction) {
+    store.edit { it[KEY_CUSTOM_NOTIFICATION_ACTION] = value.name }
+  }
+
+  suspend fun setPauseOnRepeat(value: Boolean) {
+    store.edit { it[KEY_PAUSE_ON_REPEAT] = value }
+  }
+
+  suspend fun setPlayFromLibrary(value: PlayFromLibrary) {
+    store.edit { it[KEY_PLAY_FROM_LIBRARY] = value.name }
+  }
+
+  suspend fun setPlayFromItemDetails(value: PlayFromItemDetails) {
+    store.edit { it[KEY_PLAY_FROM_ITEM_DETAILS] = value.name }
+  }
+
+  suspend fun setHideCollaborators(value: Boolean) {
+    store.edit { it[KEY_HIDE_COLLABORATORS] = value }
+  }
+
+  /**
+   * Hot Flow of [SettingsSnapshot.hideCollaborators]; used by
+   * [com.eight87.tonearm.data.LibraryRepository] to filter the artists
+   * Flow without re-scanning the library when the user flips the toggle.
+   */
+  val hideCollaborators: Flow<Boolean> = store.data.map {
+    it[KEY_HIDE_COLLABORATORS] ?: SettingsSnapshot.Default.hideCollaborators
+  }
+
   // --- per-tab sort ---------------------------------------------------------
 
   fun tabSort(tab: LibraryTab): Flow<TabSort> = store.data.map { prefs ->
@@ -208,6 +326,12 @@ class SettingsRepository(private val context: Context) {
     rewindBeforeSkipBack = this[KEY_REWIND_BEFORE_SKIP] ?: SettingsSnapshot.Default.rewindBeforeSkipBack,
     rememberPause = this[KEY_REMEMBER_PAUSE] ?: SettingsSnapshot.Default.rememberPause,
     autoDiscoverAlbumArt = this[KEY_AUTO_DISCOVER_ALBUM_ART] ?: SettingsSnapshot.Default.autoDiscoverAlbumArt,
+    customBarAction = CustomBarAction.fromStored(this[KEY_CUSTOM_BAR_ACTION]),
+    customNotificationAction = CustomNotificationAction.fromStored(this[KEY_CUSTOM_NOTIFICATION_ACTION]),
+    pauseOnRepeat = this[KEY_PAUSE_ON_REPEAT] ?: SettingsSnapshot.Default.pauseOnRepeat,
+    playFromLibrary = PlayFromLibrary.fromStored(this[KEY_PLAY_FROM_LIBRARY]),
+    playFromItemDetails = PlayFromItemDetails.fromStored(this[KEY_PLAY_FROM_ITEM_DETAILS]),
+    hideCollaborators = this[KEY_HIDE_COLLABORATORS] ?: SettingsSnapshot.Default.hideCollaborators,
   )
 
   companion object {
@@ -222,6 +346,12 @@ class SettingsRepository(private val context: Context) {
     internal val KEY_REWIND_BEFORE_SKIP = booleanPreferencesKey("rewind_before_skip")
     internal val KEY_REMEMBER_PAUSE = booleanPreferencesKey("remember_pause")
     internal val KEY_AUTO_DISCOVER_ALBUM_ART = booleanPreferencesKey("auto_discover_album_art")
+    internal val KEY_CUSTOM_BAR_ACTION = stringPreferencesKey("custom_bar_action")
+    internal val KEY_CUSTOM_NOTIFICATION_ACTION = stringPreferencesKey("custom_notification_action")
+    internal val KEY_PAUSE_ON_REPEAT = booleanPreferencesKey("pause_on_repeat")
+    internal val KEY_PLAY_FROM_LIBRARY = stringPreferencesKey("play_from_library")
+    internal val KEY_PLAY_FROM_ITEM_DETAILS = stringPreferencesKey("play_from_item_details")
+    internal val KEY_HIDE_COLLABORATORS = booleanPreferencesKey("hide_collaborators")
 
     internal fun sortKeyFor(tab: LibraryTab) = stringPreferencesKey("sort_key_${tab.name}")
     internal fun sortDirFor(tab: LibraryTab) = stringPreferencesKey("sort_dir_${tab.name}")

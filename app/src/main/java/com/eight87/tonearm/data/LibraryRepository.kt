@@ -26,7 +26,9 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -100,10 +102,26 @@ class LibraryRepository(
     }
   }
 
-  fun observeArtists(): Flow<List<Artist>> {
+  fun observeArtists(): Flow<List<Artist>> = observeArtists(flowOf(false))
+
+  /**
+   * D.9a.6 — when [hideCollaboratorsFlow] emits `true`, the artist list
+   * is derived purely from each track's `albumArtist` (falling back to
+   * `artist` when album-artist is missing). When it emits `false`, the
+   * derivation also includes `artist` values that differ from the
+   * primary `albumArtist` on the same track — i.e. featured collaborators.
+   *
+   * The toggle re-emits the new artist list without rescanning: the
+   * Flow combines the cached track table with the settings Flow and
+   * recomputes the rollup at query time. This is fine for small / mid
+   * libraries; if the user has tens of thousands of tracks we'd switch
+   * to two precomputed views in the DB.
+   */
+  fun observeArtists(hideCollaboratorsFlow: Flow<Boolean>): Flow<List<Artist>> {
     ensureInitialScan()
-    return db.artistDao().observeArtistsWithCounts().map { rows ->
-      rows.map { Artist(it.id, it.name, it.albumCount, it.trackCount) }
+    val tracks = db.trackDao().observeAll()
+    return combine(tracks, hideCollaboratorsFlow) { rows, hide ->
+      deriveArtistsFromTracks(rows, hide)
     }
   }
 
@@ -220,5 +238,54 @@ class LibraryRepository(
   companion object {
     private const val TAG = "tonearm-library"
     private const val RESCAN_DEBOUNCE_MS = 750L
+
+    /**
+     * Build an artist list at query time, with optional collaborator
+     * filtering. Visible for tests.
+     *
+     * The shape is deliberately the same as the cached
+     * `observeArtistsWithCounts` query: one row per artist, with album
+     * + track counts. We assign synthetic positive ids based on the
+     * stable sort order so the UI's `key = it.id` stays stable across
+     * Flow emissions.
+     */
+    internal fun deriveArtistsFromTracks(
+      tracks: List<TrackEntity>,
+      hideCollaborators: Boolean,
+    ): List<Artist> {
+      // Build a map artist-name -> (set of album names, track count).
+      val acc = LinkedHashMap<String, Pair<HashSet<String>, Int>>()
+      for (t in tracks) {
+        val primary = (t.albumArtist?.takeIf { it.isNotBlank() }) ?: t.artist
+        val names = if (hideCollaborators) {
+          listOfNotNull(primary?.takeIf { it.isNotBlank() })
+        } else {
+          // Include both album-artist and artist when they differ.
+          val secondary = t.artist?.takeIf {
+            it.isNotBlank() && !it.equals(primary, ignoreCase = true)
+          }
+          listOfNotNull(primary?.takeIf { it.isNotBlank() }, secondary)
+        }
+        for (name in names) {
+          val (albums, count) = acc[name] ?: (HashSet<String>() to 0)
+          val nextAlbums = albums.also { t.album?.let(it::add) }
+          acc[name] = nextAlbums to (count + 1)
+        }
+      }
+      // Sort case-insensitively by name; assign deterministic ids by
+      // hashing the name into a positive Long (stable across emissions).
+      return acc
+        .toSortedMap(compareBy(String.CASE_INSENSITIVE_ORDER) { it })
+        .entries
+        .map { (name, agg) ->
+          val (albums, count) = agg
+          Artist(
+            id = (name.hashCode().toLong() and 0xFFFFFFFFL),
+            name = name,
+            albumCount = albums.size,
+            trackCount = count,
+          )
+        }
+    }
   }
 }

@@ -21,6 +21,7 @@ import com.eight87.tonearm.ui.library.PlaylistDetailScreen
 import com.eight87.tonearm.ui.playing.MiniPlayer
 import com.eight87.tonearm.ui.playing.NowPlayingScreen
 import com.eight87.tonearm.ui.search.SearchScreen
+import com.eight87.tonearm.ui.settings.SettingsSnapshot
 import com.eight87.tonearm.ui.settings.SettingsAudioScreen
 import com.eight87.tonearm.ui.settings.SettingsContentScreen
 import com.eight87.tonearm.ui.settings.SettingsLookAndFeelScreen
@@ -47,6 +48,8 @@ fun TonearmApp(graph: AppGraph) {
 
   val playback = graph.playbackUiController
   val playbackState by playback.state.collectAsStateWithLifecycle()
+  val settingsSnapshot by graph.settingsRepository.snapshot
+    .collectAsStateWithLifecycle(initialValue = SettingsSnapshot.Default)
   val snackbarHostState = remember { SnackbarHostState() }
 
   // Single shared title cell driven by per-screen LaunchedEffects.
@@ -60,6 +63,12 @@ fun TonearmApp(graph: AppGraph) {
   // Keep the MediaController bound for the lifetime of the activity.
   // The full-screen NowPlaying re-uses this same connection.
   LaunchedEffect(Unit) { playback.connect() }
+
+  // D.9a.3 — keep the playback controller's pause-on-repeat flag in
+  // sync with the user's setting.
+  LaunchedEffect(settingsSnapshot.pauseOnRepeat) {
+    playback.setPauseOnRepeat(settingsSnapshot.pauseOnRepeat)
+  }
 
   val showMiniPlayer = playbackState.hasMedia && current !is NowPlaying
 
@@ -93,6 +102,9 @@ fun TonearmApp(graph: AppGraph) {
           onTogglePlayPause = playback::togglePlayPause,
           onClose = playback::stop,
           onExpand = { backStack.push(NowPlaying) },
+          onPlayButtonLongPress = {
+            playback.performCustomBarAction(settingsSnapshot.customBarAction)
+          },
         )
       }
     },
@@ -107,7 +119,15 @@ fun TonearmApp(graph: AppGraph) {
             repository = graph.libraryRepository,
             settingsRepository = graph.settingsRepository,
             onTrackClick = { tracks, index ->
-              playback.playQueue(tracks, index)
+              // D.9a.4: queue depends on the user's "When playing from
+              // the library" choice. Surrounding list is whatever the
+              // tab gave us; we treat that as both `surroundingList`
+              // and `allSongs` since the library Songs tab IS all songs.
+              playback.playFromLibrary(
+                surroundingList = tracks,
+                tappedIndex = index,
+                strategy = settingsSnapshot.playFromLibrary,
+              )
               backStack.push(NowPlaying)
             },
             onPlaylistClick = { id -> backStack.push(PlaylistDetail(id)) },
@@ -142,7 +162,12 @@ fun TonearmApp(graph: AppGraph) {
             repository = graph.libraryRepository,
             playlistId = key.playlistId,
             onTrackClick = { tracks, index ->
-              playback.playQueue(tracks, index)
+              // D.9a.5: tapped from a detail surface (playlist).
+              playback.playFromDetail(
+                surroundingList = tracks,
+                tappedIndex = index,
+                strategy = settingsSnapshot.playFromItemDetails,
+              )
               backStack.push(NowPlaying)
             },
             onBack = { backStack.pop() },

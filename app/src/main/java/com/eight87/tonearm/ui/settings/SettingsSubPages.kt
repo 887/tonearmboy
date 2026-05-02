@@ -174,6 +174,10 @@ fun SettingsPersonalizeScreen(
   val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
   val scope = rememberCoroutineScope()
   var showLibraryTabs by remember { mutableStateOf(false) }
+  var customBarPicker by remember { mutableStateOf(false) }
+  var customNotifPicker by remember { mutableStateOf(false) }
+  var playFromLibPicker by remember { mutableStateOf(false) }
+  var playFromDetailPicker by remember { mutableStateOf(false) }
 
   val bindings = listOf(
     SettingsRowBinding.Picker(
@@ -181,21 +185,25 @@ fun SettingsPersonalizeScreen(
       currentLabel = describeLibraryTabs(snapshot.libraryTabs),
       onClick = { showLibraryTabs = true },
     ),
-    SettingsRowBinding.Action(
+    SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_CUSTOM_PLAYBACK_BAR_ACTION,
-      onClick = { onComingSoon("Custom playback bar action") },
+      currentLabel = customBarActionLabel(snapshot.customBarAction),
+      onClick = { customBarPicker = true },
     ),
-    SettingsRowBinding.Action(
+    SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_CUSTOM_NOTIFICATION_ACTION,
-      onClick = { onComingSoon("Custom notification action") },
+      currentLabel = customNotificationActionLabel(snapshot.customNotificationAction),
+      onClick = { customNotifPicker = true },
     ),
-    SettingsRowBinding.Action(
+    SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_PLAY_FROM_LIBRARY,
-      onClick = { onComingSoon("When playing from the library") },
+      currentLabel = playFromLibraryLabel(snapshot.playFromLibrary),
+      onClick = { playFromLibPicker = true },
     ),
-    SettingsRowBinding.Action(
+    SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_PLAY_FROM_ITEM_DETAILS,
-      onClick = { onComingSoon("When playing from item details") },
+      currentLabel = playFromItemDetailsLabel(snapshot.playFromItemDetails),
+      onClick = { playFromDetailPicker = true },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_REMEMBER_SHUFFLE,
@@ -223,6 +231,71 @@ fun SettingsPersonalizeScreen(
       },
     )
   }
+  if (customBarPicker) {
+    RadioPicker(
+      title = "Custom playback bar action",
+      options = CustomBarAction.entries,
+      label = ::customBarActionLabel,
+      current = snapshot.customBarAction,
+      onPick = { scope.launch { repository.setCustomBarAction(it) }; customBarPicker = false },
+      onDismiss = { customBarPicker = false },
+    )
+  }
+  if (customNotifPicker) {
+    RadioPicker(
+      title = "Custom notification action",
+      options = CustomNotificationAction.entries,
+      label = ::customNotificationActionLabel,
+      current = snapshot.customNotificationAction,
+      onPick = { scope.launch { repository.setCustomNotificationAction(it) }; customNotifPicker = false },
+      onDismiss = { customNotifPicker = false },
+    )
+  }
+  if (playFromLibPicker) {
+    RadioPicker(
+      title = "When playing from the library",
+      options = PlayFromLibrary.entries,
+      label = ::playFromLibraryLabel,
+      current = snapshot.playFromLibrary,
+      onPick = { scope.launch { repository.setPlayFromLibrary(it) }; playFromLibPicker = false },
+      onDismiss = { playFromLibPicker = false },
+    )
+  }
+  if (playFromDetailPicker) {
+    RadioPicker(
+      title = "When playing from item details",
+      options = PlayFromItemDetails.entries,
+      label = ::playFromItemDetailsLabel,
+      current = snapshot.playFromItemDetails,
+      onPick = { scope.launch { repository.setPlayFromItemDetails(it) }; playFromDetailPicker = false },
+      onDismiss = { playFromDetailPicker = false },
+    )
+  }
+}
+
+internal fun customBarActionLabel(action: CustomBarAction): String = when (action) {
+  CustomBarAction.SkipNext -> "Skip to next"
+  CustomBarAction.ShuffleToggle -> "Shuffle toggle"
+  CustomBarAction.RepeatToggle -> "Repeat mode toggle"
+  CustomBarAction.None -> "None"
+}
+
+internal fun customNotificationActionLabel(action: CustomNotificationAction): String = when (action) {
+  CustomNotificationAction.RepeatMode -> "Repeat mode"
+  CustomNotificationAction.Shuffle -> "Shuffle"
+  CustomNotificationAction.None -> "None"
+}
+
+internal fun playFromLibraryLabel(value: PlayFromLibrary): String = when (value) {
+  PlayFromLibrary.AllSongs -> "Play from all songs"
+  PlayFromLibrary.ItemOnly -> "Play from item only"
+  PlayFromLibrary.CurrentFilter -> "Play from current filter"
+}
+
+internal fun playFromItemDetailsLabel(value: PlayFromItemDetails): String = when (value) {
+  PlayFromItemDetails.ShownItem -> "Play from shown item"
+  PlayFromItemDetails.Album -> "Play from album"
+  PlayFromItemDetails.Artist -> "Play from artist"
 }
 
 private fun describeLibraryTabs(tabs: List<LibraryTab>): String {
@@ -329,9 +402,10 @@ fun SettingsContentScreen(
       checked = snapshot.intelligentSorting,
       onCheckedChange = { scope.launch { repository.setIntelligentSorting(it) } },
     ),
-    SettingsRowBinding.Action(
+    SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_HIDE_COLLABORATORS,
-      onClick = { onComingSoon("Hide collaborators") },
+      checked = snapshot.hideCollaborators,
+      onCheckedChange = { scope.launch { repository.setHideCollaborators(it) } },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
@@ -391,9 +465,10 @@ fun SettingsAudioScreen(
       checked = snapshot.rewindBeforeSkipBack,
       onCheckedChange = { scope.launch { repository.setRewindBeforeSkipBack(it) } },
     ),
-    SettingsRowBinding.Action(
+    SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_PAUSE_ON_REPEAT,
-      onClick = { onComingSoon("Pause on repeat") },
+      checked = snapshot.pauseOnRepeat,
+      onCheckedChange = { scope.launch { repository.setPauseOnRepeat(it) } },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_REMEMBER_PAUSE,

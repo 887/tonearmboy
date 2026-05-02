@@ -8,6 +8,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import com.eight87.tonearm.data.model.Track
+import com.eight87.tonearm.ui.settings.CustomBarAction
+import com.eight87.tonearm.ui.settings.PlayFromItemDetails
+import com.eight87.tonearm.ui.settings.PlayFromLibrary
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -47,8 +50,34 @@ class PlaybackUiController(private val applicationContext: Context) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
   private var positionTickerStarted = false
 
+  /**
+   * D.9a.3 — when true, the listener pauses the player at the
+   * `MEDIA_ITEM_TRANSITION_REASON_REPEAT` boundary instead of letting
+   * the loop continue. Updated from the settings Flow by
+   * [setPauseOnRepeat] so we don't pull a Context-bound dependency into
+   * this class.
+   */
+  @Volatile
+  private var pauseOnRepeat: Boolean = false
+
+  fun setPauseOnRepeat(enabled: Boolean) {
+    pauseOnRepeat = enabled
+  }
+
   private val listener = object : Player.Listener {
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+      // D.9a.3: when the loop boundary on REPEAT_MODE_ONE fires, Media3
+      // emits `MEDIA_ITEM_TRANSITION_REASON_REPEAT`. If the user has
+      // pause-on-repeat enabled, snap back to position 0 and pause; the
+      // user can resume with the play button. We deliberately seek to 0
+      // first to avoid a one-frame artifact where the new track starts
+      // at the previous position.
+      if (shouldPauseOnRepeatBoundary(reason, pauseOnRepeat)) {
+        controller?.let {
+          it.seekTo(0L)
+          it.playWhenReady = false
+        }
+      }
       pushState()
     }
 
@@ -167,6 +196,110 @@ class PlaybackUiController(private val applicationContext: Context) {
     pushState()
   }
 
+  /**
+   * D.9a.4 — build the queue for a tap on a track inside a flat library
+   * list view (Songs tab, Genres detail, custom tabs).
+   *
+   *  - [PlayFromLibrary.AllSongs]: queue = the entire surrounding list,
+   *    start at [tappedIndex];
+   *  - [PlayFromLibrary.ItemOnly]: queue = just the tapped track;
+   *  - [PlayFromLibrary.CurrentFilter]: queue = the surrounding list
+   *    (which already represents the active filter / tab content),
+   *    start at [tappedIndex].
+   *
+   * `AllSongs` and `CurrentFilter` are equivalent on the Songs tab
+   * (where the surrounding list IS the entire library); they diverge
+   * inside Genres detail, custom tabs, and other filtered surfaces. The
+   * UI passes [allSongs] separately so this controller does not need a
+   * library-repository handle.
+   */
+  fun playFromLibrary(
+    surroundingList: List<Track>,
+    tappedIndex: Int,
+    strategy: PlayFromLibrary,
+    allSongs: List<Track> = surroundingList,
+  ) {
+    val (queue, startIndex) = computePlayFromLibraryQueue(
+      surroundingList = surroundingList,
+      tappedIndex = tappedIndex,
+      strategy = strategy,
+      allSongs = allSongs,
+    )
+    if (queue.isEmpty()) return
+    playQueue(queue, startIndex)
+  }
+
+  /**
+   * D.9a.5 — build the queue for a tap on a track inside a detail
+   * surface (album / artist / playlist).
+   *
+   *  - [PlayFromItemDetails.ShownItem]: queue = the detail view's track
+   *    list, start at [tappedIndex] (default Auxio behaviour);
+   *  - [PlayFromItemDetails.Album]: queue = all tracks on the same
+   *    album as the tapped track;
+   *  - [PlayFromItemDetails.Artist]: queue = all tracks credited to
+   *    the same artist as the tapped track.
+   *
+   * The Album / Artist branches scope the queue to the relevant subset
+   * of the surrounding list. If the surrounding list happens to already
+   * be a single album / single artist (the common case from inside
+   * AlbumDetailScreen / ArtistDetailScreen), the result is identical to
+   * `ShownItem`. The branch matters for surfaces that mix tracks from
+   * multiple albums / artists into one list (e.g. a playlist).
+   */
+  fun playFromDetail(
+    surroundingList: List<Track>,
+    tappedIndex: Int,
+    strategy: PlayFromItemDetails,
+  ) {
+    val (queue, startIndex) = computePlayFromDetailQueue(
+      surroundingList = surroundingList,
+      tappedIndex = tappedIndex,
+      strategy = strategy,
+    )
+    if (queue.isEmpty()) return
+    playQueue(queue, startIndex)
+  }
+
+  /**
+   * D.9a.1 — invoked from the mini-player play button's long-press
+   * handler. Picker maps to a one-shot transport command.
+   */
+  fun performCustomBarAction(action: CustomBarAction) {
+    val ctl = controller ?: return
+    when (action) {
+      CustomBarAction.SkipNext -> ctl.seekToNextMediaItem()
+      CustomBarAction.ShuffleToggle -> ctl.shuffleModeEnabled = !ctl.shuffleModeEnabled
+      CustomBarAction.RepeatToggle -> ctl.repeatMode = nextRepeatMode(ctl.repeatMode)
+      CustomBarAction.None -> Unit
+    }
+    pushState()
+  }
+
+  /**
+   * D.9a.2 — invoked from the notification's secondary action button
+   * (forwarded by `PlaybackService`'s session callback) when the user
+   * taps it. The toggle semantics are: Repeat advances OFF -> ALL ->
+   * ONE -> OFF; Shuffle flips on / off; None is a no-op.
+   */
+  fun performCustomNotificationAction(action: com.eight87.tonearm.ui.settings.CustomNotificationAction) {
+    val ctl = controller ?: return
+    when (action) {
+      com.eight87.tonearm.ui.settings.CustomNotificationAction.RepeatMode ->
+        ctl.repeatMode = nextRepeatMode(ctl.repeatMode)
+      com.eight87.tonearm.ui.settings.CustomNotificationAction.Shuffle ->
+        ctl.shuffleModeEnabled = !ctl.shuffleModeEnabled
+      com.eight87.tonearm.ui.settings.CustomNotificationAction.None -> Unit
+    }
+    pushState()
+  }
+
+  private fun nextRepeatMode(current: Int): Int = when (current) {
+    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+    else -> Player.REPEAT_MODE_OFF
+  }
+
   // -- Internals -------------------------------------------------------------
 
   private fun pushState() {
@@ -220,6 +353,66 @@ data class PlaybackUiState(
       hasNext = false,
       hasPrevious = false,
     )
+  }
+}
+
+/**
+ * Pure decision helper for D.9a.3 — split out so the matrix is unit
+ * testable without spinning a full ExoPlayer + MediaController.
+ */
+internal fun shouldPauseOnRepeatBoundary(reason: Int, pauseOnRepeat: Boolean): Boolean =
+  pauseOnRepeat && reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
+
+/**
+ * Pure helper exposing the queue-building logic for D.9a.4. Splitting
+ * it out keeps the strategy testable without spinning a real
+ * `MediaController` (which can only run inside the Robolectric / device
+ * activity).
+ */
+internal fun computePlayFromLibraryQueue(
+  surroundingList: List<Track>,
+  tappedIndex: Int,
+  strategy: PlayFromLibrary,
+  allSongs: List<Track> = surroundingList,
+): Pair<List<Track>, Int> {
+  if (tappedIndex !in surroundingList.indices) return emptyList<Track>() to 0
+  val tapped = surroundingList[tappedIndex]
+  return when (strategy) {
+    PlayFromLibrary.AllSongs -> {
+      val idx = allSongs.indexOfFirst { it.id == tapped.id }.let { if (it < 0) 0 else it }
+      allSongs to idx
+    }
+    PlayFromLibrary.ItemOnly -> listOf(tapped) to 0
+    PlayFromLibrary.CurrentFilter -> surroundingList to tappedIndex
+  }
+}
+
+/**
+ * Pure helper exposing the queue-building logic for D.9a.5.
+ */
+internal fun computePlayFromDetailQueue(
+  surroundingList: List<Track>,
+  tappedIndex: Int,
+  strategy: PlayFromItemDetails,
+): Pair<List<Track>, Int> {
+  if (tappedIndex !in surroundingList.indices) return emptyList<Track>() to 0
+  val tapped = surroundingList[tappedIndex]
+  return when (strategy) {
+    PlayFromItemDetails.ShownItem -> surroundingList to tappedIndex
+    PlayFromItemDetails.Album -> {
+      val albumKey = tapped.album
+      val filtered = if (albumKey.isNullOrBlank()) listOf(tapped)
+      else surroundingList.filter { it.album == albumKey }
+      val idx = filtered.indexOfFirst { it.id == tapped.id }.let { if (it < 0) 0 else it }
+      filtered to idx
+    }
+    PlayFromItemDetails.Artist -> {
+      val artistKey = tapped.albumArtist?.takeIf { it.isNotBlank() } ?: tapped.artist
+      val filtered = if (artistKey.isNullOrBlank()) listOf(tapped)
+      else surroundingList.filter { (it.albumArtist ?: it.artist) == artistKey }
+      val idx = filtered.indexOfFirst { it.id == tapped.id }.let { if (it < 0) 0 else it }
+      filtered to idx
+    }
   }
 }
 

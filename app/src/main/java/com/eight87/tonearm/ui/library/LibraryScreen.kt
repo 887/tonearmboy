@@ -196,6 +196,7 @@ fun LibraryScreen(
           )
           LibraryTab.Artists -> ArtistsListScreen(
             repository = repository,
+            settingsRepository = settingsRepository,
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
           )
@@ -360,10 +361,15 @@ private fun AlbumCell(album: Album, forceSquare: Boolean) {
 @Composable
 fun ArtistsListScreen(
   repository: LibraryRepository,
+  settingsRepository: SettingsRepository,
   sort: TabSort,
   intelligentSorting: Boolean,
 ) {
-  val artists by repository.observeArtists().collectAsState(initial = emptyList())
+  // D.9a.6 — `observeArtists(hideCollaboratorsFlow)` re-emits when the
+  // user flips the toggle without forcing a library rescan.
+  val artists by repository
+    .observeArtists(settingsRepository.hideCollaborators)
+    .collectAsState(initial = emptyList())
   if (artists.isEmpty()) {
     EmptyState("No artists yet.")
     return

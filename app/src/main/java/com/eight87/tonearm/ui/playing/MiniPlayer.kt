@@ -1,7 +1,10 @@
 package com.eight87.tonearm.ui.playing
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,14 +18,20 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CircleShape
 import com.eight87.tonearm.playback.PlaybackUiState
 
 /**
@@ -32,12 +41,14 @@ import com.eight87.tonearm.playback.PlaybackUiState
  * Tapping the mini-player expands into the full-screen Now Playing
  * surface; the play/pause and close icons act in place.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MiniPlayer(
   state: PlaybackUiState,
   onTogglePlayPause: () -> Unit,
   onClose: () -> Unit,
   onExpand: () -> Unit,
+  onPlayButtonLongPress: () -> Unit = {},
 ) {
   if (!state.hasMedia) return
   Row(
@@ -67,10 +78,30 @@ fun MiniPlayer(
         maxLines = 1,
       )
     }
-    IconButton(onClick = onTogglePlayPause) {
+    // D.9a.1 — `IconButton` doesn't expose a long-press hook, so build a
+    // 40-dp tap target by hand using `combinedClickable` over the same
+    // Icon. Long-press triggers the user's chosen Custom playback bar
+    // action; tap toggles play/pause as before.
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+      modifier = Modifier
+        .size(40.dp)
+        .clip(CircleShape)
+        .combinedClickable(
+          interactionSource = interaction,
+          indication = ripple(bounded = false, radius = 20.dp),
+          onClick = onTogglePlayPause,
+          onLongClick = onPlayButtonLongPress,
+          onClickLabel = if (state.isPlaying) "Pause" else "Play",
+          onLongClickLabel = "Custom action",
+        )
+        .semantics { testTag = "mini_player_play_button" },
+      contentAlignment = Alignment.Center,
+    ) {
       Icon(
         imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
         contentDescription = if (state.isPlaying) "Pause" else "Play",
+        tint = LocalContentColor.current,
       )
     }
     IconButton(onClick = onClose) {

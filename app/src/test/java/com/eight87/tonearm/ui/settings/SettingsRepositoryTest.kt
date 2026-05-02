@@ -6,6 +6,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -23,6 +24,34 @@ class SettingsRepositoryTest {
 
   private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
   private val repo = SettingsRepository(context)
+
+  @Before
+  fun resetState() = runTest {
+    // The `preferencesDataStore` delegate caches the DataStore by name,
+    // so deleting the on-disk file isn't enough — we explicitly reset
+    // every key the suite touches before each test runs. This keeps
+    // tests independent of declaration order and JUnit's per-JVM
+    // method-ordering quirks.
+    repo.setBlackTheme(false)
+    repo.setRoundMode(true)
+    repo.setRememberShuffle(false)
+    repo.setIntelligentSorting(true)
+    repo.setForceSquareCovers(false)
+    repo.setHeadsetAutoplay(false)
+    repo.setRewindBeforeSkipBack(true)
+    repo.setRememberPause(false)
+    repo.setAutoDiscoverAlbumArt(false)
+    repo.setCustomBarAction(CustomBarAction.Default)
+    repo.setCustomNotificationAction(CustomNotificationAction.Default)
+    repo.setPauseOnRepeat(false)
+    repo.setPlayFromLibrary(PlayFromLibrary.Default)
+    repo.setPlayFromItemDetails(PlayFromItemDetails.Default)
+    repo.setHideCollaborators(false)
+    repo.setLibraryTabs(LibraryTab.DefaultOrder)
+    LibraryTab.entries.forEach { repo.setTabSort(it, TabSort.Default) }
+    repo.setTheme(ThemePreference.System)
+    repo.setColorScheme(ColorScheme.Default)
+  }
 
   @After
   fun tearDown() {
@@ -78,6 +107,39 @@ class SettingsRepositoryTest {
     repo.setAutoDiscoverAlbumArt(true)
     val after = repo.snapshot.first()
     assertEquals(true, after.autoDiscoverAlbumArt)
+  }
+
+  @Test
+  fun zz_d9a_pickers_and_toggles_default_correctly_and_round_trip() = runTest {
+    val before = repo.snapshot.first()
+    assertEquals(CustomBarAction.SkipNext, before.customBarAction)
+    assertEquals(CustomNotificationAction.RepeatMode, before.customNotificationAction)
+    assertEquals(false, before.pauseOnRepeat)
+    assertEquals(PlayFromLibrary.AllSongs, before.playFromLibrary)
+    assertEquals(PlayFromItemDetails.ShownItem, before.playFromItemDetails)
+    assertEquals(false, before.hideCollaborators)
+
+    repo.setCustomBarAction(CustomBarAction.ShuffleToggle)
+    repo.setCustomNotificationAction(CustomNotificationAction.Shuffle)
+    repo.setPauseOnRepeat(true)
+    repo.setPlayFromLibrary(PlayFromLibrary.ItemOnly)
+    repo.setPlayFromItemDetails(PlayFromItemDetails.Album)
+    repo.setHideCollaborators(true)
+
+    val after = repo.snapshot.first()
+    assertEquals(CustomBarAction.ShuffleToggle, after.customBarAction)
+    assertEquals(CustomNotificationAction.Shuffle, after.customNotificationAction)
+    assertEquals(true, after.pauseOnRepeat)
+    assertEquals(PlayFromLibrary.ItemOnly, after.playFromLibrary)
+    assertEquals(PlayFromItemDetails.Album, after.playFromItemDetails)
+    assertEquals(true, after.hideCollaborators)
+  }
+
+  @Test
+  fun zz_hideCollaborators_flow_emits_independently() = runTest {
+    assertEquals(false, repo.hideCollaborators.first())
+    repo.setHideCollaborators(true)
+    assertEquals(true, repo.hideCollaborators.first())
   }
 
   @Test

@@ -201,6 +201,17 @@ dump
 require '^text="Library tabs"$'                  'Personalize: Library tabs entry'
 require '^text="Remember shuffle"$'              'Personalize: Remember shuffle toggle'
 require '^text="Display"$'                       'Personalize: Display group title'
+# D.9a.1 / D.9a.2 / D.9a.4 / D.9a.5: each picker entry must be wired
+# (subtitle reflects the current value, NOT "Coming in v1.1").
+require '^text="Custom playback bar action"$'    'Personalize: Custom playback bar action (D.9a.1) entry'
+require '^text="Skip to next"$'                  'Personalize: Custom bar action subtitle is real (D.9a.1)'
+require '^text="Custom notification action"$'    'Personalize: Custom notification action (D.9a.2) entry'
+require '^text="Repeat mode"$'                   'Personalize: Custom notification subtitle is real (D.9a.2)'
+require '^text="When playing from the library"$' 'Personalize: When playing from library (D.9a.4) entry'
+require '^text="Play from all songs"$'           'Personalize: Play-from-library subtitle is real (D.9a.4)'
+require '^text="When playing from item details"$' 'Personalize: When playing from item details (D.9a.5) entry'
+require '^text="Play from shown item"$'          'Personalize: Play-from-detail subtitle is real (D.9a.5)'
+forbid 'Coming in v1.1' 'Personalize: no "Coming in v1.1" stubs left'
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 
 # Content.
@@ -211,6 +222,8 @@ require '^text="Force square album covers"$'     'Content: Force square covers t
 require '^text="Auto-discover missing album art"$' 'Content: Auto-discover album art toggle (D.8e)'
 require '^text="Music"$'                         'Content: Music group title'
 require '^text="Images"$'                        'Content: Images group title'
+# D.9a.6: hide collaborators is now a toggle, not a v1.1 stub.
+require '^text="Hide collaborators"$'            'Content: Hide collaborators (D.9a.6) entry'
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 
 # Audio.
@@ -221,6 +234,8 @@ require '^text="Rewind before skipping back"$'   'Audio: Rewind toggle'
 require '^text="Remember pause"$'                'Audio: Remember pause toggle'
 require '^text="Playback"$'                      'Audio: Playback group title'
 require '^text="Volume normalization"$'          'Audio: Volume normalization group title'
+# D.9a.3: pause-on-repeat is now a toggle, not a v1.1 stub.
+require '^text="Pause on repeat"$'               'Audio: Pause on repeat (D.9a.3) entry'
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 
 echo "[OK] all assertions passed"

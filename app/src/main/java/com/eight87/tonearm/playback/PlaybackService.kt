@@ -2,14 +2,21 @@ package com.eight87.tonearm.playback
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import com.eight87.tonearm.MainActivity
+import com.eight87.tonearm.R
 import com.eight87.tonearm.playback.notification.PlaybackNotificationProvider
+import com.eight87.tonearm.ui.settings.CustomNotificationAction
+import com.eight87.tonearm.ui.settings.SettingsRepository
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -18,6 +25,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -73,6 +82,18 @@ class PlaybackService : MediaSessionService() {
 
     player.addListener(QueuePersistenceListener())
     schedulePositionPersistTicker()
+
+    // D.9a.2 — keep the notification's secondary CustomLayout action
+    // button in sync with the user's setting. Re-running this on every
+    // change re-runs `setCustomLayout`, which Media3 picks up and
+    // re-renders the notification with.
+    val settingsRepo = SettingsRepository(applicationContext)
+    serviceScope.launch {
+      settingsRepo.snapshot
+        .map { it.customNotificationAction }
+        .distinctUntilChanged()
+        .collect { applyCustomNotificationLayout(it) }
+    }
   }
 
   override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
@@ -205,7 +226,77 @@ class PlaybackService : MediaSessionService() {
    * via the empty-init path of `AcceptedResultBuilder` for normal
    * (non-resumption) connects — Media3 takes care of the rest.
    */
+  /**
+   * D.9a.2 — push the user's chosen secondary action button into the
+   * `MediaStyle` notification via [MediaSession.setCustomLayout].
+   *
+   * Media3 surfaces the first one or two CommandButtons on the
+   * notification compact view (Auxio places shuffle/repeat as the
+   * second button to the right of play/pause). We add ours after
+   * Media3's default play/pause so it shows in the same slot.
+   *
+   * Picking [CustomNotificationAction.None] passes an empty layout
+   * which removes the button.
+   */
+  private fun applyCustomNotificationLayout(action: CustomNotificationAction) {
+    val session = mediaSession ?: return
+    val buttons = when (action) {
+      CustomNotificationAction.RepeatMode -> listOf(
+        CommandButton.Builder()
+          .setDisplayName("Repeat")
+          .setSessionCommand(SessionCommand(COMMAND_REPEAT_TOGGLE, Bundle.EMPTY))
+          .setIconResId(R.drawable.ic_notif_repeat)
+          .build(),
+      )
+      CustomNotificationAction.Shuffle -> listOf(
+        CommandButton.Builder()
+          .setDisplayName("Shuffle")
+          .setSessionCommand(SessionCommand(COMMAND_SHUFFLE_TOGGLE, Bundle.EMPTY))
+          .setIconResId(R.drawable.ic_notif_shuffle)
+          .build(),
+      )
+      CustomNotificationAction.None -> emptyList()
+    }
+    session.setCustomLayout(buttons)
+  }
+
   private inner class SessionCallback : MediaSession.Callback {
+
+    override fun onConnect(
+      session: MediaSession,
+      controller: MediaSession.ControllerInfo,
+    ): MediaSession.ConnectionResult {
+      // Register the custom session commands so the notification's
+      // secondary action button (and any caller MediaController) can
+      // dispatch them.
+      val available = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+        .add(SessionCommand(COMMAND_REPEAT_TOGGLE, Bundle.EMPTY))
+        .add(SessionCommand(COMMAND_SHUFFLE_TOGGLE, Bundle.EMPTY))
+        .build()
+      return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+        .setAvailableSessionCommands(available)
+        .build()
+    }
+
+    override fun onCustomCommand(
+      session: MediaSession,
+      controller: MediaSession.ControllerInfo,
+      customCommand: SessionCommand,
+      args: Bundle,
+    ): ListenableFuture<SessionResult> {
+      val player = session.player
+      return when (customCommand.customAction) {
+        COMMAND_REPEAT_TOGGLE -> {
+          player.repeatMode = nextRepeatMode(player.repeatMode)
+          Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+        COMMAND_SHUFFLE_TOGGLE -> {
+          player.shuffleModeEnabled = !player.shuffleModeEnabled
+          Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+        else -> Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+      }
+    }
 
     override fun onPlaybackResumption(
       mediaSession: MediaSession,
@@ -228,5 +319,17 @@ class PlaybackService : MediaSessionService() {
         Futures.immediateFailedFuture(t)
       }
     }
+  }
+
+  private fun nextRepeatMode(current: Int): Int = when (current) {
+    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+    else -> Player.REPEAT_MODE_OFF
+  }
+
+  companion object {
+    /** D.9a.2 custom session command identifiers. */
+    const val COMMAND_REPEAT_TOGGLE = "com.eight87.tonearm.action.REPEAT_TOGGLE"
+    const val COMMAND_SHUFFLE_TOGGLE = "com.eight87.tonearm.action.SHUFFLE_TOGGLE"
   }
 }
