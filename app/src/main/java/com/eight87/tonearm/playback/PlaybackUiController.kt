@@ -224,15 +224,24 @@ data class PlaybackUiState(
 }
 
 private fun Track.toMediaItem(): MediaItem {
+  // Phase E.1 / E.2: feed the MediaSession enough metadata for the
+  // System UI notification + lock-screen surface to render properly.
+  // We point artworkUri at the file URI of the audio file itself —
+  // Media3's `DataSourceBitmapLoader` will fall back to extracting the
+  // embedded ID3v2 / FLAC picture frame when the URI resolves to an
+  // audio file. Tracks without embedded art simply render no large
+  // icon, which is the same fallback the platform notification uses.
+  val fileUri = Uri.parse("file://${data}")
   val metadata = MediaMetadata.Builder()
     .setTitle(title)
     .setArtist(artist)
     .setAlbumTitle(album)
     .setAlbumArtist(albumArtist)
+    .setArtworkUri(fileUri)
     .build()
   return MediaItem.Builder()
     .setMediaId(id.toString())
-    .setUri(Uri.parse("file://${data}"))
+    .setUri(fileUri)
     .setMediaMetadata(metadata)
     .build()
 }

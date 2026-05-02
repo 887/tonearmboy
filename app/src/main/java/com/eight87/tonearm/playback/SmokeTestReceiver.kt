@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -58,7 +59,22 @@ class SmokeTestReceiver : BroadcastReceiver() {
               }
             }
           )
-          controller.setMediaItem(MediaItem.fromUri(uri))
+          val title = intent.getStringExtra(EXTRA_TITLE) ?: "Smoke Track"
+          val artist = intent.getStringExtra(EXTRA_ARTIST) ?: "Tonearm Test"
+          val album = intent.getStringExtra(EXTRA_ALBUM) ?: "Phase E"
+          val item = MediaItem.Builder()
+            .setUri(uri)
+            .setMediaId(path)
+            .setMediaMetadata(
+              MediaMetadata.Builder()
+                .setTitle(title)
+                .setArtist(artist)
+                .setAlbumTitle(album)
+                .setArtworkUri(uri)
+                .build(),
+            )
+            .build()
+          controller.setMediaItem(item)
           controller.prepare()
           controller.playWhenReady = true
         } catch (t: Throwable) {
@@ -81,5 +97,8 @@ class SmokeTestReceiver : BroadcastReceiver() {
   companion object {
     private const val TAG = "tonearm"
     const val EXTRA_PATH = "path"
+    const val EXTRA_TITLE = "title"
+    const val EXTRA_ARTIST = "artist"
+    const val EXTRA_ALBUM = "album"
   }
 }

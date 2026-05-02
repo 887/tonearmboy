@@ -48,6 +48,17 @@
             </intent-filter>
         </service>
 
+        <!-- Phase E.5: Media3's MediaButtonReceiver is required for the
+             playback-resumption flow (Bluetooth + Android System UI restart).
+             Without it, MediaSession.Callback.onPlaybackResumption is never
+             invoked. The receiver itself ships in the media3-session AAR. -->
+        <receiver android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
         <!-- Smoke-test entry point: receives an ACTION_PLAY broadcast with a
              `path` extra, hands the URI to the running service via
              MediaController, and logs ExoPlayer state transitions to logcat

@@ -115,6 +115,9 @@ dependencies {
   // MediaController.connect() handshake on the UI thread.
   implementation(libs.kotlinx.coroutines.guava)
 
+  // kotlinx-serialization JSON for Phase E.5 queue persistence.
+  implementation(libs.kotlinx.serialization.json)
+
   // Robolectric-driven JVM unit tests for the data layer (Phase C verification).
   testImplementation(libs.robolectric)
   testImplementation(libs.androidx.test.core)

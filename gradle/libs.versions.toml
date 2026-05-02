@@ -20,6 +20,7 @@ robolectric = "4.14.1"
 androidxArchCoreTest = "2.2.0"
 androidxDataStore = "1.1.2"
 kotlinxCoroutinesGuava = "1.10.2"
+kotlinxSerializationJson = "1.7.3"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -55,6 +56,7 @@ androidx-arch-core-testing = { module = "androidx.arch.core:core-testing", versi
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "androidxDataStore" }
 kotlinx-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "kotlinxCoroutinesGuava" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
