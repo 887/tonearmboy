@@ -137,4 +137,11 @@ dependencies {
   testImplementation(libs.androidx.arch.core.testing)
   testImplementation(libs.androidx.room.testing)
   testImplementation(libs.androidx.work.testing)
+
+  // D.11 — Compose UI testing on the JVM via Robolectric.
+  // `ui-test-junit4` brings `createComposeRule()`; `ui-test-manifest`
+  // ships the Activity manifest entry the rule needs at runtime.
+  testImplementation(composeBom)
+  testImplementation(libs.androidx.compose.ui.test.junit4)
+  testImplementation(libs.androidx.compose.ui.test.manifest)
 }
