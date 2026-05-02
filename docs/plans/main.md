@@ -703,9 +703,15 @@ Seven sub-steps:
   - `196-d27-playlist-tiles-grid.png`
   - `197-d27-playlist-cover-picker.png`
 
+- [ ] **D.27.8 Queue drag-drop reorder vs parent scroll.** User-reported: dragging a queue row to reorder gets cancelled because the parent `NowPlayingMergedSurface` `LazyColumn` intercepts the vertical motion and scrolls instead. Direct quote: *"can't drag drop items on the queue function because the page scrolls and that disables the drag drop."* Fix: while a drag is active inside `DragReorderColumn`, suppress parent vertical scrolling so the drag gesture isn't consumed by the LazyColumn. Two implementation options:
+  - (a) Pass an `onDragStateChange: (Boolean) -> Unit` callback up from `DragReorderColumn` through `QueueSection` to `NowPlayingMergedSurface`, which uses it to flip `LazyListState.userScrollEnabled` on the outer LazyColumn. Drag start → disable parent scroll; drag end (release / cancel) → re-enable.
+  - (b) Use a `NestedScrollConnection` on the drag handle that consumes pre-scroll deltas while drag is active.
+  
+  Option (a) is simpler and matches how reorderable LazyColumn libraries handle this. Implement (a). Also: when the drag drags near the top/bottom edge of the visible queue, auto-scroll the parent (re-enable scroll briefly + programmatically scroll) so the user can reorder past one viewport. *Auto-scroll edge behaviour is a stretch goal — the basic fix (drag works without parent scroll cancelling it) is the must-ship.* Add a Robolectric / Compose UI test `QueueDragReorderParentScrollTest` that asserts: when the test triggers a drag-start callback on the queue, `LazyListState.canScrollForward` and `canScrollBackward` are both false (i.e. parent scroll is suppressed). Screenshot `198-d27-queue-drag-mid-scroll-locked.png`.
+
 **Shipped:** _(not yet)_
 
-After all seven sub-steps land, restore `## Status: ✅ DONE` at the top of the plan with a fresh re-completion note.
+After all eight sub-steps land, restore `## Status: ✅ DONE` at the top of the plan with a fresh re-completion note.
 
 ---
 
