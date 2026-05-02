@@ -186,6 +186,53 @@ Goal: implement the Auxio-pattern settings that the Phase D Auxio refactor stubb
 
 ---
 
+## Phase D.11 — Main UI test coverage
+
+Goal: comprehensive test coverage for the main library UI surfaces — the Compose composables that the user sees most. Robolectric + Compose UI test combination per surface. **Every UI sub-step in this phase has a unit-tested behavioural assertion AND an integration assertion against `emulator-5554`.**
+
+- [ ] **D.11.1 Library rail (`LibraryRail.kt`)** — Unit: tab visibility honors hidden-tabs config; tab order honors order config; active tab gets bold + accent indicator; rotated-text labels lay out correctly at varying tab counts (3 / 5 / 7 with custom tabs). Integration: tap each tab on `emulator-5554`, assert `LocalSectionTitle` updates, content composable swaps, active-state visible via `dumpsys window` focus or accessibility tree.
+- [ ] **D.11.2 Albums grid (`AlbumsGridScreen.kt`)** — Unit: grid renders one tile per `Album`; tile shows `CoverArt` (real cover when D.9b.3 says so, placeholder when off / loading fails); long-press opens overflow menu; tap navigates to album detail. Integration: with `Velvet Den` + `Field Recordings` fixtures, assert tile count == 2, real-cover tile contains a non-null bitmap reference, placeholder tile shows the `MusicNote` icon.
+- [ ] **D.11.3 Tracks list (`TracksListScreen.kt`)** — Unit: list renders one row per `Track`; sticky alphabet headers appear; alphabet scroller jumps to letter; per-row overflow icon opens the context menu; tap fires the configured "Play from library" strategy. Integration: tap "C" in alphabet scroller, assert scroll position lands on a track starting with C; long-press track, assert context menu has Play / Add to queue / Add to playlist / Go to album / Go to artist / (Phase F slot for Delete).
+- [ ] **D.11.4 Artists / Genres / Playlists lists** — Unit: each renders the right entity type; counts (album count for artist, track count for genre, etc.) display correctly; intelligent sort applied per current setting; "Hide collaborators" filter applied for artists. Integration: with the test fixtures, assert artist list has 2 rows ("Quiet Hours" + "The Synth Foxes"), genres has 2 rows ("Ambient" + "Synthwave"), playlists has 0 rows initially then 1 after creating one via the FAB.
+- [ ] **D.11.5 Now Playing (`NowPlayingScreen.kt`)** — Unit: scrubber position binds to `MediaController.currentPosition` flow; transport row buttons fire correct `MediaController` commands; queue button opens the queue sheet; album art renders. Integration: play a Velvet Den track, assert NowPlaying scrubber advances over 2s, tap pause-then-play, assert player state transitions, swipe scrubber, assert seek lands within ±200ms.
+- [ ] **D.11.6 Search screen (`SearchScreen.kt`)** — Unit: typing into search text field debounces (300ms), calls `LibraryRepository.search(q)`; result list renders Track / Album / Artist sections with appropriate icons. Integration: type "cipher" → assert "Cipher Light" track appears in results within 500ms; tap result, assert NowPlaying opens with that track.
+- [ ] **D.11.7 Custom tab rendering** (assumes D.8c+d shipped) — Unit: a custom tab with `FilterCriteria(genres=["Synthwave"])` returns only Synthwave tracks; with `(yearMin=2025)` returns only 2025+ tracks; intersection of multiple criteria narrows results correctly. Integration: create a custom tab via the editor, assert it appears in the rail, tap it, assert the rendered list matches the criteria.
+- [ ] **D.11.8 Coverage roll-up + screenshots** — `JAVA_HOME=… ANDROID_HOME=… ./gradlew testDebugUnitTest` covers every D.11 unit assertion. `scripts/ui-smoke-test.sh` exercises the integration paths. Screenshots: one per UI surface, demonstrating the asserted state.
+
+**Shipped:** _(not yet)_
+
+---
+
+## Phase D.12 — Notification + lock-screen test coverage
+
+Goal: comprehensive test coverage for the Phase E system-integration surfaces. Notification rendering, lock-screen metadata, headset events, foreground lifecycle, process-death survival — each gets unit-level + integration-level assertions.
+
+- [ ] **D.12.1 MediaStyle notification rendering** — Unit: `MediaNotificationProvider` builds a notification with the right title / artist / album / artwork / action buttons given a known `MediaSession` state. Robolectric + a fake `MediaController`. Integration: play a Velvet Den track, capture via `adb shell dumpsys notification --noredact | grep tonearm`, assert title/artist/album text + four action buttons (play/pause, prev, next, stop) plus the D.9a.2 custom one.
+- [ ] **D.12.2 Lock-screen controls** — Unit: `MediaSession.metadata` has the right fields populated for the lock-screen renderer. Integration: lock the AVD (`adb shell input keyevent 26`), wait, assert `dumpsys media_session` shows `state=PLAYING(3)` and metadata description matches the playing track.
+- [ ] **D.12.3 Headset / Bluetooth media-button events** — Unit: `MediaSession.Callback.onMediaButtonEvent` (or Media3 default) handles each `KEYCODE_MEDIA_*` correctly — play/pause toggle, next, prev, stop, play, pause. Integration: send each keyevent (85/87/88/126/127) via `adb shell input keyevent`, assert player state transitions match expected.
+- [ ] **D.12.4 Foreground service lifecycle** — Unit: `PlaybackService.onTaskRemoved` calls `pauseAllPlayersAndStopSelf()`; service starts foreground on first play, stops foreground when nothing queued. Integration: after starting playback, `dumpsys activity services tonearm` shows the service in foreground state. Trigger task removal, assert service stops.
+- [ ] **D.12.5 Process-death survival** — Unit: `QueuePersistence` round-trips a `MediaItemsWithStartPosition` through DataStore correctly; the position-debounce coroutine flushes within `POSITION_DEBOUNCE_MS`. Integration: play a track, wait `POSITION_DEBOUNCE_MS + 1s`, kill the process via `adb shell am kill com.eight87.tonearm`, send `KEYCODE_MEDIA_PLAY`, assert persisted track resumes within ±2s of where it was killed.
+- [ ] **D.12.6 Coverage roll-up + screenshots** — Robolectric + integration assertions all green. Screenshots: notification expanded, lock screen with metadata.
+
+**Shipped:** _(not yet)_
+
+---
+
+## Phase D.13 — Play bar (mini-player) test coverage
+
+Goal: the mini-player is the **most-touched** UI element after the rail — every screen that isn't NowPlaying has it. Test it thoroughly.
+
+- [ ] **D.13.1 Visibility states** — Unit: `MiniPlayer` renders nothing when `MediaController.currentMediaItem == null`; renders with title/artist/play-pause/cover when playing; renders the same when paused (just transport icon flips). Integration: launch app cold, assert mini-player not visible. Play a track, assert it appears within 500ms. Stop playback completely (clear queue), assert it disappears.
+- [ ] **D.13.2 Tap-to-expand** — Unit: tapping the mini-player navigates to `NowPlayingScreen`. Integration: with playback active, tap mini-player on `emulator-5554`, assert NowPlaying opens.
+- [ ] **D.13.3 Inline play / pause toggle** — Unit: tap on the play-pause button calls `MediaController.play()` or `pause()` based on current state. Integration: with playback active, tap pause-icon on mini-player, assert player state transitions to paused; tap again, assert resumed.
+- [ ] **D.13.4 Custom playback bar action (D.9a.1)** — Unit: long-press on play button fires the configured action (Skip to next / Shuffle / Repeat / None) per current setting. Integration: set the setting to "Skip to next", play a track, long-press play button, assert next track loads. Repeat for Shuffle, Repeat, None (assert no-op).
+- [ ] **D.13.5 Title / artist / cover updates on track change** — Unit: as `MediaController.mediaMetadata` changes, the mini-player composable recomposes with the new fields. Integration: queue two tracks, play, advance to next, assert mini-player title/artist update within 500ms.
+- [ ] **D.13.6 Coverage roll-up + screenshots** — Robolectric + integration green. Screenshots: mini-player visible on each top-level tab demonstrating consistent rendering.
+
+**Shipped:** _(not yet)_
+
+---
+
 ## Phase F — file deletion (the differentiator)
 
 Goal: delete audio files from inside the player, with the system consent dialog and proper cache invalidation.
