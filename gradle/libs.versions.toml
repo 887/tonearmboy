@@ -21,6 +21,7 @@ androidxArchCoreTest = "2.2.0"
 androidxDataStore = "1.1.2"
 kotlinxCoroutinesGuava = "1.10.2"
 kotlinxSerializationJson = "1.7.3"
+coil3 = "3.1.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -57,6 +58,9 @@ robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectr
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "androidxDataStore" }
 kotlinx-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "kotlinxCoroutinesGuava" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+# Coil 3 — Compose-first image loading. Used by D.9b.3 album covers.
+coil3-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }
+coil3-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil3" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

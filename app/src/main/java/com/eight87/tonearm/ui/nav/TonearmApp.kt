@@ -62,12 +62,27 @@ fun TonearmApp(graph: AppGraph) {
 
   // Keep the MediaController bound for the lifetime of the activity.
   // The full-screen NowPlaying re-uses this same connection.
-  LaunchedEffect(Unit) { playback.connect() }
+  LaunchedEffect(Unit) {
+    // D.9b.1 — give the controller a library handle for ReplayGain
+    // album lookups before it sees the first track transition.
+    playback.setLibrary(graph.libraryRepository)
+    playback.connect()
+  }
 
   // D.9a.3 — keep the playback controller's pause-on-repeat flag in
   // sync with the user's setting.
   LaunchedEffect(settingsSnapshot.pauseOnRepeat) {
     playback.setPauseOnRepeat(settingsSnapshot.pauseOnRepeat)
+  }
+
+  // D.9b.1 / D.9b.2 — push ReplayGain strategy + pre-amp into the
+  // controller. The controller re-applies the volume immediately and
+  // on every subsequent track transition.
+  LaunchedEffect(settingsSnapshot.replayGainStrategy, settingsSnapshot.replayGainPreampDb) {
+    playback.setReplayGain(
+      settingsSnapshot.replayGainStrategy,
+      settingsSnapshot.replayGainPreampDb,
+    )
   }
 
   val showMiniPlayer = playbackState.hasMedia && current !is NowPlaying

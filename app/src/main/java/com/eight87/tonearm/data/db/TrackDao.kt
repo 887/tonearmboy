@@ -19,6 +19,20 @@ interface TrackDao {
   @Query("SELECT id FROM tracks")
   suspend fun allIds(): List<Long>
 
+  /**
+   * D.9b.1 — number of tracks for the given (album, albumArtist) key.
+   * `IFNULL(albumArtist, artist) IS :artist` matches the same join
+   * predicate used by [AlbumDao.observeAlbumsWithCounts] so the count
+   * stays consistent.
+   */
+  @Query(
+    """
+    SELECT COUNT(*) FROM tracks
+    WHERE album = :album AND IFNULL(albumArtist, artist) IS :artist
+    """
+  )
+  suspend fun countForAlbum(album: String, artist: String?): Int
+
   @Query("SELECT * FROM tracks WHERE id IN (:ids)")
   suspend fun getByIds(ids: List<Long>): List<TrackEntity>
 

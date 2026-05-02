@@ -98,7 +98,16 @@ class LibraryRepository(
   fun observeAlbums(): Flow<List<Album>> {
     ensureInitialScan()
     return db.albumDao().observeAlbumsWithCounts().map { rows ->
-      rows.map { Album(it.id, it.name, it.artist, it.trackCount, it.year) }
+      rows.map {
+        Album(
+          id = it.id,
+          name = it.name,
+          artist = it.artist,
+          trackCount = it.trackCount,
+          year = it.year,
+          mediaStoreAlbumId = it.mediaStoreAlbumId,
+        )
+      }
     }
   }
 
@@ -164,6 +173,33 @@ class LibraryRepository(
     runScan(initial = false)
   }
 
+  /**
+   * D.9b.1 — look up the album-level ReplayGain dB / peak for the
+   * given (album name, album artist) pair. Returns
+   * `(null, null)` when the album row has no album-level tags or no
+   * row exists. The `albumArtist` lookup falls back to the per-track
+   * artist when album-artist is missing — same precedence as
+   * `Mapping.deriveAlbums` uses to compose the unique album key.
+   */
+  suspend fun albumReplayGain(albumName: String?, albumArtist: String?): Pair<Float?, Float?> {
+    if (albumName.isNullOrBlank()) return null to null
+    val row = db.albumDao().byNameAndArtist(albumName, albumArtist)
+    return row?.replayGainAlbumDb to row?.replayGainAlbumPeak
+  }
+
+  /** Track-by-id retrieval for the playback gain pipeline. */
+  suspend fun trackById(id: Long): Track? =
+    db.trackDao().getById(id)?.toDomain()
+
+  /**
+   * D.9b.1 — count of tracks for a given album key. Used to compute
+   * how much of the album the queue covers in Smart mode.
+   */
+  suspend fun trackCountForAlbum(albumName: String?, albumArtist: String?): Int {
+    if (albumName.isNullOrBlank()) return 0
+    return db.trackDao().countForAlbum(albumName, albumArtist)
+  }
+
   // -- Playlist CRUD ---------------------------------------------------------
 
   suspend fun createPlaylist(name: String, nowSeconds: Long = System.currentTimeMillis() / 1000): Long {
@@ -207,11 +243,23 @@ class LibraryRepository(
   }
 
   private suspend fun runScan(initial: Boolean) = scanMutex.withLock {
-    val snapshot = scanner.scanTracks().map { it.toEntity() }
+    // Snapshot the domain Track list so we keep the per-track album
+    // ReplayGain values around long enough to fold them into the
+    // derived AlbumEntity list. Track entities themselves only store
+    // track-level fields; the album-level fields land on AlbumEntity.
+    val tracksDomain = scanner.scanTracks()
+    val snapshot = tracksDomain.map { it.toEntity() }
     val snapshotIds = snapshot.map { it.id }.toHashSet()
 
+    val albumGainPairs: List<Pair<TrackEntity, Pair<Float?, Float?>>> =
+      tracksDomain.zip(snapshot).map { (t, e) ->
+        e to (t.replayGainAlbumDb to t.replayGainAlbumPeak)
+      }
+
     if (initial) {
-      val albums = Mapping.deriveAlbums(snapshot)
+      val albums = Mapping.foldAlbumReplayGain(
+        Mapping.deriveAlbums(snapshot), albumGainPairs,
+      )
       val artists = Mapping.deriveArtists(snapshot)
       val genres = Mapping.deriveGenres(snapshot)
       db.libraryDao().replaceAll(snapshot, albums, artists, genres)
@@ -220,7 +268,9 @@ class LibraryRepository(
       val cachedIds = db.trackDao().allIds().toHashSet()
       val removed = (cachedIds - snapshotIds).toList()
       val upserted = snapshot // simplest correct: REPLACE-on-id covers both new + changed
-      val albums = Mapping.deriveAlbums(snapshot)
+      val albums = Mapping.foldAlbumReplayGain(
+        Mapping.deriveAlbums(snapshot), albumGainPairs,
+      )
       val artists = Mapping.deriveArtists(snapshot)
       val genres = Mapping.deriveGenres(snapshot)
       db.libraryDao().applyDelta(removed, upserted, albums, artists, genres)

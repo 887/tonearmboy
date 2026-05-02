@@ -27,18 +27,30 @@ interface AlbumDao {
   @Query("SELECT * FROM albums ORDER BY name COLLATE NOCASE ASC")
   suspend fun all(): List<AlbumEntity>
 
+  /**
+   * D.9b.1 — look up an album by (name, artist) to retrieve its
+   * ReplayGain album-level dB / peak. The (name, artist) pair is
+   * unique per the table's index. `IS` lets the query match when
+   * `:artist` is null (NULL = NULL is false in SQL, which is wrong
+   * here — there genuinely is one album per artist key, including
+   * the null-artist key for various-artists rips).
+   */
+  @Query("SELECT * FROM albums WHERE name = :name AND artist IS :artist LIMIT 1")
+  suspend fun byNameAndArtist(name: String, artist: String?): AlbumEntity?
+
   data class AlbumWithCount(
     val id: Long,
     val name: String,
     val artist: String?,
     val year: Int?,
     val trackCount: Int,
+    val mediaStoreAlbumId: Long?,
   )
 
   @Query(
     """
     SELECT a.id AS id, a.name AS name, a.artist AS artist, a.year AS year,
-           COUNT(t.id) AS trackCount
+           COUNT(t.id) AS trackCount, a.mediaStoreAlbumId AS mediaStoreAlbumId
     FROM albums a
     LEFT JOIN tracks t
       ON t.album = a.name AND IFNULL(t.albumArtist, t.artist) IS a.artist

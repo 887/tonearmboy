@@ -211,10 +211,10 @@ class SettingsCatalogTest {
 
   @Test
   fun stubs_render_with_coming_soon_subtitle_so_search_results_are_honest() {
-    val stubIds = SettingsCatalog.entries
-      .filter { it.kind == RowKind.Stub }
-      .map { it.id }
-    assertFalse("There should be at least one stub", stubIds.isEmpty())
+    // Phase D.9b removed the audio-quality stubs (ReplayGain strategy /
+    // pre-amp / Album covers); the only remaining stubs at this point
+    // live in Content (Automatic reloading, Multi-value separators —
+    // both deferred to D.9c / D.9d) and at the Root (Music sources).
     SettingsCatalog.entries
       .filter { it.kind == RowKind.Stub && it.section != Section.Root }
       .forEach { entry ->
@@ -224,5 +224,27 @@ class SettingsCatalogTest {
           entry.subtitle,
         )
       }
+  }
+
+  @Test
+  fun phase_d9b_audio_quality_settings_are_wired_not_stubbed() {
+    val replayGainStrategy = SettingsCatalog.byId(SettingsCatalog.ID_REPLAYGAIN_STRATEGY)
+    val replayGainPreamp = SettingsCatalog.byId(SettingsCatalog.ID_REPLAYGAIN_PREAMP)
+    val albumCovers = SettingsCatalog.byId(SettingsCatalog.ID_ALBUM_COVERS)
+    assertEquals(RowKind.Picker, replayGainStrategy.kind)
+    assertEquals(RowKind.Picker, replayGainPreamp.kind)
+    assertEquals(RowKind.Picker, albumCovers.kind)
+    assertFalse(
+      "ReplayGain strategy must not advertise 'Coming in v1.1' after D.9b",
+      replayGainStrategy.subtitle == "Coming in v1.1.",
+    )
+    assertFalse(
+      "ReplayGain pre-amp must not advertise 'Coming in v1.1' after D.9b",
+      replayGainPreamp.subtitle == "Coming in v1.1.",
+    )
+    assertFalse(
+      "Album covers must not advertise 'Coming in v1.1' after D.9b",
+      albumCovers.subtitle == "Coming in v1.1.",
+    )
   }
 }

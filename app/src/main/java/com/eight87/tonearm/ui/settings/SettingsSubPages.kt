@@ -18,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -387,6 +388,7 @@ fun SettingsContentScreen(
 ) {
   val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
   val scope = rememberCoroutineScope()
+  var albumCoversPicker by remember { mutableStateOf(false) }
 
   val bindings = listOf(
     SettingsRowBinding.Action(
@@ -419,9 +421,10 @@ fun SettingsContentScreen(
         }
       },
     ),
-    SettingsRowBinding.Action(
+    SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_ALBUM_COVERS,
-      onClick = { onComingSoon("Album covers") },
+      currentLabel = albumCoversLabel(snapshot.albumCoversMode),
+      onClick = { albumCoversPicker = true },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_FORCE_SQUARE_COVERS,
@@ -438,6 +441,26 @@ fun SettingsContentScreen(
       modifier = mod,
     )
   }
+
+  if (albumCoversPicker) {
+    RadioPicker(
+      title = "Album covers",
+      options = AlbumCoversMode.entries,
+      label = ::albumCoversLabel,
+      current = snapshot.albumCoversMode,
+      onPick = {
+        scope.launch { repository.setAlbumCoversMode(it) }
+        albumCoversPicker = false
+      },
+      onDismiss = { albumCoversPicker = false },
+    )
+  }
+}
+
+internal fun albumCoversLabel(mode: AlbumCoversMode): String = when (mode) {
+  AlbumCoversMode.Balanced -> "Balanced"
+  AlbumCoversMode.On -> "Always load"
+  AlbumCoversMode.Off -> "Never load"
 }
 
 // =============================================================================
@@ -453,6 +476,8 @@ fun SettingsAudioScreen(
 ) {
   val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
   val scope = rememberCoroutineScope()
+  var rgStrategyPicker by remember { mutableStateOf(false) }
+  var rgPreampDialog by remember { mutableStateOf(false) }
 
   val bindings = listOf(
     SettingsRowBinding.Toggle(
@@ -475,13 +500,15 @@ fun SettingsAudioScreen(
       checked = snapshot.rememberPause,
       onCheckedChange = { scope.launch { repository.setRememberPause(it) } },
     ),
-    SettingsRowBinding.Action(
+    SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
-      onClick = { onComingSoon("ReplayGain strategy") },
+      currentLabel = replayGainStrategyLabel(snapshot.replayGainStrategy),
+      onClick = { rgStrategyPicker = true },
     ),
-    SettingsRowBinding.Action(
+    SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_REPLAYGAIN_PREAMP,
-      onClick = { onComingSoon("ReplayGain pre-amp") },
+      currentLabel = formatPreampDb(snapshot.replayGainPreampDb),
+      onClick = { rgPreampDialog = true },
     ),
   )
 
@@ -493,6 +520,98 @@ fun SettingsAudioScreen(
       modifier = mod,
     )
   }
+
+  if (rgStrategyPicker) {
+    RadioPicker(
+      title = "ReplayGain strategy",
+      options = ReplayGainStrategy.entries,
+      label = ::replayGainStrategyLabel,
+      current = snapshot.replayGainStrategy,
+      onPick = {
+        scope.launch { repository.setReplayGainStrategy(it) }
+        rgStrategyPicker = false
+      },
+      onDismiss = { rgStrategyPicker = false },
+    )
+  }
+  if (rgPreampDialog) {
+    ReplayGainPreampDialog(
+      currentDb = snapshot.replayGainPreampDb,
+      onConfirm = { newDb ->
+        scope.launch { repository.setReplayGainPreampDb(newDb) }
+        rgPreampDialog = false
+      },
+      onDismiss = { rgPreampDialog = false },
+    )
+  }
+}
+
+internal fun replayGainStrategyLabel(s: ReplayGainStrategy): String = when (s) {
+  ReplayGainStrategy.Off -> "Off"
+  ReplayGainStrategy.Track -> "Track"
+  ReplayGainStrategy.Album -> "Album"
+  ReplayGainStrategy.Smart -> "Smart"
+}
+
+/** Format a pre-amp dB value with one decimal and an explicit sign. */
+internal fun formatPreampDb(dB: Float): String {
+  val rounded = (Math.round(dB * 10.0).toFloat()) / 10f
+  val sign = if (rounded > 0) "+" else if (rounded < 0) "-" else ""
+  val mag = kotlin.math.abs(rounded)
+  return "$sign${"%.1f".format(mag)} dB"
+}
+
+/**
+ * D.9b.2 — slider dialog for the pre-amp. Shows the current value
+ * live as the user drags. "Reset" snaps back to 0 dB. Save persists
+ * via [SettingsRepository.setReplayGainPreampDb], which clamps and
+ * snaps to the 0.1 dB grid.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReplayGainPreampDialog(
+  currentDb: Float,
+  onConfirm: (Float) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  var value by remember(currentDb) { mutableStateOf(currentDb) }
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("ReplayGain pre-amp") },
+    text = {
+      Column(modifier = Modifier.semantics { testTag = "rg_preamp_dialog" }) {
+        Text(
+          text = formatPreampDb(value),
+          style = androidx.compose.material3.MaterialTheme.typography.headlineSmall,
+        )
+        Text(
+          text = "Adds a constant offset on top of the strategy gain. " +
+            "Negative values attenuate; positive values clamp at 0 dB " +
+            "(Player.volume cannot amplify above unity).",
+          style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+          modifier = Modifier.padding(top = 4.dp),
+        )
+        Slider(
+          value = value,
+          onValueChange = { value = it },
+          valueRange = SettingsRepository.REPLAYGAIN_PREAMP_MIN_DB..SettingsRepository.REPLAYGAIN_PREAMP_MAX_DB,
+          // (max - min) / step - 1 internal stops; 0.1 dB grid over
+          // 30 dB == 299 internal steps.
+          steps = ((SettingsRepository.REPLAYGAIN_PREAMP_MAX_DB - SettingsRepository.REPLAYGAIN_PREAMP_MIN_DB) /
+            SettingsRepository.REPLAYGAIN_PREAMP_STEP_DB).toInt() - 1,
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .semantics { testTag = "rg_preamp_slider" },
+        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+          TextButton(onClick = { value = 0f }) { Text("Reset to 0 dB") }
+        }
+      }
+    },
+    confirmButton = { TextButton(onClick = { onConfirm(value) }) { Text("Save") } },
+    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+  )
 }
 
 // =============================================================================

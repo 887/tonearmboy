@@ -19,4 +19,15 @@ data class Track(
   val genre: String?,
   val data: String,
   val dateAddedSeconds: Long,
+  /** D.9b.1 — track-level ReplayGain in dB. Null when missing. */
+  val replayGainTrackDb: Float? = null,
+  val replayGainTrackPeak: Float? = null,
+  /** D.9b.1 — album-level ReplayGain in dB. Null when missing. */
+  val replayGainAlbumDb: Float? = null,
+  val replayGainAlbumPeak: Float? = null,
+  /**
+   * D.9b.3 — MediaStore album id, captured at scan time so the UI can
+   * resolve cover-art via the album-art content provider.
+   */
+  val mediaStoreAlbumId: Long? = null,
 )

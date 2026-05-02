@@ -192,6 +192,7 @@ fun LibraryScreen(
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
             forceSquare = snapshot.forceSquareCovers,
+            albumCoversMode = snapshot.albumCoversMode,
             contentPadding = PaddingValues(8.dp),
           )
           LibraryTab.Artists -> ArtistsListScreen(
@@ -303,6 +304,7 @@ fun AlbumsGridScreen(
   sort: TabSort,
   intelligentSorting: Boolean,
   forceSquare: Boolean,
+  albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode,
   contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
   val albums by repository.observeAlbums().collectAsState(initial = emptyList())
@@ -318,28 +320,34 @@ fun AlbumsGridScreen(
     verticalArrangement = Arrangement.spacedBy(8.dp),
     modifier = Modifier.fillMaxSize().semantics { testTag = "albums_grid" },
   ) {
-    items(sorted, key = { it.id }) { album -> AlbumCell(album, forceSquare) }
+    items(sorted, key = { it.id }) { album ->
+      AlbumCell(album = album, forceSquare = forceSquare, albumCoversMode = albumCoversMode)
+    }
   }
 }
 
 @Composable
-private fun AlbumCell(album: Album, forceSquare: Boolean) {
+private fun AlbumCell(
+  album: Album,
+  forceSquare: Boolean,
+  albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode,
+) {
   Column(modifier = Modifier.padding(4.dp)) {
     val shape = if (forceSquare) RoundedCornerShape(0.dp) else RoundedCornerShape(8.dp)
-    Box(
+    CoverArt(
+      // The MediaStore album id (captured at scan time) is what the
+      // legacy `content://media/external/audio/albumart/<id>` provider
+      // is keyed by — distinct from `Album.id`, which is the Room
+      // rollup primary key.
+      albumId = album.mediaStoreAlbumId,
+      size = 48.dp,
+      mode = albumCoversMode,
+      contentDescription = album.name,
       modifier = Modifier
         .fillMaxWidth()
         .aspectRatio(1f)
-        .clip(shape)
-        .background(MaterialTheme.colorScheme.surfaceVariant),
-      contentAlignment = Alignment.Center,
-    ) {
-      Icon(
-        imageVector = Icons.Filled.MusicNote,
-        contentDescription = null,
-        modifier = Modifier.size(48.dp),
-      )
-    }
+        .clip(shape),
+    )
     Text(
       text = album.name,
       style = MaterialTheme.typography.titleSmall,

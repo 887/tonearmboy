@@ -6,7 +6,10 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
+import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearm.data.model.Track
+import com.eight87.tonearm.playback.replaygain.ReplayGainTagReader
+import com.eight87.tonearm.playback.replaygain.ReplayGainTags
 
 /**
  * Pulls audio metadata out of [MediaStore]. Returns domain [Track]
@@ -20,12 +23,21 @@ import com.eight87.tonearm.data.model.Track
  * The scanner does no caching of its own — it always returns the
  * authoritative MediaStore snapshot. Caching is the repository's job.
  */
-class MediaStoreScanner(private val context: Context) {
+@UnstableApi
+class MediaStoreScanner(
+  private val context: Context,
+  private val replayGainReader: ReplayGainTagReader = ReplayGainTagReader(context),
+) {
 
   /**
    * Snapshot every audio file MediaStore knows about. Returns an empty
    * list if the audio permission is missing or MediaStore returns no
    * cursor.
+   *
+   * D.9b.1: every track is also probed for `REPLAYGAIN_TRACK_*` and
+   * `REPLAYGAIN_ALBUM_*` tags via [ReplayGainTagReader]. The probe
+   * is best-effort — a missing or malformed tag yields a null gain
+   * value, never an exception that breaks the scan.
    */
   fun scanTracks(): List<Track> {
     if (!MediaStorePermissions.hasAudioPermission(context)) {
@@ -46,6 +58,7 @@ class MediaStoreScanner(private val context: Context) {
       MediaStore.Audio.Media.YEAR,
       MediaStore.Audio.Media.DATA,
       MediaStore.Audio.Media.DATE_ADDED,
+      MediaStore.Audio.Media.ALBUM_ID,
     )
     val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
 
@@ -75,10 +88,18 @@ class MediaStoreScanner(private val context: Context) {
     val yearIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
     val dataIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
     val dateAddedIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+    val albumIdIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
 
     val out = ArrayList<Track>(cursor.count.coerceAtLeast(0))
     while (cursor.moveToNext()) {
       val id = cursor.getLong(idIdx)
+      val trackUri = uriFor(id)
+      val rg: ReplayGainTags = try {
+        replayGainReader.read(trackUri)
+      } catch (t: Throwable) {
+        Log.w(TAG, "ReplayGain read failed for id=$id: ${t.message}")
+        ReplayGainTags.Empty
+      }
       out += Track(
         id = id,
         title = cursor.getString(titleIdx) ?: "",
@@ -91,6 +112,11 @@ class MediaStoreScanner(private val context: Context) {
         genre = genreById[id],
         data = cursor.getString(dataIdx) ?: "",
         dateAddedSeconds = cursor.getLong(dateAddedIdx),
+        replayGainTrackDb = rg.trackGainDb,
+        replayGainTrackPeak = rg.trackPeak,
+        replayGainAlbumDb = rg.albumGainDb,
+        replayGainAlbumPeak = rg.albumPeak,
+        mediaStoreAlbumId = if (cursor.isNull(albumIdIdx)) null else cursor.getLong(albumIdIdx),
       )
     }
     return out

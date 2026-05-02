@@ -118,6 +118,11 @@ dependencies {
   // kotlinx-serialization JSON for Phase E.5 queue persistence.
   implementation(libs.kotlinx.serialization.json)
 
+  // Coil 3 — Compose-first image loader (Phase D.9b.3 album covers).
+  // We deliberately do NOT pull `coil-network-okhttp`; the image source
+  // is the local MediaStore album-art content URI, no network needed.
+  implementation(libs.coil3.compose)
+
   // Robolectric-driven JVM unit tests for the data layer (Phase C verification).
   testImplementation(libs.robolectric)
   testImplementation(libs.androidx.test.core)

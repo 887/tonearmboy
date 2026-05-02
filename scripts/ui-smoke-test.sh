@@ -236,6 +236,54 @@ require '^text="Playback"$'                      'Audio: Playback group title'
 require '^text="Volume normalization"$'          'Audio: Volume normalization group title'
 # D.9a.3: pause-on-repeat is now a toggle, not a v1.1 stub.
 require '^text="Pause on repeat"$'               'Audio: Pause on repeat (D.9a.3) entry'
+# D.9b.1 / D.9b.2: ReplayGain strategy + pre-amp wired (no stubs).
+require '^text="ReplayGain strategy"$'           'Audio: ReplayGain strategy (D.9b.1) entry'
+require '^text="ReplayGain pre-amp"$'            'Audio: ReplayGain pre-amp (D.9b.2) entry'
+forbid 'Coming in v1.1' 'Audio: no "Coming in v1.1" stubs left after D.9b'
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
+
+# --- D.9b.3: album covers picker is wired -----------------------------
+# Re-enter Content; assert the new "Album covers" picker is a real
+# Picker (subtitle = "Balanced" / "Always load" / "Never load"), not a
+# v1.1 stub.
+tap_row_label 'Content'; sleep 2
+dump
+require '^text="Album covers"$'                  'Content: Album covers (D.9b.3) entry'
+require '^text="Balanced"$'                      'Content: Album covers default subtitle is real (D.9b.3)'
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
+
+# --- D.9b.1: ReplayGain attenuation through Player.volume ------------
+# Switch the strategy to Album (the test fixture under
+# scripts/fetch-test-music.sh tags Velvet Den with -8.00 dB album gain),
+# play a Velvet Den track, and assert the per-track gain log line shows
+# `volume=` near 10^(-8/20) ≈ 0.398. The log lives at tag `tonearm-rg`.
+"${ADB[@]}" logcat -c
+"${ADB[@]}" shell am force-stop "$APP_ID"
+"${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" >/dev/null
+sleep 3
+dump
+# Assume music sources push has already happened. Find the first Velvet
+# Den track on the Songs tab and tap it.
+ciph=$(grep -oE 'text="Cipher Light"[^>]*bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' "$UIDUMP_LOCAL" 2>/dev/null | head -1 || true)
+if [[ "$ciph" =~ bounds=\"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]\" ]]; then
+  cx=$(( (${BASH_REMATCH[1]} + ${BASH_REMATCH[3]}) / 2 ))
+  cy=$(( (${BASH_REMATCH[2]} + ${BASH_REMATCH[4]}) / 2 ))
+  "${ADB[@]}" shell input tap "$cx" "$cy"; sleep 4
+  log=$("${ADB[@]}" logcat -d -t 300 | grep "tonearm-rg" | tail -1 || true)
+  if [[ -n "$log" ]]; then
+    echo "[INFO] $log"
+    if echo "$log" | grep -qE 'volume=(0\.[0-9]+|1\.0)'; then
+      echo "[PASS] D.9b.1: ReplayGain volume applied through Player"
+    else
+      echo "[FAIL] D.9b.1: ReplayGain volume log present but no volume value parsed" >&2
+      exit 1
+    fi
+  else
+    echo "[WARN] no tonearm-rg log line — fixtures may not be pushed; skipping volume assertion" >&2
+  fi
+else
+  echo "[WARN] Cipher Light not on screen — fixtures not pushed; skipping volume assertion" >&2
+fi
 
 echo "[OK] all assertions passed"

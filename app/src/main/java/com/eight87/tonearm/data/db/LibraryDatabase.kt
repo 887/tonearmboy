@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
   entities = [
@@ -15,7 +17,7 @@ import androidx.room.RoomDatabase
     PlaylistEntity::class,
     PlaylistTrackEntity::class,
   ],
-  version = 1,
+  version = 2,
   exportSchema = true,
 )
 abstract class LibraryDatabase : RoomDatabase() {
@@ -28,6 +30,30 @@ abstract class LibraryDatabase : RoomDatabase() {
 
   companion object {
     private const val DB_NAME = "tonearm-library.db"
+
+    /**
+     * v1 -> v2: add ReplayGain columns introduced in Phase D.9b.1.
+     *
+     *  - `tracks.replayGainTrackDb` / `replayGainTrackPeak` from the
+     *    `REPLAYGAIN_TRACK_GAIN` / `REPLAYGAIN_TRACK_PEAK` Vorbis or
+     *    ID3v2 TXXX frame
+     *  - `albums.replayGainAlbumDb` / `replayGainAlbumPeak` from
+     *    `REPLAYGAIN_ALBUM_GAIN` / `REPLAYGAIN_ALBUM_PEAK`
+     *
+     * Existing rows get NULL for the new columns; the next library
+     * scan will fill them in. We avoid `fallbackToDestructiveMigration`
+     * so playlists and the user's persisted queue survive the upgrade.
+     */
+    val MIGRATION_1_2 = object : Migration(1, 2) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE tracks ADD COLUMN replayGainTrackDb REAL")
+        db.execSQL("ALTER TABLE tracks ADD COLUMN replayGainTrackPeak REAL")
+        db.execSQL("ALTER TABLE tracks ADD COLUMN mediaStoreAlbumId INTEGER")
+        db.execSQL("ALTER TABLE albums ADD COLUMN replayGainAlbumDb REAL")
+        db.execSQL("ALTER TABLE albums ADD COLUMN replayGainAlbumPeak REAL")
+        db.execSQL("ALTER TABLE albums ADD COLUMN mediaStoreAlbumId INTEGER")
+      }
+    }
 
     @Volatile private var instance: LibraryDatabase? = null
 
@@ -49,6 +75,7 @@ abstract class LibraryDatabase : RoomDatabase() {
         )
           // No fallbackToDestructiveMigration: schema is exported, so
           // we'll write proper migrations as the schema evolves.
+          .addMigrations(MIGRATION_1_2)
           .build()
         instance = created
         return created

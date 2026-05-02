@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -97,6 +98,54 @@ enum class PlayFromItemDetails {
   }
 }
 
+/**
+ * D.9b.1 — ReplayGain strategy. `Off` is the safe default — never
+ * change a user's volume unless they opt in.
+ *
+ *  - `Off` — no gain change
+ *  - `Track` — `REPLAYGAIN_TRACK_GAIN`
+ *  - `Album` — `REPLAYGAIN_ALBUM_GAIN`
+ *  - `Smart` — album mode when the queue covers ≥75% of an album,
+ *    track mode otherwise
+ */
+enum class ReplayGainStrategy {
+  Off,
+  Track,
+  Album,
+  Smart,
+  ;
+
+  companion object {
+    val Default: ReplayGainStrategy = Off
+
+    fun fromStored(raw: String?): ReplayGainStrategy =
+      entries.firstOrNull { it.name == raw } ?: Default
+  }
+}
+
+/**
+ * D.9b.3 — album cover loading policy.
+ *
+ *  - `Balanced` (default) — Coil 3 fits the cell size and loads with
+ *    a low-priority dispatcher
+ *  - `On` — always load full-size covers, eager
+ *  - `Off` — never load; render the music-note placeholder for every
+ *    cell (text-only fallback)
+ */
+enum class AlbumCoversMode {
+  Balanced,
+  On,
+  Off,
+  ;
+
+  companion object {
+    val Default: AlbumCoversMode = Balanced
+
+    fun fromStored(raw: String?): AlbumCoversMode =
+      entries.firstOrNull { it.name == raw } ?: Default
+  }
+}
+
 /** Library tabs in canonical order. */
 enum class LibraryTab {
   Songs,
@@ -172,6 +221,9 @@ data class SettingsSnapshot(
   val playFromLibrary: PlayFromLibrary,
   val playFromItemDetails: PlayFromItemDetails,
   val hideCollaborators: Boolean,
+  val replayGainStrategy: ReplayGainStrategy,
+  val replayGainPreampDb: Float,
+  val albumCoversMode: AlbumCoversMode,
 ) {
   companion object {
     val Default: SettingsSnapshot = SettingsSnapshot(
@@ -193,6 +245,9 @@ data class SettingsSnapshot(
       playFromLibrary = PlayFromLibrary.Default,
       playFromItemDetails = PlayFromItemDetails.Default,
       hideCollaborators = false,
+      replayGainStrategy = ReplayGainStrategy.Default,
+      replayGainPreampDb = 0f,
+      albumCoversMode = AlbumCoversMode.Default,
     )
   }
 }
@@ -286,6 +341,25 @@ class SettingsRepository(private val context: Context) {
     store.edit { it[KEY_HIDE_COLLABORATORS] = value }
   }
 
+  suspend fun setReplayGainStrategy(value: ReplayGainStrategy) {
+    store.edit { it[KEY_REPLAYGAIN_STRATEGY] = value.name }
+  }
+
+  /**
+   * D.9b.2 — clamp into [-15, +15] dB and round to the nearest 0.1 dB
+   * step before persisting, so the slider can use the same step grid
+   * without a separate normalization pass.
+   */
+  suspend fun setReplayGainPreampDb(value: Float) {
+    val clamped = value.coerceIn(REPLAYGAIN_PREAMP_MIN_DB, REPLAYGAIN_PREAMP_MAX_DB)
+    val snapped = (Math.round(clamped * 10.0).toFloat()) / 10f
+    store.edit { it[KEY_REPLAYGAIN_PREAMP] = snapped }
+  }
+
+  suspend fun setAlbumCoversMode(value: AlbumCoversMode) {
+    store.edit { it[KEY_ALBUM_COVERS_MODE] = value.name }
+  }
+
   /**
    * Hot Flow of [SettingsSnapshot.hideCollaborators]; used by
    * [com.eight87.tonearm.data.LibraryRepository] to filter the artists
@@ -332,6 +406,10 @@ class SettingsRepository(private val context: Context) {
     playFromLibrary = PlayFromLibrary.fromStored(this[KEY_PLAY_FROM_LIBRARY]),
     playFromItemDetails = PlayFromItemDetails.fromStored(this[KEY_PLAY_FROM_ITEM_DETAILS]),
     hideCollaborators = this[KEY_HIDE_COLLABORATORS] ?: SettingsSnapshot.Default.hideCollaborators,
+    replayGainStrategy = ReplayGainStrategy.fromStored(this[KEY_REPLAYGAIN_STRATEGY]),
+    replayGainPreampDb = (this[KEY_REPLAYGAIN_PREAMP] ?: SettingsSnapshot.Default.replayGainPreampDb)
+      .coerceIn(REPLAYGAIN_PREAMP_MIN_DB, REPLAYGAIN_PREAMP_MAX_DB),
+    albumCoversMode = AlbumCoversMode.fromStored(this[KEY_ALBUM_COVERS_MODE]),
   )
 
   companion object {
@@ -352,6 +430,15 @@ class SettingsRepository(private val context: Context) {
     internal val KEY_PLAY_FROM_LIBRARY = stringPreferencesKey("play_from_library")
     internal val KEY_PLAY_FROM_ITEM_DETAILS = stringPreferencesKey("play_from_item_details")
     internal val KEY_HIDE_COLLABORATORS = booleanPreferencesKey("hide_collaborators")
+    internal val KEY_REPLAYGAIN_STRATEGY = stringPreferencesKey("replaygain_strategy")
+    internal val KEY_REPLAYGAIN_PREAMP = floatPreferencesKey("replaygain_preamp_db")
+    internal val KEY_ALBUM_COVERS_MODE = stringPreferencesKey("album_covers_mode")
+
+    /** D.9b.2 — pre-amp slider bounds, fixed at [-15, +15] dB. */
+    const val REPLAYGAIN_PREAMP_MIN_DB: Float = -15f
+    const val REPLAYGAIN_PREAMP_MAX_DB: Float = 15f
+    /** Granularity of the slider — one step is 0.1 dB. */
+    const val REPLAYGAIN_PREAMP_STEP_DB: Float = 0.1f
 
     internal fun sortKeyFor(tab: LibraryTab) = stringPreferencesKey("sort_key_${tab.name}")
     internal fun sortDirFor(tab: LibraryTab) = stringPreferencesKey("sort_dir_${tab.name}")

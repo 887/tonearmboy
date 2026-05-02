@@ -24,18 +24,37 @@ if [ -z "${MAGICK}" ]; then
     echo "[fetch-test-music] ImageMagick required (magick or convert)" >&2; exit 1
 fi
 
-# Format:  <url>|<title>|<artist>|<album>|<track>|<year>|<genre>|<embed-cover>
+# Format:  <url>|<title>|<artist>|<album>|<track>|<year>|<genre>|<embed-cover>|<rg-track-db>|<rg-album-db>
+# rg-track-db / rg-album-db = ReplayGain values written as ID3v2 TXXX
+# frames so the D.9b.1 parser has something to attenuate. The Velvet
+# Den album carries a clearly-noticeable -8 dB album gain so the
+# `dumpsys audio` smoke assertion can detect a volume change. Field
+# Recordings is left unattenuated to verify the "missing tag = no
+# change" path.
 TRACKS=(
-    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3|Cipher Light|The Synth Foxes|Velvet Den|1|2025|Synthwave|yes"
-    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3|Brushwork|The Synth Foxes|Velvet Den|2|2025|Synthwave|yes"
-    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3|Pawprints in Snow|Quiet Hours|Field Recordings|1|2024|Ambient|no"
-    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3|Slow Burn|Quiet Hours|Field Recordings|2|2024|Ambient|no"
+    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3|Cipher Light|The Synth Foxes|Velvet Den|1|2025|Synthwave|yes|-7.40 dB|-8.00 dB"
+    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3|Brushwork|The Synth Foxes|Velvet Den|2|2025|Synthwave|yes|-8.20 dB|-8.00 dB"
+    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3|Pawprints in Snow|Quiet Hours|Field Recordings|1|2024|Ambient|no||"
+    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3|Slow Burn|Quiet Hours|Field Recordings|2|2024|Ambient|no||"
 )
 
 for entry in "${TRACKS[@]}"; do
-    IFS='|' read -r url title artist album track year genre embed <<<"$entry"
+    IFS='|' read -r url title artist album track year genre embed rg_track rg_album <<<"$entry"
     raw="${DEST}/$(basename "$url")"
     out="${DEST}/$(echo "$title" | tr ' ' '_').mp3"
+
+    # Optional ReplayGain ID3v2 TXXX frames. ffmpeg writes any
+    # `-metadata KEY=VALUE` it doesn't recognize as a TXXX frame, which
+    # is exactly the encoding ReplayGain uses on MP3.
+    rg_args=()
+    if [ -n "${rg_track:-}" ]; then
+        rg_args+=( -metadata "REPLAYGAIN_TRACK_GAIN=${rg_track}" )
+        rg_args+=( -metadata "REPLAYGAIN_TRACK_PEAK=0.987654" )
+    fi
+    if [ -n "${rg_album:-}" ]; then
+        rg_args+=( -metadata "REPLAYGAIN_ALBUM_GAIN=${rg_album}" )
+        rg_args+=( -metadata "REPLAYGAIN_ALBUM_PEAK=0.987654" )
+    fi
 
     # Skip work if already done
     if [ -f "$out" ]; then
@@ -65,6 +84,7 @@ for entry in "${TRACKS[@]}"; do
             -metadata album="$album" -metadata track="$track" \
             -metadata date="$year" -metadata genre="$genre" \
             -metadata album_artist="$artist" \
+            ${rg_args[@]+"${rg_args[@]}"} \
             -metadata:s:v title="Album cover" -metadata:s:v comment="Cover (front)" \
             -disposition:v attached_pic \
             "$out"
@@ -75,6 +95,7 @@ for entry in "${TRACKS[@]}"; do
             -metadata album="$album" -metadata track="$track" \
             -metadata date="$year" -metadata genre="$genre" \
             -metadata album_artist="$artist" \
+            ${rg_args[@]+"${rg_args[@]}"} \
             "$out"
         echo "[fetch-test-music] $title — tagged, no cover (intentional) ✓"
     fi
