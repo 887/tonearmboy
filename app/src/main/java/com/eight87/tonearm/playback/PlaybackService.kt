@@ -78,6 +78,13 @@ class PlaybackService : MediaSessionService() {
       MediaSession.Builder(this, player)
         .setSessionActivity(buildSessionActivityPendingIntent())
         .setCallback(SessionCallback())
+        // D.23.2 — custom BitmapLoader that tries embedded picture
+        // frame first, falls back to the MediaStore legacy album-art
+        // content URI keyed off the EXTRA_MEDIA_STORE_ALBUM_ID extras
+        // we already attach in `Track.toMediaItem`. Without this,
+        // tracks with no embedded picture frame render no artwork in
+        // SystemUI / lock screen / notification.
+        .setBitmapLoader(TonearmBitmapLoader(applicationContext))
         .build()
 
     // D.20.3 — restore the persisted queue + position into the player
@@ -359,15 +366,23 @@ class PlaybackService : MediaSessionService() {
       session: MediaSession,
       controller: MediaSession.ControllerInfo,
     ): MediaSession.ConnectionResult {
-      // Register the custom session commands so the notification's
-      // secondary action button (and any caller MediaController) can
-      // dispatch them.
+      // D.23.1 — register the custom session commands so the
+      // notification's secondary action button (and any caller
+      // MediaController) can dispatch them.
       val available = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
         .add(SessionCommand(COMMAND_REPEAT_TOGGLE, Bundle.EMPTY))
         .add(SessionCommand(COMMAND_SHUFFLE_TOGGLE, Bundle.EMPTY))
         .build()
+      // D.23.1 — explicitly advertise the full default player command
+      // set. Without this call, the System UI Quick Settings media card
+      // sees an empty available-player-command set on connect and
+      // silently drops repeat / shuffle / prev / next / play-pause
+      // taps. `DEFAULT_PLAYER_COMMANDS` is Media3's canonical
+      // "everything the player supports" preset and includes
+      // COMMAND_SET_REPEAT_MODE + COMMAND_SET_SHUFFLE_MODE.
       return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
         .setAvailableSessionCommands(available)
+        .setAvailablePlayerCommands(MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
         .build()
     }
 

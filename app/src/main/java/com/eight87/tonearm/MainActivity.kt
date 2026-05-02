@@ -22,6 +22,7 @@ import com.eight87.tonearm.theme.LocalAlbumPalette
 import com.eight87.tonearm.theme.TonearmTheme
 import com.eight87.tonearm.ui.nav.TonearmApp
 import com.eight87.tonearm.ui.permission.RequireAudioPermission
+import com.eight87.tonearm.ui.permission.RequirePostNotifications
 import com.eight87.tonearm.data.watcher.LibraryWatcherService
 import com.eight87.tonearm.ui.settings.SettingsSnapshot
 import com.eight87.tonearm.ui.settings.ThemePreference
@@ -136,12 +137,19 @@ class MainActivity : ComponentActivity() {
                 }
               },
             ) {
-              TonearmApp(
-                graph = graph,
-                deeplinkNonce = deeplinkNonce.value,
-                pendingDeeplink = pendingDeeplink.value,
-                onDeeplinkConsumed = { pendingDeeplink.value = null },
-              )
+              // D.23.3 — POST_NOTIFICATIONS runtime gate. API 33+ only;
+              // pass-through on earlier versions. Denial does not block
+              // playback; only the in-tray notification ribbon is
+              // affected (Quick Settings + lock screen are
+              // MediaSession-driven and don't need POST_NOTIFICATIONS).
+              RequirePostNotifications {
+                TonearmApp(
+                  graph = graph,
+                  deeplinkNonce = deeplinkNonce.value,
+                  pendingDeeplink = pendingDeeplink.value,
+                  onDeeplinkConsumed = { pendingDeeplink.value = null },
+                )
+              }
             }
           }
         }
