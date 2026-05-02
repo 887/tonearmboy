@@ -421,9 +421,26 @@ class LibraryRepository(
     // ReplayGain values around long enough to fold them into the
     // derived AlbumEntity list. Track entities themselves only store
     // track-level fields; the album-level fields land on AlbumEntity.
+    //
+    // D.22.1 — throttle the per-track progress callback to ~5 Hz at
+    // the producer. The scanner fires this on every track (a 157-track
+    // library easily emits 50+/s on a fast disk), and `MutableStateFlow`
+    // is conflated for *consumers* but not for *producers*: every
+    // assignment still wakes up `collectAsStateWithLifecycle` and forces
+    // Compose to recompute the bar's caption + every track row whose
+    // surrounding `LazyColumn` recomposes when the `Scaffold` chrome
+    // around the bar shifts height. Throttling here keeps the UI
+    // thread free without losing user-visible progress fidelity.
+    var lastEmit = 0L
     val tracksDomain = try {
       scanner.scanTracks(separators, scopePrefixes) { scanned, total, title ->
-        _scanProgress.value = ScanProgress(scanned, total, title)
+        val now = android.os.SystemClock.uptimeMillis()
+        // Always emit the terminal frame (scanned == total) so the bar
+        // settles on 100 % before being cleared in the `finally`.
+        if (scanned == total || now - lastEmit >= SCAN_PROGRESS_THROTTLE_MS) {
+          lastEmit = now
+          _scanProgress.value = ScanProgress(scanned, total, title)
+        }
       }
     } finally {
       _scanProgress.value = null
@@ -468,6 +485,15 @@ class LibraryRepository(
   companion object {
     private const val TAG = "tonearm-library"
     private const val RESCAN_DEBOUNCE_MS = 750L
+
+    /**
+     * D.22.1 — minimum spacing between per-track progress emissions on
+     * [scanProgress]. 200 ms = ~5 Hz, the slowest cadence that still
+     * looks live to a human watching the bar advance. Below this the
+     * UI thread spends real time recomposing the caption "Scanning
+     * 17 of 157 · …" on every track on a fast disk.
+     */
+    internal const val SCAN_PROGRESS_THROTTLE_MS = 200L
 
     /**
      * Build an artist list at query time, with optional collaborator

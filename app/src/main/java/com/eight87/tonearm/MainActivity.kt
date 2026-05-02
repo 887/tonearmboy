@@ -27,6 +27,7 @@ import com.eight87.tonearm.ui.settings.SettingsSnapshot
 import com.eight87.tonearm.ui.settings.ThemePreference
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 @UnstableApi
 class MainActivity : ComponentActivity() {
@@ -49,11 +50,35 @@ class MainActivity : ComponentActivity() {
     // parent → postSplashScreenTheme transition; calling it any later
     // produces a brief white flash on Android 12+ as the activity
     // window swaps backgrounds.
-    installSplashScreen()
+    val splash = installSplashScreen()
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
 
     val graph = AppGraph.get(applicationContext)
+
+    // D.22.2 — hold the system splash on screen until either the
+    // Media3 controller has bound to the running PlaybackService or a
+    // 600 ms safety-net timeout fires. This is the cold-start
+    // coordination that prevents the "blank black activity" frame
+    // race the user reported when the activity is killed but the
+    // foreground service is still alive — without this hold, the
+    // splash dismisses, NowPlaying mounts with `connectionPhase ==
+    // Connecting`, and the user briefly sees a Compose tree that has
+    // not yet learned about the playing track. The 600 ms cap is the
+    // failsafe so a stuck `buildAsync` future cannot pin the splash.
+    val splashHold = java.util.concurrent.atomic.AtomicBoolean(true)
+    splash.setKeepOnScreenCondition { splashHold.get() }
+    graph.applicationScope.launch {
+      withTimeoutOrNull(SPLASH_HOLD_TIMEOUT_MS) {
+        // The connect() call is also kicked off by TonearmApp's
+        // LaunchedEffect, but we trigger it here too so the splash
+        // hold doesn't depend on the Compose tree mounting first.
+        // Both invocations are idempotent.
+        graph.applicationScope.launch { graph.playbackUiController.connect() }
+        graph.playbackUiController.awaitConnected()
+      }
+      splashHold.set(false)
+    }
 
     // D.9d.2 — re-arm the watcher service if Automatic reloading was
     // on across a process restart. The service is the only owner of
@@ -140,5 +165,17 @@ class MainActivity : ComponentActivity() {
     val deeplink = intent?.getStringExtra(PlaybackService.EXTRA_DEEPLINK) ?: return
     pendingDeeplink.value = deeplink
     deeplinkNonce.value = deeplinkNonce.value + 1
+  }
+
+  companion object {
+    /**
+     * D.22.2 — splash safety-net timeout. 600 ms is the canonical
+     * Android guidance for "long enough to hide a fast handshake,
+     * short enough to never feel like a hang." Beyond this, even on
+     * a stuck `MediaController.Builder.buildAsync`, the splash
+     * dismisses and the user lands on the connecting NowPlaying
+     * sub-state (D.22.3) which is its own progress indicator.
+     */
+    internal const val SPLASH_HOLD_TIMEOUT_MS: Long = 600L
   }
 }

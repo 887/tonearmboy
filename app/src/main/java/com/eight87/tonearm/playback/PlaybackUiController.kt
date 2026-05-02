@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.guava.await
@@ -50,6 +51,20 @@ class PlaybackUiController(private val applicationContext: Context) {
 
   private val _state = MutableStateFlow(PlaybackUiState.Empty)
   val state: StateFlow<PlaybackUiState> = _state.asStateFlow()
+
+  /**
+   * D.22.3 — coarse handshake state with the [PlaybackService].
+   * `Connecting` until [connect] resolves; `Connected` once the
+   * Media3 `MediaController.Builder.buildAsync` future delivers and
+   * we've attached our listener. Read by `pushState` so every
+   * emitted [PlaybackUiState] carries the current phase.
+   *
+   * The flag flips on `release` back to `Connecting` so a caller
+   * that re-`connect`s (e.g. after a process restart) gets the same
+   * "show the spinner until we know" semantics on round two.
+   */
+  @Volatile
+  private var connectionPhase: ConnectionPhase = ConnectionPhase.Connecting
 
   /**
    * D.15.5 — snapshot of the current MediaController queue, recomputed
@@ -235,12 +250,35 @@ class PlaybackUiController(private val applicationContext: Context) {
     }
   }
 
+  /**
+   * D.22.2 — suspend until the first state emission whose
+   * `connectionPhase == Connected` lands. Used by `MainActivity` to
+   * bound the splash-screen hold so a cold-start landing on Now
+   * Playing doesn't flash a blank Compose frame between the splash
+   * dismissing and the controller binding.
+   *
+   * Idempotent + safe to call before [connect]: it simply parks on
+   * the StateFlow until any consumer (or [connect] itself) flips the
+   * phase. Callers wrap this in `withTimeoutOrNull(...)` so a stuck
+   * service binding doesn't pin the splash forever.
+   */
+  suspend fun awaitConnected() {
+    if (_state.value.connectionPhase == ConnectionPhase.Connected) return
+    _state.first { it.connectionPhase == ConnectionPhase.Connected }
+  }
+
   /** Connect to the running [PlaybackService]. Idempotent. */
   suspend fun connect() = withContext(Dispatchers.Main) {
     if (controller != null) return@withContext
     val c = PlaybackController.connect(applicationContext).await()
     controller = c
     c.addListener(listener)
+    // D.22.3: flip Connecting → Connected once Media3 has actually
+    // bound. NowPlayingScreen reads this to choose between the
+    // "Connecting…" spinner, the "Nothing playing" empty card, and the
+    // full transport surface. Set BEFORE pushState so the same UI
+    // frame that learns there's a controller also sees the phase flip.
+    connectionPhase = ConnectionPhase.Connected
     // Apply the persisted ReplayGain settings to the freshly connected
     // controller before any track plays.
     scope.launch { applyReplayGainNow() }
@@ -266,6 +304,7 @@ class PlaybackUiController(private val applicationContext: Context) {
       it.release()
     }
     controller = null
+    connectionPhase = ConnectionPhase.Connecting
     _state.value = PlaybackUiState.Empty
   }
 
@@ -544,8 +583,9 @@ class PlaybackUiController(private val applicationContext: Context) {
 
   private fun pushState() {
     val ctl = controller
+    val phase = connectionPhase
     if (ctl == null || ctl.mediaItemCount == 0) {
-      _state.value = PlaybackUiState.Empty
+      _state.value = PlaybackUiState.Empty.copy(connectionPhase = phase)
       _queue.value = QueueSnapshot.Empty
       return
     }
@@ -566,6 +606,7 @@ class PlaybackUiController(private val applicationContext: Context) {
       hasPrevious = ctl.hasPreviousMediaItem(),
       shuffleEnabled = ctl.shuffleModeEnabled,
       repeatMode = ctl.repeatMode,
+      connectionPhase = phase,
     )
     val items = ArrayList<QueueItem>(ctl.mediaItemCount)
     for (i in 0 until ctl.mediaItemCount) {
@@ -625,6 +666,15 @@ data class PlaybackUiState(
    * [Player.REPEAT_MODE_ONE].
    */
   val repeatMode: Int = Player.REPEAT_MODE_OFF,
+  /**
+   * D.22.3 — coarse handshake phase. `Connecting` is the brief window
+   * between activity start and Media3 binding the in-process
+   * `MediaController` to the running `PlaybackService`; `Connected`
+   * means the controller is alive and the rest of the state fields
+   * reflect actual session state. NowPlayingScreen renders three
+   * distinct sub-states keyed off `connectionPhase` + `hasMedia`.
+   */
+  val connectionPhase: ConnectionPhase = ConnectionPhase.Connecting,
 ) {
   companion object {
     val Empty = PlaybackUiState(
@@ -640,9 +690,20 @@ data class PlaybackUiState(
       hasPrevious = false,
       shuffleEnabled = false,
       repeatMode = Player.REPEAT_MODE_OFF,
+      connectionPhase = ConnectionPhase.Connecting,
     )
   }
 }
+
+/**
+ * D.22.3 — handshake phase between the UI tree and the
+ * `PlaybackService`. The activity's `LaunchedEffect(Unit) {
+ * playback.connect() }` is async; the first emission of
+ * [PlaybackUiController.state] arrives before that future resolves,
+ * which is the cold-start "blank Compose tree" frame race that this
+ * enum exists to flag.
+ */
+enum class ConnectionPhase { Connecting, Connected }
 
 /**
  * D.15.5 — one queue entry, denormalized from a Media3 [MediaItem]

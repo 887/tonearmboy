@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ShuffleOn
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,9 +32,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.media3.common.Player
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,9 +49,12 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
+import com.eight87.tonearm.playback.ConnectionPhase
 import com.eight87.tonearm.playback.PlaybackUiController
+import com.eight87.tonearm.playback.PlaybackUiState
 import com.eight87.tonearm.ui.library.CoverArt
 import com.eight87.tonearm.ui.settings.AlbumCoversMode
+import kotlinx.coroutines.delay
 
 /**
  * Full-screen Now Playing.
@@ -81,6 +87,10 @@ fun NowPlayingScreen(
   // off-and-on. The mini-player tap is now a pure NavKey push: open
   // the screen, read the StateFlow that's already warm.
 
+  // D.22.3 — three distinct sub-states keyed off the connection phase
+  // and queue presence. We branch *outside* the Scaffold body so the
+  // chrome (top app bar with Back / Queue) renders identically across
+  // sub-states; only the content area swaps.
   Scaffold(
     topBar = {
       TopAppBar(
@@ -94,6 +104,7 @@ fun NowPlayingScreen(
           IconButton(
             onClick = { showQueue = true },
             modifier = Modifier.semantics { testTag = "now_playing_queue" },
+            enabled = state.hasMedia,
           ) {
             Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
           }
@@ -101,7 +112,21 @@ fun NowPlayingScreen(
       )
     },
   ) { innerPadding ->
-    Column(
+    when (resolveSubState(state)) {
+      NowPlayingSubState.Connecting -> NowPlayingConnecting(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(innerPadding)
+          .padding(24.dp),
+      )
+      NowPlayingSubState.ConnectedEmpty -> NowPlayingEmpty(
+        onBack = onBack,
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(innerPadding)
+          .padding(24.dp),
+      )
+      NowPlayingSubState.ConnectedWithMedia -> Column(
       modifier = Modifier
         .fillMaxSize()
         .padding(innerPadding)
@@ -213,8 +238,92 @@ fun NowPlayingScreen(
         }
       }
     }
+    }
   }
 }
+
+/**
+ * D.22.3 — three rendering modes for [NowPlayingScreen].
+ *
+ *  - [Connecting]: the Media3 controller hasn't bound yet; show a
+ *    spinner + "Connecting to playback…" caption. This is the cold-
+ *    start branch that prevents the blank Compose tree.
+ *  - [ConnectedEmpty]: the controller is bound but the session has
+ *    no queue. We show an "empty card with CTA back to Library" and
+ *    auto-pop after 300 ms so the user lands somewhere useful.
+ *  - [ConnectedWithMedia]: the existing transport surface.
+ */
+internal enum class NowPlayingSubState {
+  Connecting,
+  ConnectedEmpty,
+  ConnectedWithMedia,
+}
+
+internal fun resolveSubState(state: PlaybackUiState): NowPlayingSubState = when {
+  state.connectionPhase == ConnectionPhase.Connecting && !state.hasMedia ->
+    NowPlayingSubState.Connecting
+  !state.hasMedia -> NowPlayingSubState.ConnectedEmpty
+  else -> NowPlayingSubState.ConnectedWithMedia
+}
+
+/**
+ * D.22.3 — connecting sub-state. Visible while
+ * `MediaController.Builder.buildAsync` is still pending. Auto-recomposes
+ * to [NowPlayingSubState.ConnectedWithMedia] when the controller binds
+ * and a queue is present.
+ */
+@Composable
+private fun NowPlayingConnecting(modifier: Modifier = Modifier) {
+  Column(
+    modifier = modifier.semantics { testTag = "now_playing_connecting" },
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+  ) {
+    CircularProgressIndicator()
+    Text(
+      text = "Connecting to playback…",
+      style = MaterialTheme.typography.bodyMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+  }
+}
+
+/**
+ * D.22.3 — connected-but-no-queue sub-state. Shows an empty-state
+ * card and auto-pops after [EmptyAutoPopMs] so the user lands back on
+ * Library rather than staring at a dead screen.
+ */
+@Composable
+private fun NowPlayingEmpty(
+  onBack: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  LaunchedEffect(Unit) {
+    delay(EmptyAutoPopMs)
+    onBack()
+  }
+  Column(
+    modifier = modifier.semantics { testTag = "now_playing_empty" },
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+  ) {
+    Text(
+      text = "Nothing playing",
+      style = MaterialTheme.typography.headlineSmall,
+    )
+    Text(
+      text = "Pick a track in the library to start playback.",
+      style = MaterialTheme.typography.bodyMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    TextButton(
+      onClick = onBack,
+      modifier = Modifier.semantics { testTag = "now_playing_empty_back" },
+    ) { Text("Back to library") }
+  }
+}
+
+private const val EmptyAutoPopMs: Long = 300L
 
 @Composable
 private fun Scrubber(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit) {
