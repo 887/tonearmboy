@@ -186,24 +186,46 @@ fun AboutScreen(
       }
 
       // ---- Credits card ----
+      // Visual references only. NO code from Auxio or Harmony Music
+      // was copied into tonearm. This is a clean-room implementation —
+      // we looked at their UIs to inform our own, but every line in
+      // this app is original Kotlin. Critical because Auxio is GPL-3.0
+      // and tonearm is MIT; if any Auxio code were here, our license
+      // would be tainted. It isn't.
       SettingsCard(
         title = "Credits",
         modifier = Modifier.padding(horizontal = SettingsDimens.PagePadding),
       ) {
         SettingsRow(
+          id = "about.credits.cleanroom",
+          icon = Icons.Outlined.Info,
+          label = "Visual references only",
+          subtitle = "No code copied from the projects below. Clean-room implementation, MIT-licensed throughout.",
+          onClick = null,
+        )
+        SettingsRowDivider()
+        SettingsRow(
           id = "about.credits.auxio",
           icon = Icons.Outlined.Favorite,
-          label = "Auxio",
-          subtitle = "Visual reference for the player surface and library chrome.",
-          onClick = null,
+          label = "Auxio (GPL-3.0)",
+          subtitle = "Visual reference for the player surface and library chrome. github.com/OxygenCobalt/Auxio",
+          onClick = {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(AUXIO_URL))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { context.startActivity(intent) }
+          },
         )
         SettingsRowDivider()
         SettingsRow(
           id = "about.credits.harmony",
           icon = Icons.Outlined.Favorite,
-          label = "Harmony Music",
-          subtitle = "Chrome reference (rail-and-content boundary, M3 Expressive cards).",
-          onClick = null,
+          label = "Harmony Music (GPL-3.0)",
+          subtitle = "Chrome reference (rail-and-content boundary, M3 Expressive cards). github.com/anandnet/Harmony-Music",
+          onClick = {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(HARMONY_URL))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { context.startActivity(intent) }
+          },
         )
         SettingsRowDivider()
         SettingsRow(
@@ -260,3 +282,5 @@ private fun EasterEggFoxDialog(onDismiss: () -> Unit) {
 
 private const val GITHUB_URL = "https://github.com/887/tonearm"
 private const val LICENSE_URL = "https://github.com/887/tonearm/blob/main/LICENSE"
+private const val AUXIO_URL = "https://github.com/OxygenCobalt/Auxio"
+private const val HARMONY_URL = "https://github.com/anandnet/Harmony-Music"
