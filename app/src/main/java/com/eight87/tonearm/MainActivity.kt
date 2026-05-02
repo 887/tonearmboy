@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearm.theme.TonearmTheme
 import com.eight87.tonearm.ui.nav.TonearmApp
+import com.eight87.tonearm.ui.permission.RequireAudioPermission
 import com.eight87.tonearm.data.watcher.LibraryWatcherService
 import com.eight87.tonearm.ui.settings.ColorScheme
 import com.eight87.tonearm.ui.settings.SettingsSnapshot
@@ -67,7 +68,20 @@ class MainActivity : ComponentActivity() {
         blackTheme = snapshot.blackTheme,
       ) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-          TonearmApp(graph)
+          // D.19 — wrap the app in the runtime-permission gate so a
+          // fresh install on a real phone walks the system grant flow
+          // for READ_MEDIA_AUDIO. On grant we trigger a full library
+          // rescan immediately so the user doesn't need to find a
+          // "Rescan music" button in Settings to populate the library.
+          RequireAudioPermission(
+            onGranted = {
+              graph.applicationScope.launch {
+                graph.libraryRepository.rescanNow()
+              }
+            },
+          ) {
+            TonearmApp(graph)
+          }
         }
       }
     }
