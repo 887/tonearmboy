@@ -30,4 +30,17 @@ data class Track(
    * resolve cover-art via the album-art content provider.
    */
   val mediaStoreAlbumId: Long? = null,
+  /**
+   * D.9c.1 — secondary artist values produced when the user enables
+   * multi-value separator splitting. The primary value is in [artist]
+   * (used for display); these additional values are folded into the
+   * artist-rollup so e.g. `"Jane Doe; John Smith"` becomes two rows
+   * on the Artists tab. Not persisted to Room — derivation runs from
+   * the live scan, not from the cached entities.
+   */
+  val additionalArtists: List<String> = emptyList(),
+  /** D.9c.1 — secondary album-artist values; same semantics as [additionalArtists]. */
+  val additionalAlbumArtists: List<String> = emptyList(),
+  /** D.9c.1 — secondary genre values; same semantics as [additionalArtists]. */
+  val additionalGenres: List<String> = emptyList(),
 )

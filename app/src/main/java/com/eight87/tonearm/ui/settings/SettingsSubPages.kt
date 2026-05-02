@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -389,15 +390,17 @@ fun SettingsContentScreen(
   val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
   val scope = rememberCoroutineScope()
   var albumCoversPicker by remember { mutableStateOf(false) }
+  var separatorsPicker by remember { mutableStateOf(false) }
 
   val bindings = listOf(
     SettingsRowBinding.Action(
       id = SettingsCatalog.ID_AUTOMATIC_RELOADING,
       onClick = { onComingSoon("Automatic reloading") },
     ),
-    SettingsRowBinding.Action(
+    SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_MULTI_VALUE_SEPARATORS,
-      onClick = { onComingSoon("Multi-value separators") },
+      currentLabel = multiValueSeparatorsLabel(snapshot.multiValueSeparators),
+      onClick = { separatorsPicker = true },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_INTELLIGENT_SORTING,
@@ -455,6 +458,44 @@ fun SettingsContentScreen(
       onDismiss = { albumCoversPicker = false },
     )
   }
+
+  if (separatorsPicker) {
+    MultiSelectPicker(
+      title = "Multi-value separators",
+      options = MultiValueSeparator.entries,
+      label = ::multiValueSeparatorOptionLabel,
+      currentSelection = snapshot.multiValueSeparators,
+      onSave = { newSelection ->
+        scope.launch { repository.setMultiValueSeparators(newSelection) }
+        separatorsPicker = false
+        if (newSelection != snapshot.multiValueSeparators) {
+          scope.launch {
+            snackbarHostState.showSnackbar(
+              "Multi-value separator change applied. Run Settings > Library > " +
+                "Rescan music to pick up existing tracks.",
+            )
+          }
+        }
+      },
+      onDismiss = { separatorsPicker = false },
+    )
+  }
+}
+
+internal fun multiValueSeparatorOptionLabel(s: MultiValueSeparator): String = when (s) {
+  MultiValueSeparator.Semicolon -> "Semicolon  ;"
+  MultiValueSeparator.Slash -> "Slash  /"
+  MultiValueSeparator.Comma -> "Comma  ,"
+  MultiValueSeparator.Ampersand -> "Ampersand  &"
+  MultiValueSeparator.Feat -> "feat."
+  MultiValueSeparator.Ft -> "ft."
+}
+
+internal fun multiValueSeparatorsLabel(selection: Set<MultiValueSeparator>): String {
+  if (selection.isEmpty()) return "Off"
+  // Surface the literal tokens so the row preview matches what the user
+  // selected. Sort by enum order to keep the preview deterministic.
+  return selection.sortedBy { it.ordinal }.joinToString("  ") { it.token }
 }
 
 internal fun albumCoversLabel(mode: AlbumCoversMode): String = when (mode) {
@@ -647,5 +688,53 @@ private fun <T> RadioPicker(
       }
     },
     confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+  )
+}
+
+// =============================================================================
+// D.9c.1 — Generic multi-select dialog. Multiple options can be enabled
+// simultaneously; tapping Save commits the new set, Cancel discards.
+// =============================================================================
+
+@Composable
+private fun <T> MultiSelectPicker(
+  title: String,
+  options: Iterable<T>,
+  label: (T) -> String,
+  currentSelection: Set<T>,
+  onSave: (Set<T>) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  // Local draft selection so the user can tick / untick without committing
+  // until they tap Save. Cancel discards everything.
+  var draft by remember(currentSelection) { mutableStateOf(currentSelection) }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(title) },
+    text = {
+      Column {
+        options.forEach { option ->
+          val checked = option in draft
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .selectable(
+                selected = checked,
+                onClick = {
+                  draft = if (checked) draft - option else draft + option
+                },
+              )
+              .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Checkbox(checked = checked, onCheckedChange = null)
+            Text(label(option), modifier = Modifier.padding(start = 12.dp))
+          }
+        }
+      }
+    },
+    confirmButton = { TextButton(onClick = { onSave(draft) }) { Text("Save") } },
+    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
   )
 }

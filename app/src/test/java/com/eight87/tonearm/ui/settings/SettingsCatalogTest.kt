@@ -212,9 +212,9 @@ class SettingsCatalogTest {
   @Test
   fun stubs_render_with_coming_soon_subtitle_so_search_results_are_honest() {
     // Phase D.9b removed the audio-quality stubs (ReplayGain strategy /
-    // pre-amp / Album covers); the only remaining stubs at this point
-    // live in Content (Automatic reloading, Multi-value separators —
-    // both deferred to D.9c / D.9d) and at the Root (Music sources).
+    // pre-amp / Album covers); D.9c removed the Multi-value separators
+    // stub. The only remaining sub-page stub is Automatic reloading
+    // (deferred to D.9d); Music sources lives at the Root.
     SettingsCatalog.entries
       .filter { it.kind == RowKind.Stub && it.section != Section.Root }
       .forEach { entry ->
@@ -224,6 +224,24 @@ class SettingsCatalogTest {
           entry.subtitle,
         )
       }
+  }
+
+  @Test
+  fun phase_d9c_tag_handling_settings_are_wired_not_stubbed() {
+    val separators = SettingsCatalog.byId(SettingsCatalog.ID_MULTI_VALUE_SEPARATORS)
+    val intelligent = SettingsCatalog.byId(SettingsCatalog.ID_INTELLIGENT_SORTING)
+    assertEquals(RowKind.Picker, separators.kind)
+    assertEquals(RowKind.Toggle, intelligent.kind)
+    assertFalse(
+      "Multi-value separators must not advertise 'Coming in v1.1' after D.9c",
+      separators.subtitle == "Coming in v1.1.",
+    )
+    // The intelligent-sorting subtitle was extended to mention the new
+    // language coverage — it should no longer claim only the/a/an.
+    assertTrue(
+      "Intelligent sorting subtitle should mention multi-language coverage",
+      intelligent.subtitle?.lowercase()?.contains("articles") == true,
+    )
   }
 
   @Test

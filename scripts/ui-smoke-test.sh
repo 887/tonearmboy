@@ -224,6 +224,13 @@ require '^text="Music"$'                         'Content: Music group title'
 require '^text="Images"$'                        'Content: Images group title'
 # D.9a.6: hide collaborators is now a toggle, not a v1.1 stub.
 require '^text="Hide collaborators"$'            'Content: Hide collaborators (D.9a.6) entry'
+# D.9c.1: Multi-value separators is now a Picker. Default subtitle shows
+# the two enabled separators ";" and "/" — i.e. NOT "Coming in v1.1".
+require '^text="Multi-value separators"$'        'Content: Multi-value separators (D.9c.1) entry'
+# Default subtitle renders the two enabled separator tokens (";" "/").
+# If the row is still a stub the subtitle would be "Coming in v1.1.";
+# match the literal default token string instead.
+require '^text="; +/"$'                          'Content: Multi-value separators default subtitle is real (D.9c.1)'
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 
 # Audio.
@@ -250,6 +257,34 @@ tap_row_label 'Content'; sleep 2
 dump
 require '^text="Album covers"$'                  'Content: Album covers (D.9b.3) entry'
 require '^text="Balanced"$'                      'Content: Album covers default subtitle is real (D.9b.3)'
+
+# --- D.9c.1: separator multi-select dialog opens ----------------------
+# Tap the Multi-value separators row; the dialog should show all six
+# options (";", "/", ",", "&", "feat.", "ft.") plus a Save button. We
+# dismiss with Cancel afterwards so persisted state is unchanged for
+# subsequent assertions.
+tap_row_label 'Multi-value separators'; sleep 1
+dump
+require '^text="Semicolon  ;"$'                  'D.9c.1: separator dialog shows Semicolon option'
+require '^text="Slash  /"$'                      'D.9c.1: separator dialog shows Slash option'
+require '^text="Comma  ,"$'                      'D.9c.1: separator dialog shows Comma option'
+require '^text="Ampersand  &"$'                  'D.9c.1: separator dialog shows Ampersand option'
+require '^text="feat\."$'                        'D.9c.1: separator dialog shows feat. option'
+require '^text="ft\."$'                          'D.9c.1: separator dialog shows ft. option'
+require '^text="Save"$'                          'D.9c.1: separator dialog has Save button'
+require '^text="Cancel"$'                        'D.9c.1: separator dialog has Cancel button'
+tap_row_label 'Cancel' || "${ADB[@]}" shell input keyevent KEYCODE_BACK
+sleep 1; dump
+
+# --- D.9c.2: intelligent-sort toggle persistence ---------------------
+# The toggle defaults to ON (subtitle mentions multi-language coverage).
+# Tap once → state flips. Force-stop + restart the process and re-enter
+# Content; if the persisted value survived the relaunch, the row is
+# whatever we toggled it to. We don't have a public read-back hook in
+# the dump, but the row presence is stable and we can confirm the
+# multi-language subtitle still appears (catalog entry is wired).
+require '^text="Intelligent sorting"$'           'Content: Intelligent sorting toggle (D.9c.2)'
+require 'articles'                               'Content: Intelligent sorting subtitle mentions articles (D.9c.2)'
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 

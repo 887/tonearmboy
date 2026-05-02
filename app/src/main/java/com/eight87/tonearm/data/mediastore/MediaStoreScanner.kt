@@ -39,7 +39,9 @@ class MediaStoreScanner(
    * is best-effort — a missing or malformed tag yields a null gain
    * value, never an exception that breaks the scan.
    */
-  fun scanTracks(): List<Track> {
+  fun scanTracks(
+    separators: Set<String> = emptySet(),
+  ): List<Track> {
     if (!MediaStorePermissions.hasAudioPermission(context)) {
       Log.w(TAG, "scanTracks: no audio permission, skipping")
       return emptyList()
@@ -69,7 +71,7 @@ class MediaStoreScanner(
       /* selectionArgs = */ null,
       "${MediaStore.Audio.Media.TITLE} ASC",
     )?.use { cursor ->
-      buildTracks(cursor, genreById)
+      buildTracks(cursor, genreById, separators)
     } ?: emptyList()
   }
 
@@ -77,7 +79,11 @@ class MediaStoreScanner(
   fun uriFor(trackId: Long): Uri =
     ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId)
 
-  private fun buildTracks(cursor: Cursor, genreById: Map<Long, String>): List<Track> {
+  private fun buildTracks(
+    cursor: Cursor,
+    genreById: Map<Long, String>,
+    separators: Set<String>,
+  ): List<Track> {
     val idIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
     val titleIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
     val artistIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
@@ -100,16 +106,30 @@ class MediaStoreScanner(
         Log.w(TAG, "ReplayGain read failed for id=$id: ${t.message}")
         ReplayGainTags.Empty
       }
+      val rawArtist = cursor.getStringOrNull(artistIdx)
+      val rawAlbumArtist = cursor.getStringOrNull(albumArtistIdx)
+      val rawGenre = genreById[id]
+
+      val artistsSplit = MultiValueSplitter.split(rawArtist, separators)
+      val albumArtistsSplit = MultiValueSplitter.split(rawAlbumArtist, separators)
+      val genresSplit = MultiValueSplitter.split(rawGenre, separators)
+
+      // The primary value is the *first* split value (used for display);
+      // the rest are folded into the rollup-derivation step.
+      val primaryArtist = artistsSplit.firstOrNull() ?: rawArtist
+      val primaryAlbumArtist = albumArtistsSplit.firstOrNull() ?: rawAlbumArtist
+      val primaryGenre = genresSplit.firstOrNull() ?: rawGenre
+
       out += Track(
         id = id,
         title = cursor.getString(titleIdx) ?: "",
-        artist = cursor.getStringOrNull(artistIdx),
+        artist = primaryArtist,
         album = cursor.getStringOrNull(albumIdx),
-        albumArtist = cursor.getStringOrNull(albumArtistIdx),
+        albumArtist = primaryAlbumArtist,
         durationMs = cursor.getLong(durationIdx),
         trackNumber = cursor.getIntOrNull(trackIdx),
         year = cursor.getIntOrNull(yearIdx),
-        genre = genreById[id],
+        genre = primaryGenre,
         data = cursor.getString(dataIdx) ?: "",
         dateAddedSeconds = cursor.getLong(dateAddedIdx),
         replayGainTrackDb = rg.trackGainDb,
@@ -117,6 +137,9 @@ class MediaStoreScanner(
         replayGainAlbumDb = rg.albumGainDb,
         replayGainAlbumPeak = rg.albumPeak,
         mediaStoreAlbumId = if (cursor.isNull(albumIdIdx)) null else cursor.getLong(albumIdIdx),
+        additionalArtists = artistsSplit.drop(1),
+        additionalAlbumArtists = albumArtistsSplit.drop(1),
+        additionalGenres = genresSplit.drop(1),
       )
     }
     return out

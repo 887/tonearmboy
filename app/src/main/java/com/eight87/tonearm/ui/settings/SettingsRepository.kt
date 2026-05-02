@@ -146,6 +146,38 @@ enum class AlbumCoversMode {
   }
 }
 
+/**
+ * D.9c.1 — separator characters / strings used to split multi-valued
+ * artist / album_artist / genre tags during scan. The user picks any
+ * subset; the splitter applies the selected ones with longest-match
+ * precedence. Defaults match Auxio: semicolon and forward-slash.
+ */
+enum class MultiValueSeparator(val token: String) {
+  Semicolon(";"),
+  Slash("/"),
+  Comma(","),
+  Ampersand("&"),
+  Feat("feat."),
+  Ft("ft."),
+  ;
+
+  companion object {
+    val Default: Set<MultiValueSeparator> = setOf(Semicolon, Slash)
+
+    fun fromStored(raw: String?): Set<MultiValueSeparator> {
+      if (raw == null) return Default
+      // Empty string means "user explicitly disabled all separators".
+      if (raw.isBlank()) return emptySet()
+      return raw.split(",")
+        .mapNotNull { name -> entries.firstOrNull { it.name == name } }
+        .toSet()
+    }
+
+    fun toStored(value: Set<MultiValueSeparator>): String =
+      value.sortedBy { it.ordinal }.joinToString(",") { it.name }
+  }
+}
+
 /** Library tabs in canonical order. */
 enum class LibraryTab {
   Songs,
@@ -224,6 +256,7 @@ data class SettingsSnapshot(
   val replayGainStrategy: ReplayGainStrategy,
   val replayGainPreampDb: Float,
   val albumCoversMode: AlbumCoversMode,
+  val multiValueSeparators: Set<MultiValueSeparator>,
 ) {
   companion object {
     val Default: SettingsSnapshot = SettingsSnapshot(
@@ -248,6 +281,7 @@ data class SettingsSnapshot(
       replayGainStrategy = ReplayGainStrategy.Default,
       replayGainPreampDb = 0f,
       albumCoversMode = AlbumCoversMode.Default,
+      multiValueSeparators = MultiValueSeparator.Default,
     )
   }
 }
@@ -361,6 +395,25 @@ class SettingsRepository(private val context: Context) {
   }
 
   /**
+   * D.9c.1 — persist the selected separator set. The empty set is a
+   * legal value (user disables all splitting) and is encoded as the
+   * empty string; a missing key falls back to [MultiValueSeparator.Default].
+   */
+  suspend fun setMultiValueSeparators(value: Set<MultiValueSeparator>) {
+    store.edit { it[KEY_MULTI_VALUE_SEPARATORS] = MultiValueSeparator.toStored(value) }
+  }
+
+  /**
+   * Hot Flow of the separator set. Used by [com.eight87.tonearm.data.LibraryRepository]
+   * during a scan; the scan reads the latest value once, splits, then
+   * persists. Toggling at runtime does *not* auto-rescan — the UI
+   * surfaces a snackbar prompting the user to run "Rescan music".
+   */
+  val multiValueSeparators: Flow<Set<MultiValueSeparator>> = store.data.map {
+    MultiValueSeparator.fromStored(it[KEY_MULTI_VALUE_SEPARATORS])
+  }
+
+  /**
    * Hot Flow of [SettingsSnapshot.hideCollaborators]; used by
    * [com.eight87.tonearm.data.LibraryRepository] to filter the artists
    * Flow without re-scanning the library when the user flips the toggle.
@@ -410,6 +463,7 @@ class SettingsRepository(private val context: Context) {
     replayGainPreampDb = (this[KEY_REPLAYGAIN_PREAMP] ?: SettingsSnapshot.Default.replayGainPreampDb)
       .coerceIn(REPLAYGAIN_PREAMP_MIN_DB, REPLAYGAIN_PREAMP_MAX_DB),
     albumCoversMode = AlbumCoversMode.fromStored(this[KEY_ALBUM_COVERS_MODE]),
+    multiValueSeparators = MultiValueSeparator.fromStored(this[KEY_MULTI_VALUE_SEPARATORS]),
   )
 
   companion object {
@@ -433,6 +487,7 @@ class SettingsRepository(private val context: Context) {
     internal val KEY_REPLAYGAIN_STRATEGY = stringPreferencesKey("replaygain_strategy")
     internal val KEY_REPLAYGAIN_PREAMP = floatPreferencesKey("replaygain_preamp_db")
     internal val KEY_ALBUM_COVERS_MODE = stringPreferencesKey("album_covers_mode")
+    internal val KEY_MULTI_VALUE_SEPARATORS = stringPreferencesKey("multi_value_separators")
 
     /** D.9b.2 — pre-amp slider bounds, fixed at [-15, +15] dB. */
     const val REPLAYGAIN_PREAMP_MIN_DB: Float = -15f

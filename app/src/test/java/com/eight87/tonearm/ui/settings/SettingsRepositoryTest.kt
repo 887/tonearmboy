@@ -51,6 +51,7 @@ class SettingsRepositoryTest {
     LibraryTab.entries.forEach { repo.setTabSort(it, TabSort.Default) }
     repo.setTheme(ThemePreference.System)
     repo.setColorScheme(ColorScheme.Default)
+    repo.setMultiValueSeparators(MultiValueSeparator.Default)
   }
 
   @After
@@ -148,5 +149,30 @@ class SettingsRepositoryTest {
     assertEquals(LibraryTab.Albums, parsed[0])
     assertEquals(LibraryTab.Songs, parsed[1])
     assertTrue(parsed.containsAll(LibraryTab.entries))
+  }
+
+  @Test
+  fun zz_multiValueSeparators_default_is_semicolon_and_slash() = runTest {
+    val initial = repo.multiValueSeparators.first()
+    assertEquals(MultiValueSeparator.Default, initial)
+    assertEquals(setOf(MultiValueSeparator.Semicolon, MultiValueSeparator.Slash), initial)
+  }
+
+  @Test
+  fun zz_multiValueSeparators_round_trip_persists_user_selection() = runTest {
+    val picked = setOf(
+      MultiValueSeparator.Comma,
+      MultiValueSeparator.Ampersand,
+      MultiValueSeparator.Feat,
+    )
+    repo.setMultiValueSeparators(picked)
+    assertEquals(picked, repo.multiValueSeparators.first())
+    assertEquals(picked, repo.snapshot.first().multiValueSeparators)
+  }
+
+  @Test
+  fun zz_multiValueSeparators_empty_set_disables_all_splitting() = runTest {
+    repo.setMultiValueSeparators(emptySet())
+    assertEquals(emptySet<MultiValueSeparator>(), repo.multiValueSeparators.first())
   }
 }

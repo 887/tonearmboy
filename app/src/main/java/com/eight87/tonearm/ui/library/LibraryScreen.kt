@@ -238,15 +238,12 @@ private fun tabLabel(tab: LibraryTab): String = when (tab) {
 
 internal fun sortNameKey(name: String, intelligentSorting: Boolean): String {
   if (!intelligentSorting) return name.uppercase()
-  // Drop a leading article token. Auxio's "intelligent sorting" feature
-  // is exactly this: ignore "the", "a", "an" at the start of the
-  // displayable name when computing sort order.
-  val trimmed = name.trim()
-  val lower = trimmed.lowercase()
-  for (article in arrayOf("the ", "a ", "an ")) {
-    if (lower.startsWith(article)) return trimmed.substring(article.length).uppercase()
-  }
-  return trimmed.uppercase()
+  // D.9c.2 — drop a leading article in any of the supported languages.
+  // The article list lives in `data/sort/IntelligentSort.kt`; see the
+  // multi-language test (`IntelligentSortMultiLanguageTest`).
+  return com.eight87.tonearm.data.sort.IntelligentSort
+    .stripLeadingArticle(name)
+    .uppercase()
 }
 
 private fun <T> applyDirection(items: List<T>, direction: SortDirection, comparator: Comparator<T>): List<T> {

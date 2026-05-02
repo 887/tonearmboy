@@ -19,6 +19,7 @@ import com.eight87.tonearm.data.model.Artist
 import com.eight87.tonearm.data.model.Genre
 import com.eight87.tonearm.data.model.Playlist
 import com.eight87.tonearm.data.model.Track
+import com.eight87.tonearm.ui.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -56,6 +58,12 @@ class LibraryRepository(
   private val scanner: MediaStoreScanner = MediaStoreScanner(context),
   private val db: LibraryDatabase = LibraryDatabase.get(context),
   private val externalScope: CoroutineScope = MainScope(),
+  /**
+   * D.9c.1 — read on every scan to apply the user's multi-value
+   * separator selection. Defaults to a fresh [SettingsRepository] so
+   * existing call sites keep working without ceremony.
+   */
+  private val settingsRepository: SettingsRepository = SettingsRepository(context),
 ) {
 
   private val rescanRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 16)
@@ -243,11 +251,18 @@ class LibraryRepository(
   }
 
   private suspend fun runScan(initial: Boolean) = scanMutex.withLock {
+    // D.9c.1 — read the latest separator selection (a one-shot, not a
+    // subscription) so re-scans triggered after the user toggles the
+    // setting see the new tokens. Existing-cache invalidation is the
+    // user's job: we surface a snackbar telling them to rescan.
+    val separators: Set<String> =
+      settingsRepository.multiValueSeparators.first().map { it.token }.toSet()
+
     // Snapshot the domain Track list so we keep the per-track album
     // ReplayGain values around long enough to fold them into the
     // derived AlbumEntity list. Track entities themselves only store
     // track-level fields; the album-level fields land on AlbumEntity.
-    val tracksDomain = scanner.scanTracks()
+    val tracksDomain = scanner.scanTracks(separators)
     val snapshot = tracksDomain.map { it.toEntity() }
     val snapshotIds = snapshot.map { it.id }.toHashSet()
 
@@ -260,8 +275,8 @@ class LibraryRepository(
       val albums = Mapping.foldAlbumReplayGain(
         Mapping.deriveAlbums(snapshot), albumGainPairs,
       )
-      val artists = Mapping.deriveArtists(snapshot)
-      val genres = Mapping.deriveGenres(snapshot)
+      val artists = Mapping.deriveArtistsFromDomain(tracksDomain)
+      val genres = Mapping.deriveGenresFromDomain(tracksDomain)
       db.libraryDao().replaceAll(snapshot, albums, artists, genres)
       Log.i(TAG, "scan(initial): tracks=${snapshot.size}")
     } else {
@@ -271,8 +286,8 @@ class LibraryRepository(
       val albums = Mapping.foldAlbumReplayGain(
         Mapping.deriveAlbums(snapshot), albumGainPairs,
       )
-      val artists = Mapping.deriveArtists(snapshot)
-      val genres = Mapping.deriveGenres(snapshot)
+      val artists = Mapping.deriveArtistsFromDomain(tracksDomain)
+      val genres = Mapping.deriveGenresFromDomain(tracksDomain)
       db.libraryDao().applyDelta(removed, upserted, albums, artists, genres)
       Log.i(TAG, "scan(delta): added/updated=${upserted.size}, removed=${removed.size}")
     }

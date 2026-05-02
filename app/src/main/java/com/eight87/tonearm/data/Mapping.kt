@@ -123,9 +123,47 @@ internal object Mapping {
     return names.map { ArtistEntity(name = it) }
   }
 
+  /**
+   * D.9c.1 — derive artist rows from the live scan rather than from
+   * the cached `TrackEntity` set, so the per-track `additionalArtists` /
+   * `additionalAlbumArtists` lists produced by the multi-value splitter
+   * contribute extra rows. Falls back to the entity-only behaviour for
+   * tracks with no additional values.
+   */
+  fun deriveArtistsFromDomain(tracks: List<Track>): List<ArtistEntity> {
+    val names = LinkedHashSet<String>()
+    for (t in tracks) {
+      // Prefer album-artist when present; else artist. Splits are
+      // already applied — the primary value is in `albumArtist`/`artist`,
+      // additional values in the parallel lists.
+      val primary = t.albumArtist ?: t.artist
+      primary?.takeIf { it.isNotBlank() }?.let { names += it }
+      val additional = if (t.albumArtist != null) {
+        t.additionalAlbumArtists
+      } else {
+        t.additionalArtists
+      }
+      for (a in additional) if (a.isNotBlank()) names += a
+    }
+    return names.map { ArtistEntity(name = it) }
+  }
+
   fun deriveGenres(tracks: List<TrackEntity>): List<GenreEntity> {
     val names = LinkedHashSet<String>()
     for (t in tracks) t.genre?.let { names += it }
+    return names.map { GenreEntity(name = it) }
+  }
+
+  /**
+   * D.9c.1 — derive genre rows from the live scan, including each
+   * track's `additionalGenres` from the multi-value splitter.
+   */
+  fun deriveGenresFromDomain(tracks: List<Track>): List<GenreEntity> {
+    val names = LinkedHashSet<String>()
+    for (t in tracks) {
+      t.genre?.takeIf { it.isNotBlank() }?.let { names += it }
+      for (g in t.additionalGenres) if (g.isNotBlank()) names += g
+    }
     return names.map { GenreEntity(name = it) }
   }
 }
