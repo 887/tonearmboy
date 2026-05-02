@@ -547,7 +547,7 @@ Six sub-steps:
 
 ---
 
-## Phase D.25 — custom-color theme picker + remove dead Round-mode toggle — shipped in commit `187f540`
+## Phase D.25 — custom-color theme picker + remove dead Round-mode toggle — shipped in commit `9dfd7b7`
 
 Real-device feedback round 6 from the Look-and-Feel + Base-theme dialog screenshots: the Base-theme picker has only three options (Default Android / Default colors / Pure black). User wants a fourth option that opens a real color picker so they can pick a primary seed color and have Material 3 derive the full ColorScheme from it. Separately, the "Round mode" toggle in Look-and-Feel currently does nothing visible — user is committing to Material 3 round elements everywhere with no Material-2 fallback, so the toggle is dead code.
 
