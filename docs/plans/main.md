@@ -501,7 +501,7 @@ Five sub-steps:
 
 ---
 
-## Phase D.24 — mini-player transport + merge queue into NowPlaying
+## Phase D.24 — mini-player transport + merge queue into NowPlaying — shipped in commit `2f65e23`
 
 Real-device feedback round 5 from the queue + NowPlaying screenshots: the standalone queue sheet duplicates the transport surface (shuffle / repeat / filter live there, transport lives on NowPlaying), and the mini-player at the bottom of the library only renders title + thin progress — no prev / play / next visible. User asks to merge the queue *into* NowPlaying as a scrollable section below the transport (one screen, one fewer tap to reach the queue), and to give the mini-player a real two-row transport layout while staying compact.
 
