@@ -115,7 +115,7 @@ Goal: full system integration. Player controllable from notification, lock scree
 - `JAVA_HOME=… ANDROID_HOME=… ./gradlew testDebugUnitTest` passes. Robolectric coverage of the queue-persistence layer at `app/src/test/java/com/eight87/tonearm/playback/QueuePersistenceTest.kt` (6 cases).
 - `scripts/playback-smoke-test.sh` passes — all five Phase E assertions green on `emulator-5554`. The script fires `SMOKE_PLAY` with title / artist / album extras (underscore-separated since `am broadcast --es` chops on spaces), asserts the MediaSession + notification, locks the screen and asserts PlaybackState is reachable, fires media-button keyevents, kills + relaunches + asserts queue restoration, then force-stops and asserts notification removal. Lock-screen + expanded notification screenshots committed under `docs/screenshots/phase-e/`.
 
-**Shipped:** _(not yet)_
+**Shipped:** E.1–E.5 in commit `ba8dbc5`.
 
 ---
 
