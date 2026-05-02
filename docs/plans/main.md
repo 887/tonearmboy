@@ -266,6 +266,31 @@ Goal: enable a "vibing from my phone with the Claude app" workflow. User asks Cl
 
 ---
 
+## Phase D.15 — Library navigation + playlist CRUD + remaining v1.1 cleanup
+
+User-found via real-device testing of the `v1.0-503517f` release. Each is a "tap does nothing" or "Coming in v1.1" leftover. **No v1.1 stubs survive Phase D after this lands.**
+
+- [ ] **D.15.1 Album detail navigation.** Tap an album tile (in `AlbumsGridScreen` or an artist's album list) → `AlbumDetailScreen` showing the album's tracks. Header: large cover art, title, artist, year, track count, total duration. Tracks list below, tappable. Reuses the existing `TracksListScreen` row composable. Plays from the album per the D.9a.5 "When playing from item details" strategy.
+- [ ] **D.15.2 Artist detail navigation.** Tap an artist row → `ArtistDetailScreen` showing the artist's albums (grid), then their tracks (list) below. Header: artist name, album count, track count.
+- [ ] **D.15.3 Genre detail navigation.** Tap a genre row → `GenreDetailScreen` showing all tracks in that genre. Header: genre name, track count.
+- [ ] **D.15.4 Playlist CRUD wired end-to-end.**
+    - [ ] **D.15.4.1** "New Playlist" Create button persists a `PlaylistEntity` to Room (currently the dialog opens but Create no-ops).
+    - [ ] **D.15.4.2** Created playlist appears in the Playlists tab list.
+    - [ ] **D.15.4.3** Tap a playlist row → `PlaylistDetailScreen` (already exists — verify it loads with real data).
+    - [ ] **D.15.4.4** Long-press a playlist row → context menu with Rename / Delete. Rename opens a dialog; Delete asks for confirmation then removes via Room cascading delete.
+- [ ] **D.15.5 Now Playing queue button.** Top-right icon (currently visible but inert) opens a `ModalBottomSheet` showing the current queue. Each row: track title / artist / drag handle / remove icon. Drag-to-reorder mutates the `MediaController`'s queue. Tap-to-play jumps to that index.
+- [ ] **D.15.6 Track-row overflow menu items wired.** Currently each shows "Coming in v1.1" snackbar. Replace each with real behaviour:
+    - [ ] **D.15.6.1** Add to queue → `MediaController.addMediaItem(track)`.
+    - [ ] **D.15.6.2** Add to playlist → opens a playlist-picker bottom sheet (lists existing playlists + a "New playlist" affordance) → on selection adds the track to that playlist via Room.
+    - [ ] **D.15.6.3** Go to album → navigates to `AlbumDetailScreen` for `track.albumId`.
+    - [ ] **D.15.6.4** Go to artist → navigates to `ArtistDetailScreen` for `track.artistId` (if multiple artists, picker; for v1 take the primary `albumArtist` or first artist).
+- [ ] **D.15.7 Now Playing cover art.** Currently shows MusicNote placeholder even when the track has embedded art (Velvet Den case). Load the cover via the same `CoverArt` composable D.9b.3 ships, sized to fill the now-playing art surface. Fallback to placeholder only when the track genuinely has no art (Field Recordings case).
+- [ ] **D.15.8 Tests + screenshots.** Per-feature Robolectric unit tests (navigation routes, Add-to-queue MediaController calls, playlist CRUD DB writes, queue-sheet reorder semantics). `scripts/ui-smoke-test.sh` extended with: tap album → AlbumDetail opens; tap artist → ArtistDetail; New Playlist → Create → playlist persists across app restart; track overflow → Add to queue → queue length increments. Screenshots: `70-d15-album-detail.png`, `71-d15-artist-detail.png`, `72-d15-genre-detail.png`, `73-d15-playlist-detail-real-data.png`, `74-d15-queue-sheet.png`, `75-d15-overflow-add-to-playlist.png`, `76-d15-now-playing-real-cover.png`.
+
+**Shipped:** _(in progress — dispatches now)_
+
+---
+
 ## Phase F — file deletion (the differentiator)
 
 Goal: delete audio files from inside the player, with the system consent dialog and proper cache invalidation.
