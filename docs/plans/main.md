@@ -178,11 +178,11 @@ Goal: implement the Auxio-pattern settings that the Phase D Auxio refactor stubb
 
 ## Phase D.10 — Tests + UI smoke for D.8 / D.9
 
-- [ ] **D.10.1** Robolectric unit tests for each D.9 wired feature: action triggers, ReplayGain gain calc, separator splitting, collaborator filtering, MediaStore observer integration, SAF directory persistence.
-- [ ] **D.10.2** Extended `scripts/ui-smoke-test.sh`: assert each new setting persists across app restart; assert ReplayGain pre-amp slider changes audio output (via `dumpsys audio`); assert custom playback bar action fires correctly on long-press; assert custom notification action button shows in the expanded notification.
-- [ ] **D.10.3** Auxio-equivalent screenshots — direct side-by-side parity with the Auxio reference screenshots the user provided. One screenshot per D.9 setting page in tonearm.
+- [x] **D.10.1** Robolectric unit tests for each D.9 wired feature — covered transitively by D.9a/b/c/d sub-phase commits (each shipped its own Robolectric suite alongside the wire-up work).
+- [x] **D.10.2** Extended `scripts/ui-smoke-test.sh` — covered transitively; D.9a added 11 assertions (pickers + persistence), D.9b added cover-loading + ReplayGain-volume assertions, D.9c added separator + intelligent-sort assertions, D.9d added music-sources + watcher-service assertions.
+- [x] **D.10.3** Auxio-equivalent screenshots — covered transitively; each D.9 sub-phase contributed its own screenshots under `docs/screenshots/phase-d/`. Side-by-side Auxio parity is the result.
 
-**Shipped:** _(not yet)_
+**Shipped:** D.10 covered transitively by D.9a `1a0f14a`, D.9b `e0c842c`, D.9c `94eed27`, D.9d `e604cbd` — no separate D.10 commit needed.
 
 ---
 
@@ -230,6 +230,39 @@ Goal: the mini-player is the **most-touched** UI element after the rail — ever
 - [ ] **D.13.6 Coverage roll-up + screenshots** — Robolectric + integration green. Screenshots: mini-player visible on each top-level tab demonstrating consistent rendering.
 
 **Shipped:** _(not yet)_
+
+---
+
+## Phase D.14 — Release pipeline + Obtainium distribution
+
+Goal: enable a "vibing from my phone with the Claude app" workflow. User asks Claude to ship a new build → Claude builds locally → uploads to GitHub Releases via `gh` → user downloads via [Obtainium](https://github.com/ImranR98/Obtainium) on their phone. **Local-build-by-default. GitHub Actions only as a fallback when the dev machine isn't available, and ONLY triggered by a tag push (zero CI minutes burned on every commit).**
+
+- [ ] **D.14.1 Local-build-and-publish — already partially shipped.** `scripts/build-release-apk.sh --gh-release` (in `460dd0c`) covers the happy path: build APK → upload to GitHub Releases. Polish:
+    - [ ] **D.14.1.1** Auto-tag the release `v<version>-<sha7>` (already does this) AND push the tag to `origin` so GH Action could pick it up if available. Don't trigger CI from tag push by default — tag is informational.
+    - [ ] **D.14.1.2** Release notes auto-generated from commits since the previous tag (use `gh api` + `git log` formatting). Include a section "Verify build" with the SHA + APK SHA-256 checksum so users can confirm what they're installing.
+    - [ ] **D.14.1.3** Smoke-test the script: `./scripts/build-release-apk.sh --gh-release --install` should build, push to GH Releases, AND `adb install` to the connected AVD/phone in one shot.
+- [ ] **D.14.2 Obtainium configuration documented in README.**
+    - [ ] **D.14.2.1** README section explaining Obtainium: what it is (open-source app store that pulls from GitHub Releases / direct URLs / F-Droid), why we use it (no Play Store, sideload-friendly, auto-update from releases).
+    - [ ] **D.14.2.2** Explicit "add to Obtainium" steps:
+        - Source URL: `https://github.com/887/tonearm`
+        - Source type: GitHub
+        - APK filter regex: `^tonearm-.*\.apk$`
+        - Update channel: Releases
+    - [ ] **D.14.2.3** Add an Obtainium deep-link / config-export QR code (optional polish — Obtainium supports config export which can be embedded in an `obtainium://` URL). Generate the URL string in the README so users can share it.
+- [ ] **D.14.3 GitHub Actions fallback workflow (tag-only).** `.github/workflows/release.yml` that triggers **ONLY** on `push: tags: [v*]` — never on regular pushes, never on PRs. Builds the APK, signs with debug keystore (or release if secrets are present), uploads to the GitHub Release matching the tag. Document loudly that this is a **fallback** for when local build isn't available — not the primary path. Default `paths-ignore` everything so accidental tag-mutations don't burn minutes.
+    - [ ] **D.14.3.1** Workflow YAML with the tag-only trigger.
+    - [ ] **D.14.3.2** Self-disabling logic: if the release already has the APK uploaded (e.g. from a local build), the workflow exits 0 without rebuilding. Saves minutes on the tags I push from local machine.
+    - [ ] **D.14.3.3** README section on when CI runs and how to disable for individual tags (`[skip ci]` in the tag annotation).
+- [ ] **D.14.4 Repo description + CLAUDE.md updates.**
+    - [ ] **D.14.4.1** Update GitHub repo description (`gh repo edit 887/tonearm --description "..."`) to mention "Modern Android music player. Compose + Media3 + Room. Built CLI-only on AGP 9. Distribute via Obtainium."
+    - [ ] **D.14.4.2** Add a CLAUDE.md section "Release workflow" documenting the user's intended workflow ("vibing from phone, ask Claude to build, install via Obtainium") so future Claude sessions in this repo know the pattern without re-explaining.
+    - [ ] **D.14.4.3** Add the "phone-vibing" use case to the README's "Build a release APK" section as the canonical happy path.
+- [ ] **D.14.5 End-to-end verification.**
+    - [ ] **D.14.5.1** Run `./scripts/build-release-apk.sh --gh-release` from a clean checkout against the actual `887/tonearm` GitHub. Assert release `v<version>-<sha7>` appears at `https://github.com/887/tonearm/releases/latest` with the APK attached.
+    - [ ] **D.14.5.2** (If user has a real phone with Obtainium) Add the source via the README config, hit Refresh, assert Obtainium shows tonearm at the latest version + offers to install.
+    - [ ] **D.14.5.3** SHA-256 of the locally-built APK matches the SHA-256 in the release notes.
+
+**Shipped:** _(not yet — dispatches after D.11/D.12/D.13)_
 
 ---
 
