@@ -8,7 +8,6 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
-import androidx.media3.common.Player
 import com.eight87.tonearm.playback.QueueItem
 import com.eight87.tonearm.playback.QueueSnapshot
 import org.junit.Rule
@@ -18,13 +17,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * D.21.5 — pin the quick-filter behaviour:
+ * D.24.5 — pin the quick-filter behaviour against the inlined
+ * [QueueSection]:
  *  - typing into the field filters the up-next list to substring
  *    matches on title + artist (case-insensitive)
  *  - while the filter is non-empty, drag handles render in the
- *    "disabled" testTag and the controller-level move callback can't
- *    fire (we assert by checking the disabled-handle testTag is
- *    present)
+ *    "disabled" testTag so the user can't drag inside a filtered subset
  *  - the filter is render-only — the underlying queue snapshot is
  *    unchanged
  */
@@ -48,18 +46,11 @@ class QueueFilterTest {
   private fun render() {
     composeRule.setContent {
       MaterialTheme {
-        QueueSheetContent(
+        QueueSection(
           snapshot = snapshot(),
-          shuffleEnabled = false,
-          repeatMode = Player.REPEAT_MODE_OFF,
           onJumpTo = {},
           onRemove = {},
           onMove = { _, _ -> },
-          onSeek = {},
-          onToggleShuffle = {},
-          onCycleRepeat = {},
-          positionMs = 0,
-          durationMs = 60_000,
         )
       }
     }
@@ -68,7 +59,7 @@ class QueueFilterTest {
   @Test
   fun unfiltered_renders_all_up_next_rows_with_active_drag_handles() {
     render()
-    // Three up-next entries (snapshot has 4 with index 0 active).
+    // Three up-next entries (4 total, currentIndex=0 active).
     composeRule.onAllNodesWithTag("queue_row", useUnmergedTree = true)
       .assertCountEquals(3)
     composeRule.onAllNodesWithTag("queue_drag_handle", useUnmergedTree = true)
@@ -98,8 +89,6 @@ class QueueFilterTest {
     composeRule.onNodeWithTag("queue_filter_field", useUnmergedTree = true)
       .performTextInput("velvet")
     composeRule.waitForIdle()
-    // Drag handles flip to the disabled testTag while the filter is
-    // active so the user can't drag inside a filtered subset.
     composeRule.onAllNodesWithTag("queue_drag_handle_disabled", useUnmergedTree = true)
       .assertCountEquals(2)
     composeRule.onAllNodesWithTag("queue_drag_handle", useUnmergedTree = true)

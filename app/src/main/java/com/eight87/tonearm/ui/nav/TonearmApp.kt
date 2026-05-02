@@ -176,6 +176,8 @@ fun TonearmApp(
           onTogglePlayPause = playback::togglePlayPause,
           onClose = playback::stop,
           onExpand = { backStack.push(NowPlaying) },
+          onSkipNext = playback::seekToNext,
+          onSkipPrevious = playback::seekToPrevious,
           onPlayButtonLongPress = {
             playback.performCustomBarAction(settingsSnapshot.customBarAction)
           },

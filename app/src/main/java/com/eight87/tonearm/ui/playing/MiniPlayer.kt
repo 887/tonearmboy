@@ -19,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -43,15 +45,20 @@ import com.eight87.tonearm.ui.settings.AlbumCoversMode
  * Persistent mini-player. Shown as the slot directly above the bottom
  * navigation bar whenever the controller has media queued.
  *
- * D.21.1 polish — denser hierarchy modeled on Auxio:
- *  - 56-dp album thumbnail (real `CoverArt` driven by
- *    `state.mediaStoreAlbumId`, falling back to the music-note
- *    placeholder for tracks without album art)
- *  - title in `bodyLarge`, "artist · album" in `bodySmall`
- *  - thin `LinearProgressIndicator` flush against the bottom edge,
- *    fed by `state.positionMs / state.durationMs`
- *  - tap the row body to open NowPlaying (no separate chevron); the
- *    play/pause button and close-X stay tappable in place
+ * D.24.1 layout — three rows, total height ≤ 96 dp:
+ *  - **Info row** (48-dp art + title + "artist · album" + close-X). The
+ *    info row's `clickable` opens NowPlaying — tapping art / title /
+ *    subtitle is the expand affordance. The close-X stays tappable in
+ *    place to stop playback without expanding.
+ *  - **Transport row** — centered prev / play-pause / next icon
+ *    buttons, sized for the mini-player density. Long-press on
+ *    play-pause keeps the existing custom-bar-action behaviour.
+ *  - **Progress strip** — slim 2-dp `LinearProgressIndicator` flush
+ *    against the bottom edge.
+ *
+ * The `mini_player` testTag is attached to the info row (which carries
+ * the `clickable`) so tap-to-expand semantics in tests still resolve to
+ * a single semantics node with a click action.
  */
 @OptIn(ExperimentalFoundationApi::class, UnstableApi::class)
 @Composable
@@ -60,6 +67,8 @@ fun MiniPlayer(
   onTogglePlayPause: () -> Unit,
   onClose: () -> Unit,
   onExpand: () -> Unit,
+  onSkipNext: () -> Unit = {},
+  onSkipPrevious: () -> Unit = {},
   onPlayButtonLongPress: () -> Unit = {},
   albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
 ) {
@@ -67,26 +76,31 @@ fun MiniPlayer(
   Column(
     modifier = Modifier
       .fillMaxWidth()
-      .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-      .clickable(onClick = onExpand)
-      .semantics { testTag = "mini_player" },
+      .background(MaterialTheme.colorScheme.surfaceContainerHigh),
   ) {
+    // -- Info row ------------------------------------------------------
+    // testTag `mini_player` lives here (with the clickable for onExpand)
+    // so tests that `performClick` on the row dispatch the expand
+    // handler. Tapping the play / prev / next buttons or close-X lands
+    // on those inner clickables instead.
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 12.dp, vertical = 8.dp),
+        .clickable(onClick = onExpand)
+        .padding(horizontal = 12.dp, vertical = 6.dp)
+        .semantics { testTag = "mini_player" },
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      // D.21.1: real album thumb at 56 dp, matching Auxio's row height.
-      // CoverArt handles the placeholder fallback when albumId is null.
+      // D.24.1: 48-dp album thumb (down from 56 dp in D.21.1) to make
+      // room for the transport row while keeping total height ≤ 96 dp.
       CoverArt(
         albumId = state.mediaStoreAlbumId,
-        size = 56.dp,
+        size = 48.dp,
         mode = albumCoversMode,
         contentDescription = null,
         modifier = Modifier
-          .size(56.dp)
+          .size(48.dp)
           .clip(RoundedCornerShape(6.dp))
           .semantics { testTag = "mini_player_cover" },
       )
@@ -97,8 +111,6 @@ fun MiniPlayer(
           maxLines = 1,
           modifier = Modifier.semantics { testTag = "mini_player_title" },
         )
-        // D.21.1: "artist · album" in bodySmall. Drop empty fields so
-        // single-tag tracks don't render a stray separator.
         val subtitle = listOfNotNull(
           state.artist.takeIf { it.isNotBlank() },
           state.album.takeIf { it.isNotBlank() },
@@ -111,10 +123,38 @@ fun MiniPlayer(
           modifier = Modifier.semantics { testTag = "mini_player_subtitle" },
         )
       }
-      // D.9a.1 — `IconButton` doesn't expose a long-press hook, so build a
-      // 40-dp tap target by hand using `combinedClickable` over the same
-      // Icon. Long-press triggers the user's chosen Custom playback bar
-      // action; tap toggles play/pause as before.
+      IconButton(
+        onClick = onClose,
+        modifier = Modifier.semantics { testTag = "mini_player_close" },
+      ) {
+        Icon(imageVector = Icons.Filled.Close, contentDescription = "Stop")
+      }
+    }
+
+    // -- Transport row -------------------------------------------------
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 8.dp)
+        .semantics { testTag = "mini_player_transport_row" },
+      horizontalArrangement = Arrangement.Center,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      IconButton(
+        onClick = onSkipPrevious,
+        enabled = state.hasPrevious,
+        modifier = Modifier.semantics { testTag = "mini_player_prev" },
+      ) {
+        Icon(
+          imageVector = Icons.Filled.SkipPrevious,
+          contentDescription = "Previous",
+        )
+      }
+
+      // D.9a.1 — `IconButton` doesn't expose a long-press hook, so build
+      // a 40-dp tap target by hand using `combinedClickable`. Long-press
+      // triggers the user's chosen Custom playback bar action; tap
+      // toggles play/pause.
       val interaction = remember { MutableInteractionSource() }
       Box(
         modifier = Modifier
@@ -137,14 +177,20 @@ fun MiniPlayer(
           tint = LocalContentColor.current,
         )
       }
-      IconButton(onClick = onClose) {
-        Icon(imageVector = Icons.Filled.Close, contentDescription = "Stop")
+
+      IconButton(
+        onClick = onSkipNext,
+        enabled = state.hasNext,
+        modifier = Modifier.semantics { testTag = "mini_player_next" },
+      ) {
+        Icon(
+          imageVector = Icons.Filled.SkipNext,
+          contentDescription = "Next",
+        )
       }
     }
-    // D.21.1: slim under-bar progress strip flush against the bottom
-    // edge of the mini-player surface. Indeterminate-looking when
-    // duration is unknown (use 0 progress so the bar stays empty
-    // rather than spinning).
+
+    // -- Progress strip ------------------------------------------------
     val total = state.durationMs
     val progress = if (total > 0L) {
       (state.positionMs.toFloat() / total.toFloat()).coerceIn(0f, 1f)

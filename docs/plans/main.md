@@ -509,28 +509,28 @@ Direct user quote: *"the queue and at the bottom of the app in the library are m
 
 Six sub-steps:
 
-- [ ] **D.24.1 Mini-player two-row layout.** `app/src/main/java/com/eight87/tonearm/ui/playing/MiniPlayer.kt`: refactor from the current single-row "art + title + small play/pause" into:
+- [x] **D.24.1 Mini-player two-row layout.** `app/src/main/java/com/eight87/tonearm/ui/playing/MiniPlayer.kt`: refactor from the current single-row "art + title + small play/pause" into:
   - Row 1: 48-dp album thumb (left) + title (`bodyLarge`) + "artist · album" (`bodySmall`) + close-X (right). Tap-target on this row opens NowPlaying.
   - Row 2: centered transport — prev / play-pause (filled icon button) / next. Same icon sizes as a compact `IconButton`.
   - Row 3: existing 2-dp `LinearProgressIndicator` flush at the bottom edge of the surface.
   
   Keep the existing long-press on play/pause for `customBarAction`. Total mini-player height stays ≤ 96 dp so it doesn't feel like a second NowPlaying.
-- [ ] **D.24.2 Merge queue into NowPlaying as one scrollable surface.** `NowPlayingScreen.kt` becomes a `LazyColumn` (or `LazyColumn` + a single Item-block for the now-playing card, then a body of queue items):
+- [x] **D.24.2 Merge queue into NowPlaying as one scrollable surface.** `NowPlayingScreen.kt` becomes a `LazyColumn` (or `LazyColumn` + a single Item-block for the now-playing card, then a body of queue items):
   - Item 1: existing top bar (back + queue-shortcut icon — repurposed as a "scroll to queue" affordance via `LazyListState.animateScrollToItem(queueStartIndex)`).
   - Item 2: album art + title / artist / album (large) + scrubber `Slider` + duration row.
   - Item 3: existing transport row (shuffle / prev / -10 / play-pause / +10 / next / repeat) — single source of truth for transport now.
   - Item 4: divider + "Up next" `labelMedium` header.
   - Item 5: `OutlinedTextField` filter (substring on title / artist; render-only filter; drag handles dim to alpha 0.3 while non-empty).
   - Items 6..N: drag-drop list of upcoming queue items (everything after `currentMediaItemIndex`). `DragReorderColumn` continues to call `mediaController.moveMediaItem`, but the visual-to-controller index translation now needs to account for the queue starting at `currentMediaItemIndex + 1` (not 0).
-- [ ] **D.24.3 Remove duplicate transport from the queue surface.** Currently `QueueSheet.kt` carries shuffle + repeat `IconToggleButton`s in its header. After the merge, those toggles live only in the NowPlaying transport row (D.21.4 already wired them there). Delete the duplicates from the queue section. Keep the active-track *pinning* concept absorbed: the now-playing card at the top of NowPlaying IS the active-track header, so the queue section starts directly with "Up next" + filter + upcoming list.
-- [ ] **D.24.4 Standalone QueueSheet decommission.** Delete `QueueSheet.kt` (or strip it down to the queue-section composable used inline by NowPlaying). Update every caller — the queue-shortcut icon in `MiniPlayer.kt`, the `onOpenQueue` lambda paths, anywhere `QueueSheet` was opened from — to instead push `NowPlaying` and scroll to the queue section. Confirm the queue items still render correctly when they live in a single scrolling surface with the transport.
-- [ ] **D.24.5 Preserve sorting / filtering / drag-drop semantics.** User explicitly called out: *"sorting etc here all still needs to work."* Verify in tests:
+- [x] **D.24.3 Remove duplicate transport from the queue surface.** Currently `QueueSheet.kt` carries shuffle + repeat `IconToggleButton`s in its header. After the merge, those toggles live only in the NowPlaying transport row (D.21.4 already wired them there). Delete the duplicates from the queue section. Keep the active-track *pinning* concept absorbed: the now-playing card at the top of NowPlaying IS the active-track header, so the queue section starts directly with "Up next" + filter + upcoming list.
+- [x] **D.24.4 Standalone QueueSheet decommission.** Delete `QueueSheet.kt` (or strip it down to the queue-section composable used inline by NowPlaying). Update every caller — the queue-shortcut icon in `MiniPlayer.kt`, the `onOpenQueue` lambda paths, anywhere `QueueSheet` was opened from — to instead push `NowPlaying` and scroll to the queue section. Confirm the queue items still render correctly when they live in a single scrolling surface with the transport.
+- [x] **D.24.5 Preserve sorting / filtering / drag-drop semantics.** User explicitly called out: *"sorting etc here all still needs to work."* Verify in tests:
   - Filter is render-only, doesn't reorder the underlying queue.
   - Drag-drop with filter empty calls `mediaController.moveMediaItem(visualFrom + currentIdx + 1, visualTo + currentIdx + 1)`.
   - Drag handles `enabled=false` + `alpha=0.3f` while filter is non-empty.
   - Removing a queue item via the X button calls `removeMediaItem(visualIndex + currentIdx + 1)`.
   - Tapping a queue row calls `seekToQueueIndex(visualIndex + currentIdx + 1)`.
-- [ ] **D.24.6 Tests + screenshots.** Robolectric / unit:
+- [x] **D.24.6 Tests + screenshots.** Robolectric / unit:
   - `MiniPlayerTransportTest` — assert prev / play-pause / next buttons present, tapping each invokes the right `PlaybackUiController` method, tap on info row opens NowPlaying.
   - `NowPlayingMergedQueueTest` — assert the LazyColumn contains transport row + "Up next" header + queue items below, all in one scroll surface; assert `animateScrollToItem` is hooked to the queue-shortcut icon.
   - `QueueIndexTranslationTest` — pin the visual-to-controller offset math (`visual + currentIdx + 1`) in three scenarios: empty filter, non-empty filter, currently-playing-is-first.
@@ -543,7 +543,7 @@ Six sub-steps:
   - `153-d24-queue-filter-active.png` (filter populated, drag handles dimmed)
   - `154-d24-queue-drag-mid.png` (mid-drag in the merged surface)
 
-**Shipped:** _(not yet)_
+**Shipped:** D.24.1–D.24.6 in a single commit. `MiniPlayer` becomes 3 rows (info + transport + progress) at ≤ 96 dp; `NowPlayingScreen` becomes a `LazyColumn` (now-playing card + transport + queue section) so the user scrolls from cover/transport straight into "Up next" without leaving the screen. The standalone `QueueSheet.kt` was renamed to `QueueSection.kt` (composable inlined into NowPlaying); shuffle / repeat / active-track-header duplicates are deleted from the queue surface (the now-playing card on top *is* the active-track header). Visual-to-controller index translation pinned in `translateVisualToReal(currentIdx, visual) = currentIdx + 1 + visual` for jump / remove / drag-reorder. Four new Robolectric test classes (`MiniPlayerTransportTest` 7 cases, `NowPlayingMergedQueueTest` 4 cases, `QueueIndexTranslationTest` 9 cases, `QueueRemovedDuplicateControlsTest` 4 cases). Two obsolete tests deleted (`QueueHeaderTest`, `ShuffleRepeatToggleTest`). Five screenshots captured on the headless AVD `medium_phone`.
 
 ---
 

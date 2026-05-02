@@ -4,30 +4,37 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * D.21.3 / D.21.6 — pin the visual-to-controller index translation
- * the queue sheet does when forwarding a drag-reorder to
- * `MediaController.moveMediaItem(from, to)`. Borrows from the
- * D.18.4 `DragDropReorderTest` pattern: the visual swap logic lives
- * in the shared `DragReorderColumn` (already tested by D.18.4); the
- * queue's job on top of that is to map visual positions in the
- * "up-next" list (which skips the active track) back to controller-
- * queue positions, so the move targets the right Media3 slot.
+ * D.24.5 — pin the visual-to-controller index translation that the
+ * inlined queue does when forwarding a drag-reorder to
+ * `MediaController.moveMediaItem(from, to)`.
+ *
+ * After D.24, the visual "up next" list no longer skips the active
+ * track at an arbitrary inner position — the active track is the
+ * NowPlaying card above the LazyColumn's queue section, and the up-
+ * next list starts at controller index `currentIndex + 1`. The
+ * translation is a uniform `+ currentIndex + 1` for every visual slot.
  */
 class QueueDragDropTest {
 
-  @Test fun visual_index_below_active_maps_one_to_one() {
-    // Queue: [T0, T1, T2(active), T3, T4]
-    // Up-next: [T0, T1, T3, T4]
-    // Drop at visual position 0 → controller position 0.
-    assertEquals(0, computeDestRealIndex(activeIndex = 2, toVisual = 0))
-    assertEquals(1, computeDestRealIndex(activeIndex = 2, toVisual = 1))
+  @Test fun visual_zero_maps_to_one_after_active() {
+    // Queue: [T0(active), T1, T2, T3]  →  up-next visual: [T1, T2, T3]
+    // Visual 0 → controller 1.
+    assertEquals(1, translateVisualToReal(currentIndex = 0, visual = 0))
   }
 
-  @Test fun visual_index_at_or_above_active_bumps_by_one() {
-    // Visual 2 sits in the up-next list right after the active track.
-    // In controller terms that's slot 3 (active occupies slot 2).
-    assertEquals(3, computeDestRealIndex(activeIndex = 2, toVisual = 2))
-    assertEquals(4, computeDestRealIndex(activeIndex = 2, toVisual = 3))
+  @Test fun visual_indices_walk_in_lockstep_with_currentIndex_plus_one() {
+    // Queue: [T0, T1, T2(active), T3, T4]  →  up-next visual: [T3, T4]
+    // Visual 0 → controller 3, visual 1 → controller 4.
+    assertEquals(3, translateVisualToReal(currentIndex = 2, visual = 0))
+    assertEquals(4, translateVisualToReal(currentIndex = 2, visual = 1))
+  }
+
+  @Test fun empty_queue_no_active_track_lands_at_visual() {
+    // currentIndex == -1 means the controller has no current item; we
+    // bottom out the offset at 0 so the math stays defined for tests
+    // / edge cases.
+    assertEquals(0, translateVisualToReal(currentIndex = -1, visual = 0))
+    assertEquals(2, translateVisualToReal(currentIndex = -1, visual = 2))
   }
 
   @Test fun firstDifference_detects_swap() {

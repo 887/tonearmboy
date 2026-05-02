@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -40,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,21 +57,28 @@ import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearm.playback.ConnectionPhase
 import com.eight87.tonearm.playback.PlaybackUiController
 import com.eight87.tonearm.playback.PlaybackUiState
+import com.eight87.tonearm.playback.QueueItem
+import com.eight87.tonearm.playback.QueueSnapshot
 import com.eight87.tonearm.ui.library.CoverArt
 import com.eight87.tonearm.ui.settings.AlbumCoversMode
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Full-screen Now Playing.
+ *
+ * D.24.2 — the queue is no longer a separate `ModalBottomSheet`. The
+ * whole surface is one scrollable `LazyColumn` with the now-playing
+ * card on top (cover + title + scrubber + transport row) and the
+ * queue inlined directly below. The queue-shortcut icon in the top
+ * app bar is repurposed as `animateScrollToItem` to the "Up next"
+ * header so users on a short device can jump to the queue without
+ * scrolling.
  *
  * Owns its own connect/release pair: while the host activity also
  * keeps a long-lived [PlaybackUiController] connected, this screen
  * still calls `connect()` (idempotent) on entry to be safe in deep-
  * link scenarios where Now Playing is the first composable rendered.
- *
- * Album art is a placeholder Material icon for now — Phase E adds
- * real album art once it has the notification + lock-screen plumbing
- * to drive the same bitmap.
  */
 @OptIn(ExperimentalMaterial3Api::class, UnstableApi::class)
 @Composable
@@ -77,20 +89,9 @@ fun NowPlayingScreen(
 ) {
   val state by playback.state.collectAsStateWithLifecycle()
   val queueSnapshot by playback.queue.collectAsStateWithLifecycle()
-  var showQueue by remember { mutableStateOf(false) }
+  val listState = rememberLazyListState()
+  val scope = rememberCoroutineScope()
 
-  // D.20.2 — the activity-owned `LaunchedEffect(Unit) { playback.connect() }`
-  // in `TonearmApp` is the single connect site. Calling `connect()`
-  // again here was redundant (the controller is idempotent) and the
-  // `remember { CoroutineScope(...) }` we used to hold the call was
-  // never cancelled, leaking the scope each time the screen recomposed
-  // off-and-on. The mini-player tap is now a pure NavKey push: open
-  // the screen, read the StateFlow that's already warm.
-
-  // D.22.3 — three distinct sub-states keyed off the connection phase
-  // and queue presence. We branch *outside* the Scaffold body so the
-  // chrome (top app bar with Back / Queue) renders identically across
-  // sub-states; only the content area swaps.
   Scaffold(
     topBar = {
       TopAppBar(
@@ -101,8 +102,16 @@ fun NowPlayingScreen(
           }
         },
         actions = {
+          // D.24.2 — repurpose the queue-shortcut icon as a "scroll to
+          // queue" affordance. The queue lives inline now, so there's
+          // nowhere new to navigate to — just animate to the section
+          // header within the same LazyColumn.
           IconButton(
-            onClick = { showQueue = true },
+            onClick = {
+              scope.launch {
+                listState.animateScrollToItem(QUEUE_LIST_INDEX)
+              }
+            },
             modifier = Modifier.semantics { testTag = "now_playing_queue" },
             enabled = state.hasMedia,
           ) {
@@ -126,77 +135,131 @@ fun NowPlayingScreen(
           .padding(innerPadding)
           .padding(24.dp),
       )
-      NowPlayingSubState.ConnectedWithMedia -> Column(
-      modifier = Modifier
-        .fillMaxSize()
-        .padding(innerPadding)
-        .padding(24.dp)
-        .semantics { testTag = "now_playing_screen" },
-      horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-      // D.15.7 — drive the same CoverArt the library tabs use; falls
-      // back to the music-note placeholder when albumId is null
-      // (Field Recordings tracks have no embedded art).
-      CoverArt(
-        albumId = state.mediaStoreAlbumId,
-        size = 96.dp,
-        mode = albumCoversMode,
-        contentDescription = state.title.ifEmpty { null },
+      NowPlayingSubState.ConnectedWithMedia -> NowPlayingMergedSurface(
+        state = state,
+        queueSnapshot = queueSnapshot,
+        listState = listState,
+        albumCoversMode = albumCoversMode,
+        onSeek = playback::seekTo,
+        onTogglePlayPause = playback::togglePlayPause,
+        onSeekBackward = playback::seekBackward,
+        onSeekForward = playback::seekForward,
+        onSeekToPrevious = playback::seekToPrevious,
+        onSeekToNext = playback::seekToNext,
+        onToggleShuffle = playback::toggleShuffle,
+        onCycleRepeat = playback::cycleRepeatMode,
+        onJumpToQueueIndex = playback::seekToQueueIndex,
+        onRemoveQueueItem = playback::removeQueueItem,
+        onMoveQueueItem = playback::moveQueueItem,
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(innerPadding)
+          .semantics { testTag = "now_playing_screen" },
+      )
+    }
+  }
+}
+
+/**
+ * D.24.2 — merged now-playing + queue surface. Single `LazyColumn`,
+ * scrollable from cover/transport at the top straight into the queue
+ * below.
+ *
+ * Item layout:
+ *  - 0: now-playing card (cover + title + subtitle + scrubber)
+ *  - 1: transport row (shuffle / prev / -10 / play / +10 / next /
+ *       repeat) — single source of truth for transport
+ *  - 2: queue section (divider + "Up next" header + filter +
+ *       drag-drop list)
+ *
+ * The queue-section item self-contains the divider, header, filter,
+ * and the drag-reorder list of upcoming items. We keep it in a single
+ * `item { ... }` block (rather than `items(...)`) because the drag-
+ * reorder helper needs to own its own scroll-axis offset translations
+ * and would conflict with `LazyColumn`'s recycler.
+ */
+@OptIn(UnstableApi::class)
+@Composable
+internal fun NowPlayingMergedSurface(
+  state: PlaybackUiState,
+  queueSnapshot: QueueSnapshot,
+  listState: LazyListState,
+  albumCoversMode: AlbumCoversMode,
+  onSeek: (Long) -> Unit,
+  onTogglePlayPause: () -> Unit,
+  onSeekBackward: () -> Unit,
+  onSeekForward: () -> Unit,
+  onSeekToPrevious: () -> Unit,
+  onSeekToNext: () -> Unit,
+  onToggleShuffle: () -> Unit,
+  onCycleRepeat: () -> Unit,
+  onJumpToQueueIndex: (Int) -> Unit,
+  onRemoveQueueItem: (Int) -> Unit,
+  onMoveQueueItem: (Int, Int) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  LazyColumn(
+    state = listState,
+    modifier = modifier,
+    verticalArrangement = Arrangement.spacedBy(16.dp),
+    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+      horizontal = 24.dp,
+      vertical = 16.dp,
+    ),
+  ) {
+    // -- Item 0: now-playing card ------------------------------------
+    item(key = "now_playing_card") {
+      Column(
         modifier = Modifier
           .fillMaxWidth()
-          .aspectRatio(1f)
-          .clip(RoundedCornerShape(12.dp))
-          .semantics { testTag = "now_playing_cover" },
-      )
-
-      Text(
-        text = state.title.ifEmpty { "No track" },
-        style = MaterialTheme.typography.headlineSmall,
-        maxLines = 2,
-        modifier = Modifier.semantics { testTag = "now_playing_title" },
-      )
-      Text(
-        text = listOfNotNull(
-          state.artist.takeIf { it.isNotBlank() },
-          state.album.takeIf { it.isNotBlank() },
-        ).joinToString(" · ").ifEmpty { "—" },
-        style = MaterialTheme.typography.bodyMedium,
-      )
-
-      Scrubber(
-        positionMs = state.positionMs,
-        durationMs = state.durationMs,
-        onSeek = { playback.seekTo(it) },
-      )
-
-      if (showQueue) {
-        QueueSheet(
-          snapshot = queueSnapshot,
-          shuffleEnabled = state.shuffleEnabled,
-          repeatMode = state.repeatMode,
-          onDismiss = { showQueue = false },
-          onJumpTo = { idx -> playback.seekToQueueIndex(idx) },
-          onRemove = { idx -> playback.removeQueueItem(idx) },
-          onMove = { from, to -> playback.moveQueueItem(from, to) },
-          onSeek = { playback.seekTo(it) },
-          onToggleShuffle = { playback.toggleShuffle() },
-          onCycleRepeat = { playback.cycleRepeatMode() },
+          .semantics { testTag = "now_playing_card" },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        CoverArt(
+          albumId = state.mediaStoreAlbumId,
+          size = 96.dp,
+          mode = albumCoversMode,
+          contentDescription = state.title.ifEmpty { null },
+          modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(12.dp))
+            .semantics { testTag = "now_playing_cover" },
+        )
+        Text(
+          text = state.title.ifEmpty { "No track" },
+          style = MaterialTheme.typography.headlineSmall,
+          maxLines = 2,
+          modifier = Modifier.semantics { testTag = "now_playing_title" },
+        )
+        Text(
+          text = listOfNotNull(
+            state.artist.takeIf { it.isNotBlank() },
+            state.album.takeIf { it.isNotBlank() },
+          ).joinToString(" · ").ifEmpty { "—" },
+          style = MaterialTheme.typography.bodyMedium,
+        )
+        Scrubber(
           positionMs = state.positionMs,
           durationMs = state.durationMs,
-          albumCoversMode = albumCoversMode,
+          onSeek = onSeek,
         )
       }
+    }
 
+    // -- Item 1: transport row ---------------------------------------
+    item(key = "transport_row") {
       Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+          .fillMaxWidth()
+          .semantics { testTag = "now_playing_transport_row" },
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        // D.21.4: shuffle toggle in the transport row.
         IconToggleButton(
           checked = state.shuffleEnabled,
-          onCheckedChange = { playback.toggleShuffle() },
+          onCheckedChange = { onToggleShuffle() },
           modifier = Modifier.semantics { testTag = "now_playing_shuffle" },
         ) {
           Icon(
@@ -204,29 +267,28 @@ fun NowPlayingScreen(
             contentDescription = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
           )
         }
-        IconButton(onClick = { playback.seekToPrevious() }, enabled = state.hasPrevious) {
+        IconButton(onClick = onSeekToPrevious, enabled = state.hasPrevious) {
           Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(36.dp))
         }
-        IconButton(onClick = { playback.seekBackward() }) {
+        IconButton(onClick = onSeekBackward) {
           Icon(Icons.Filled.Replay10, contentDescription = "Seek back 10 seconds", modifier = Modifier.size(36.dp))
         }
-        IconButton(onClick = { playback.togglePlayPause() }) {
+        IconButton(onClick = onTogglePlayPause) {
           Icon(
             imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
             contentDescription = if (state.isPlaying) "Pause" else "Play",
             modifier = Modifier.size(56.dp),
           )
         }
-        IconButton(onClick = { playback.seekForward() }) {
+        IconButton(onClick = onSeekForward) {
           Icon(Icons.Filled.Forward10, contentDescription = "Seek forward 10 seconds", modifier = Modifier.size(36.dp))
         }
-        IconButton(onClick = { playback.seekToNext() }, enabled = state.hasNext) {
+        IconButton(onClick = onSeekToNext, enabled = state.hasNext) {
           Icon(Icons.Filled.SkipNext, contentDescription = "Next", modifier = Modifier.size(36.dp))
         }
-        // D.21.4: repeat toggle on the right side of the transport row.
         IconToggleButton(
           checked = state.repeatMode != Player.REPEAT_MODE_OFF,
-          onCheckedChange = { playback.cycleRepeatMode() },
+          onCheckedChange = { onCycleRepeat() },
           modifier = Modifier.semantics { testTag = "now_playing_repeat" },
         ) {
           val (icon, desc) = when (state.repeatMode) {
@@ -238,9 +300,26 @@ fun NowPlayingScreen(
         }
       }
     }
+
+    // -- Item 2: queue section ---------------------------------------
+    item(key = "queue_section") {
+      QueueSection(
+        snapshot = queueSnapshot,
+        onJumpTo = onJumpToQueueIndex,
+        onRemove = onRemoveQueueItem,
+        onMove = onMoveQueueItem,
+      )
     }
   }
 }
+
+/**
+ * D.24.2 — index of the queue-section item inside [NowPlayingMergedSurface].
+ * Exposed as a constant so the top-app-bar queue button can
+ * `animateScrollToItem` to the right slot, and so tests can assert the
+ * scroll target without knowing the LazyColumn internals.
+ */
+internal const val QUEUE_LIST_INDEX: Int = 2
 
 /**
  * D.22.3 — three rendering modes for [NowPlayingScreen].
@@ -251,7 +330,8 @@ fun NowPlayingScreen(
  *  - [ConnectedEmpty]: the controller is bound but the session has
  *    no queue. We show an "empty card with CTA back to Library" and
  *    auto-pop after 300 ms so the user lands somewhere useful.
- *  - [ConnectedWithMedia]: the existing transport surface.
+ *  - [ConnectedWithMedia]: the existing transport surface, now with
+ *    the queue inlined below it (D.24.2).
  */
 internal enum class NowPlayingSubState {
   Connecting,
@@ -266,12 +346,6 @@ internal fun resolveSubState(state: PlaybackUiState): NowPlayingSubState = when 
   else -> NowPlayingSubState.ConnectedWithMedia
 }
 
-/**
- * D.22.3 — connecting sub-state. Visible while
- * `MediaController.Builder.buildAsync` is still pending. Auto-recomposes
- * to [NowPlayingSubState.ConnectedWithMedia] when the controller binds
- * and a queue is present.
- */
 @Composable
 private fun NowPlayingConnecting(modifier: Modifier = Modifier) {
   Column(
@@ -288,11 +362,6 @@ private fun NowPlayingConnecting(modifier: Modifier = Modifier) {
   }
 }
 
-/**
- * D.22.3 — connected-but-no-queue sub-state. Shows an empty-state
- * card and auto-pops after [EmptyAutoPopMs] so the user lands back on
- * Library rather than staring at a dead screen.
- */
 @Composable
 private fun NowPlayingEmpty(
   onBack: () -> Unit,
@@ -329,7 +398,6 @@ private const val EmptyAutoPopMs: Long = 300L
 private fun Scrubber(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit) {
   val total = durationMs.coerceAtLeast(0L)
   val pos = positionMs.coerceIn(0L, total.coerceAtLeast(positionMs))
-  // Slider takes Float in 0f..valueRange, anchor with current pos.
   var dragValue by remember(positionMs) { mutableStateOf<Float?>(null) }
   val sliderValue = dragValue ?: pos.toFloat()
   val sliderMax = total.toFloat().coerceAtLeast(1f)
