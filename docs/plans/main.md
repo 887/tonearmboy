@@ -222,14 +222,14 @@ Goal: comprehensive test coverage for the Phase E system-integration surfaces. N
 
 Goal: the mini-player is the **most-touched** UI element after the rail — every screen that isn't NowPlaying has it. Test it thoroughly.
 
-- [ ] **D.13.1 Visibility states** — Unit: `MiniPlayer` renders nothing when `MediaController.currentMediaItem == null`; renders with title/artist/play-pause/cover when playing; renders the same when paused (just transport icon flips). Integration: launch app cold, assert mini-player not visible. Play a track, assert it appears within 500ms. Stop playback completely (clear queue), assert it disappears.
-- [ ] **D.13.2 Tap-to-expand** — Unit: tapping the mini-player navigates to `NowPlayingScreen`. Integration: with playback active, tap mini-player on `emulator-5554`, assert NowPlaying opens.
-- [ ] **D.13.3 Inline play / pause toggle** — Unit: tap on the play-pause button calls `MediaController.play()` or `pause()` based on current state. Integration: with playback active, tap pause-icon on mini-player, assert player state transitions to paused; tap again, assert resumed.
-- [ ] **D.13.4 Custom playback bar action (D.9a.1)** — Unit: long-press on play button fires the configured action (Skip to next / Shuffle / Repeat / None) per current setting. Integration: set the setting to "Skip to next", play a track, long-press play button, assert next track loads. Repeat for Shuffle, Repeat, None (assert no-op).
-- [ ] **D.13.5 Title / artist / cover updates on track change** — Unit: as `MediaController.mediaMetadata` changes, the mini-player composable recomposes with the new fields. Integration: queue two tracks, play, advance to next, assert mini-player title/artist update within 500ms.
-- [ ] **D.13.6 Coverage roll-up + screenshots** — Robolectric + integration green. Screenshots: mini-player visible on each top-level tab demonstrating consistent rendering.
+- [x] **D.13.1 Visibility states** — Unit: `MiniPlayer` renders nothing when `MediaController.currentMediaItem == null`; renders with title/artist/play-pause/cover when playing; renders the same when paused (just transport icon flips). Integration: launch app cold, assert mini-player not visible. Play a track, assert it appears within 500ms. Stop playback completely (clear queue), assert it disappears. — shipped in commit `7ab4c98`.
+- [x] **D.13.2 Tap-to-expand** — Unit: tapping the mini-player navigates to `NowPlayingScreen`. Integration: with playback active, tap mini-player on `emulator-5554`, assert NowPlaying opens. — shipped in commit `7ab4c98`.
+- [x] **D.13.3 Inline play / pause toggle** — Unit: tap on the play-pause button calls `MediaController.play()` or `pause()` based on current state. Integration: with playback active, tap pause-icon on mini-player, assert player state transitions to paused; tap again, assert resumed. — shipped in commit `7ab4c98`.
+- [x] **D.13.4 Custom playback bar action (D.9a.1)** — Unit: long-press on play button fires the configured action (Skip to next / Shuffle / Repeat / None) per current setting. Integration: set the setting to "Skip to next", play a track, long-press play button, assert next track loads. Repeat for Shuffle, Repeat, None (assert no-op). — shipped in commit `7ab4c98`.
+- [x] **D.13.5 Title / artist / cover updates on track change** — Unit: as `MediaController.mediaMetadata` changes, the mini-player composable recomposes with the new fields. Integration: queue two tracks, play, advance to next, assert mini-player title/artist update within 500ms. — shipped in commit `7ab4c98`.
+- [x] **D.13.6 Coverage roll-up + screenshots** — Robolectric + integration green (20 unit cases across five test files). `scripts/ui-smoke-test.sh` exercises the integration paths under the `# Phase D.13` block. Five new screenshots committed: `60-d13-miniplayer-on-songs.png`, `61-d13-miniplayer-on-albums.png`, `62-d13-miniplayer-on-artists.png`, `63-d13-miniplayer-paused-state.png`, `64-d13-miniplayer-after-longpress.png`. — shipped in commit `7ab4c98`.
 
-**Shipped:** _(not yet)_
+**Shipped:** D.13.1 → D.13.6 in `7ab4c98` (tests + smoke) and the plan-tick follow-up.
 
 ---
 
