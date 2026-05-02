@@ -1,85 +1,56 @@
 package com.eight87.tonearm.ui.nav
 
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.navigation3.runtime.NavKey
 
 /**
- * Per-tab back stack manager for Navigation 3, lifted from the official
- * `navigation-3` skill's "Common UI" recipe and adapted to tonearm's
- * top-level destinations.
+ * Single-rooted back stack for tonearm.
  *
- * Each [TopLevelDestination] gets its own private stack; switching tabs
- * preserves the back history of the previously visible tab. The single
- * flat [backStack] exposed to `NavDisplay` is the concatenation of the
- * known per-tab stacks in their order of recent use, so back-navigation
- * unwinds the active tab first and then falls back through previously
- * visited tabs (which is what the recipe documents as the expected
- * behavior).
+ * The Auxio reference structure has one root destination ([LibraryRoot])
+ * and pushes everything else (search, settings tree, now playing,
+ * playlist detail) on top. There are no parallel per-tab stacks because
+ * the library tabs are not navigation destinations — they live inside
+ * the root composable itself.
  *
- * This class is intentionally NOT serializable on its own — the
- * activity-scoped instance lives in a `remember { }` block. Each
- * individual [NavKey] in the stacks is `@Serializable` (see
- * [Destination]), so when we move to a saveable variant in a future
- * pass we can lean on `rememberSaveable` + a custom `Saver`.
+ * Each entry is `@Serializable`; the activity-scoped instance lives in a
+ * `remember { }` block. Save/restore across process death will be added
+ * in a follow-up via `rememberSaveable` + a custom `Saver`.
  */
-class TonearmBackStack(startKey: TopLevelDestination) {
-
-  private val topLevelStacks: LinkedHashMap<TopLevelDestination, SnapshotStateList<NavKey>> =
-    linkedMapOf(startKey to mutableStateListOf<NavKey>(startKey))
-
-  /** Currently visible top-level tab. */
-  var topLevelKey: TopLevelDestination by mutableStateOf(startKey)
-    private set
+class TonearmBackStack(rootKey: Destination = LibraryRoot) {
 
   /** Flat back stack — what `NavDisplay` consumes. */
-  val backStack: SnapshotStateList<NavKey> = mutableStateListOf<NavKey>(startKey)
+  val backStack: SnapshotStateList<NavKey> = mutableStateListOf<NavKey>(rootKey)
 
-  private fun rebuildFlat() {
-    backStack.apply {
-      clear()
-      topLevelStacks.values.forEach { addAll(it) }
-    }
+  /** Currently visible destination. */
+  val current: NavKey
+    get() = backStack.last()
+
+  /** Push any destination onto the stack. */
+  fun push(key: NavKey) {
+    backStack.add(key)
   }
 
   /**
-   * Switch to a top-level tab. If the tab has no history yet it gets a
-   * fresh stack rooted at itself; otherwise the existing stack is moved
-   * to the end of the tab order so back-navigation lands on it last.
+   * Pop the current entry. Used as `NavDisplay.onBack`. The root entry
+   * cannot be popped — pressing back at the root is a no-op (the system
+   * back-press handler will let the activity finish).
    */
-  fun switchTo(tab: TopLevelDestination) {
-    val existing = topLevelStacks.remove(tab)
-    if (existing != null) {
-      topLevelStacks[tab] = existing
-    } else {
-      topLevelStacks[tab] = mutableStateListOf<NavKey>(tab)
-    }
-    topLevelKey = tab
-    rebuildFlat()
-  }
-
-  /** Push a detail key onto the active tab's stack. */
-  fun push(key: NavKey) {
-    topLevelStacks[topLevelKey]?.add(key)
-    rebuildFlat()
-  }
-
-  /** Pop the current entry. Used as `NavDisplay.onBack`. */
   fun pop() {
-    val stack = topLevelStacks[topLevelKey] ?: return
-    val removed = stack.removeLastOrNull()
-    // If we popped the tab root key itself, drop the whole stack so
-    // the previous tab is now active.
-    if (removed === topLevelKey) {
-      topLevelStacks.remove(topLevelKey)
-      topLevelKey = topLevelStacks.keys.lastOrNull() ?: topLevelKey
-    }
-    rebuildFlat()
+    if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
   }
 
-  /** Read-only view of "is this tab currently selected". */
-  fun isSelected(tab: TopLevelDestination): Boolean = tab == topLevelKey
+  /**
+   * Pop everything down to (and including) the first occurrence of [key]
+   * found from the top, then push it again — i.e. ensure [key] is on
+   * top exactly once. If [key] isn't already in the stack, just push.
+   */
+  fun popToOrPush(key: NavKey) {
+    val idx = backStack.indexOfFirst { it == key }
+    if (idx >= 0) {
+      while (backStack.size > idx + 1) backStack.removeAt(backStack.lastIndex)
+    } else {
+      push(key)
+    }
+  }
 }

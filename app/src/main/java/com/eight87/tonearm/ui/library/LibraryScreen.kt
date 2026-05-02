@@ -23,16 +23,25 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,60 +66,222 @@ import com.eight87.tonearm.data.model.Album
 import com.eight87.tonearm.data.model.Artist
 import com.eight87.tonearm.data.model.Genre
 import com.eight87.tonearm.data.model.Track
+import com.eight87.tonearm.ui.settings.LibraryTab
+import com.eight87.tonearm.ui.settings.SettingsRepository
+import com.eight87.tonearm.ui.settings.SortDirection
+import com.eight87.tonearm.ui.settings.SortKey
+import com.eight87.tonearm.ui.settings.TabSort
 import kotlinx.coroutines.launch
 
-private val LibraryTabs = listOf("Albums", "Artists", "Tracks", "Genres", "Playlists")
-
 /**
- * Single-screen Library with five tabs.
+ * The library is the **root** destination. It holds the top app bar
+ * ("tonearm" title + search / sort / overflow icons), the
+ * `PrimaryTabRow` for {Songs, Albums, Artists, Genres, Playlists}, and
+ * the per-tab content. Per-tab sort state is read from
+ * [SettingsRepository] and persisted on confirm.
  *
- * **Design choice (D.2):** Five sibling library views work as a tabbed
- * group rather than five top-level destinations. Reasoning:
- *  - The five views are conceptually one place ("the library"), and
- *    Material 3's bottom-nav guidance reserves top-level entries for
- *    distinct app sections, not facets of one section.
- *  - All five views consume the same Flows from [LibraryRepository];
- *    keeping them under one Scaffold avoids re-subscribing per tab and
- *    makes a future fast-scroll alphabet bar reusable.
- *  - Bottom nav stays at four entries (Home / Library / Search /
- *    Settings) — the canonical Material 3 sweet spot.
+ * Tab visibility / order comes from [SettingsRepository.snapshot]; tabs
+ * marked hidden in Personalize are filtered out at the strip layer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
   repository: LibraryRepository,
+  settingsRepository: SettingsRepository,
   onTrackClick: (List<Track>, Int) -> Unit,
   onPlaylistClick: (Long) -> Unit,
+  onOpenSearch: () -> Unit,
+  onOpenSettings: () -> Unit,
+  onRefreshMusic: () -> Unit,
+  onRescanMusic: () -> Unit,
+  onComingSoon: (String) -> Unit,
+  snackbarHostState: SnackbarHostState,
 ) {
-  var selectedTab by rememberSaveable { mutableStateOf(0) }
+  val snapshot by settingsRepository.snapshot.collectAsState(
+    initial = com.eight87.tonearm.ui.settings.SettingsSnapshot.Default,
+  )
+  // Visible tabs: anything in libraryTabs is "shown" (hidden tabs
+  // already filtered by SettingsRepository's parser when wired to the
+  // Personalize sub-page). Default order = canonical.
+  val visibleTabs = remember(snapshot.libraryTabs) {
+    snapshot.libraryTabs.ifEmpty { LibraryTab.DefaultOrder }
+  }
+  var selectedIndex by rememberSaveable { mutableStateOf(0) }
+  if (selectedIndex >= visibleTabs.size) selectedIndex = 0
+  val activeTab = visibleTabs[selectedIndex]
+
+  val activeSort by settingsRepository.tabSort(activeTab).collectAsState(initial = TabSort.Default)
+  val scope = rememberCoroutineScope()
+
+  var showSortSheet by remember { mutableStateOf(false) }
+  var showOverflow by remember { mutableStateOf(false) }
 
   Scaffold(
     topBar = {
       Column {
-        TopAppBar(title = { Text("Library") })
-        PrimaryTabRow(selectedTabIndex = selectedTab) {
-          LibraryTabs.forEachIndexed { i, label ->
+        TopAppBar(
+          title = { Text("tonearm", modifier = Modifier.semantics { testTag = "library_title" }) },
+          actions = {
+            IconButton(onClick = onOpenSearch, modifier = Modifier.semantics { testTag = "topbar_search" }) {
+              Icon(Icons.Filled.Search, contentDescription = "Search")
+            }
+            IconButton(
+              onClick = { showSortSheet = true },
+              modifier = Modifier.semantics { testTag = "topbar_sort" },
+            ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort") }
+            Box {
+              IconButton(
+                onClick = { showOverflow = true },
+                modifier = Modifier.semantics { testTag = "topbar_overflow" },
+              ) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
+              DropdownMenu(expanded = showOverflow, onDismissRequest = { showOverflow = false }) {
+                DropdownMenuItem(
+                  text = { Text("Settings") },
+                  leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                  onClick = { showOverflow = false; onOpenSettings() },
+                  modifier = Modifier.semantics { testTag = "menu_settings" },
+                )
+                DropdownMenuItem(
+                  text = { Text("Refresh music") },
+                  onClick = { showOverflow = false; onRefreshMusic() },
+                  modifier = Modifier.semantics { testTag = "menu_refresh" },
+                )
+                DropdownMenuItem(
+                  text = { Text("Rescan music") },
+                  onClick = { showOverflow = false; onRescanMusic() },
+                  modifier = Modifier.semantics { testTag = "menu_rescan" },
+                )
+              }
+            }
+          },
+        )
+        PrimaryTabRow(selectedTabIndex = selectedIndex) {
+          visibleTabs.forEachIndexed { i, tab ->
             Tab(
-              selected = selectedTab == i,
-              onClick = { selectedTab = i },
-              text = { Text(label) },
-              modifier = Modifier.semantics { testTag = "library_tab_$label" },
+              selected = selectedIndex == i,
+              onClick = { selectedIndex = i },
+              text = { Text(tabLabel(tab)) },
+              modifier = Modifier.semantics { testTag = "library_tab_${tab.name}" },
             )
           }
         }
       }
     },
+    snackbarHost = { SnackbarHost(snackbarHostState) },
   ) { innerPadding ->
     Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-      when (selectedTab) {
-        0 -> AlbumsGridScreen(repository, contentPadding = PaddingValues(8.dp))
-        1 -> ArtistsListScreen(repository)
-        2 -> TracksListScreen(repository, onTrackClick = onTrackClick)
-        3 -> GenresListScreen(repository)
-        4 -> PlaylistsListScreen(repository, onPlaylistClick = onPlaylistClick)
+      when (activeTab) {
+        LibraryTab.Songs -> TracksListScreen(
+          repository = repository,
+          sort = activeSort,
+          intelligentSorting = snapshot.intelligentSorting,
+          onTrackClick = onTrackClick,
+          onComingSoon = onComingSoon,
+        )
+        LibraryTab.Albums -> AlbumsGridScreen(
+          repository = repository,
+          sort = activeSort,
+          intelligentSorting = snapshot.intelligentSorting,
+          forceSquare = snapshot.forceSquareCovers,
+          contentPadding = PaddingValues(8.dp),
+        )
+        LibraryTab.Artists -> ArtistsListScreen(
+          repository = repository,
+          sort = activeSort,
+          intelligentSorting = snapshot.intelligentSorting,
+        )
+        LibraryTab.Genres -> GenresListScreen(
+          repository = repository,
+          sort = activeSort,
+        )
+        LibraryTab.Playlists -> PlaylistsListScreen(
+          repository = repository,
+          onPlaylistClick = onPlaylistClick,
+        )
       }
     }
   }
+
+  if (showSortSheet) {
+    SortSheet(
+      current = activeSort,
+      onDismiss = { showSortSheet = false },
+      onConfirm = { newSort ->
+        scope.launch { settingsRepository.setTabSort(activeTab, newSort) }
+        showSortSheet = false
+      },
+    )
+  }
+}
+
+private fun tabLabel(tab: LibraryTab): String = when (tab) {
+  LibraryTab.Songs -> "Songs"
+  LibraryTab.Albums -> "Albums"
+  LibraryTab.Artists -> "Artists"
+  LibraryTab.Genres -> "Genres"
+  LibraryTab.Playlists -> "Playlists"
+}
+
+// --- sort helpers ---------------------------------------------------------
+
+internal fun sortNameKey(name: String, intelligentSorting: Boolean): String {
+  if (!intelligentSorting) return name.uppercase()
+  // Drop a leading article token. Auxio's "intelligent sorting" feature
+  // is exactly this: ignore "the", "a", "an" at the start of the
+  // displayable name when computing sort order.
+  val trimmed = name.trim()
+  val lower = trimmed.lowercase()
+  for (article in arrayOf("the ", "a ", "an ")) {
+    if (lower.startsWith(article)) return trimmed.substring(article.length).uppercase()
+  }
+  return trimmed.uppercase()
+}
+
+private fun <T> applyDirection(items: List<T>, direction: SortDirection, comparator: Comparator<T>): List<T> {
+  val sorted = items.sortedWith(comparator)
+  return if (direction == SortDirection.Descending) sorted.reversed() else sorted
+}
+
+internal fun sortTracks(tracks: List<Track>, sort: TabSort, intelligentSorting: Boolean): List<Track> {
+  val comparator: Comparator<Track> = when (sort.key) {
+    SortKey.Name -> compareBy { sortNameKey(it.title, intelligentSorting) }
+    SortKey.Artist -> compareBy { sortNameKey(it.artist ?: "", intelligentSorting) }
+    SortKey.Album -> compareBy { sortNameKey(it.album ?: "", intelligentSorting) }
+    SortKey.Date -> compareBy { it.year ?: Int.MIN_VALUE }
+    SortKey.DateAdded -> compareBy { it.dateAddedSeconds }
+    SortKey.Duration -> compareBy { it.durationMs }
+  }
+  return applyDirection(tracks, sort.direction, comparator)
+}
+
+internal fun sortAlbums(albums: List<Album>, sort: TabSort, intelligentSorting: Boolean): List<Album> {
+  val comparator: Comparator<Album> = when (sort.key) {
+    SortKey.Name -> compareBy { sortNameKey(it.name, intelligentSorting) }
+    SortKey.Artist -> compareBy { sortNameKey(it.artist ?: "", intelligentSorting) }
+    SortKey.Album -> compareBy { sortNameKey(it.name, intelligentSorting) }
+    SortKey.Date -> compareBy { it.year ?: Int.MIN_VALUE }
+    SortKey.DateAdded -> compareBy { it.id }
+    SortKey.Duration -> compareBy { -it.trackCount }
+  }
+  return applyDirection(albums, sort.direction, comparator)
+}
+
+internal fun sortArtists(artists: List<Artist>, sort: TabSort, intelligentSorting: Boolean): List<Artist> {
+  val comparator: Comparator<Artist> = when (sort.key) {
+    SortKey.Artist, SortKey.Name -> compareBy { sortNameKey(it.name, intelligentSorting) }
+    SortKey.Album -> compareBy { -it.albumCount }
+    SortKey.Duration -> compareBy { -it.trackCount }
+    SortKey.Date, SortKey.DateAdded -> compareBy { it.id }
+  }
+  return applyDirection(artists, sort.direction, comparator)
+}
+
+internal fun sortGenres(genres: List<Genre>, sort: TabSort): List<Genre> {
+  val comparator: Comparator<Genre> = when (sort.key) {
+    SortKey.Duration -> compareBy { -it.trackCount }
+    else -> compareBy { it.name.uppercase() }
+  }
+  return applyDirection(genres, sort.direction, comparator)
 }
 
 // --- Albums ---------------------------------------------------------------
@@ -118,13 +289,17 @@ fun LibraryScreen(
 @Composable
 fun AlbumsGridScreen(
   repository: LibraryRepository,
+  sort: TabSort,
+  intelligentSorting: Boolean,
+  forceSquare: Boolean,
   contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
   val albums by repository.observeAlbums().collectAsState(initial = emptyList())
   if (albums.isEmpty()) {
-    EmptyState("No albums yet. Add audio files to your device, then pull-to-rescan from Settings.")
+    EmptyState("No albums yet. Add audio files to your device, then tap Rescan music.")
     return
   }
+  val sorted = remember(albums, sort, intelligentSorting) { sortAlbums(albums, sort, intelligentSorting) }
   LazyVerticalGrid(
     columns = GridCells.Adaptive(minSize = 140.dp),
     contentPadding = contentPadding,
@@ -132,18 +307,19 @@ fun AlbumsGridScreen(
     verticalArrangement = Arrangement.spacedBy(8.dp),
     modifier = Modifier.fillMaxSize().semantics { testTag = "albums_grid" },
   ) {
-    items(albums, key = { it.id }) { album -> AlbumCell(album) }
+    items(sorted, key = { it.id }) { album -> AlbumCell(album, forceSquare) }
   }
 }
 
 @Composable
-private fun AlbumCell(album: Album) {
+private fun AlbumCell(album: Album, forceSquare: Boolean) {
   Column(modifier = Modifier.padding(4.dp)) {
+    val shape = if (forceSquare) RoundedCornerShape(0.dp) else RoundedCornerShape(8.dp)
     Box(
       modifier = Modifier
         .fillMaxWidth()
         .aspectRatio(1f)
-        .clip(RoundedCornerShape(8.dp))
+        .clip(shape)
         .background(MaterialTheme.colorScheme.surfaceVariant),
       contentAlignment = Alignment.Center,
     ) {
@@ -172,14 +348,19 @@ private fun AlbumCell(album: Album) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ArtistsListScreen(repository: LibraryRepository) {
+fun ArtistsListScreen(
+  repository: LibraryRepository,
+  sort: TabSort,
+  intelligentSorting: Boolean,
+) {
   val artists by repository.observeArtists().collectAsState(initial = emptyList())
   if (artists.isEmpty()) {
     EmptyState("No artists yet.")
     return
   }
-  val grouped = remember(artists) {
-    artists.groupBy { initialKey(it.name) }.toSortedMap()
+  val sorted = remember(artists, sort, intelligentSorting) { sortArtists(artists, sort, intelligentSorting) }
+  val grouped = remember(sorted) {
+    sorted.groupBy { initialKey(sortNameKey(it.name, intelligentSorting)) }.toSortedMap()
   }
   LazyColumn(modifier = Modifier.fillMaxSize().semantics { testTag = "artists_list" }) {
     grouped.forEach { (initial, group) ->
@@ -203,39 +384,78 @@ private fun ArtistRow(artist: Artist) {
 @Composable
 fun TracksListScreen(
   repository: LibraryRepository,
+  sort: TabSort,
+  intelligentSorting: Boolean,
   onTrackClick: (List<Track>, Int) -> Unit,
+  onComingSoon: (String) -> Unit,
 ) {
   val tracks by repository.observeTracks().collectAsState(initial = emptyList())
   if (tracks.isEmpty()) {
     EmptyState("No tracks yet.")
     return
   }
-  val sorted = remember(tracks) { tracks.sortedBy { it.title.uppercase() } }
-  val grouped = remember(sorted) { sorted.groupBy { initialKey(it.title) } }
+  val sorted = remember(tracks, sort, intelligentSorting) { sortTracks(tracks, sort, intelligentSorting) }
+  val grouped = remember(sorted, sort, intelligentSorting) {
+    if (sort.key == SortKey.Name) {
+      sorted.groupBy { initialKey(sortNameKey(it.title, intelligentSorting)) }
+    } else emptyMap()
+  }
   val orderedKeys = remember(grouped) { grouped.keys.toList() }
   val listState = rememberLazyListState()
   val scope = rememberCoroutineScope()
   Row(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_list" }) {
-    LazyColumn(
-      state = listState,
-      modifier = Modifier.weight(1f),
-    ) {
-      orderedKeys.forEach { key ->
-        val group = grouped.getValue(key)
-        stickyHeader { SectionHeader(key) }
-        items(group, key = { it.id }) { track ->
+    LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
+      if (orderedKeys.isNotEmpty()) {
+        orderedKeys.forEach { key ->
+          val group = grouped.getValue(key)
+          stickyHeader { SectionHeader(key) }
+          items(group, key = { it.id }) { track ->
+            val itemIndex = sorted.indexOf(track)
+            TrackRow(
+              track = track,
+              onClick = { onTrackClick(sorted, itemIndex) },
+              onAction = { action -> handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onComingSoon) },
+            )
+          }
+        }
+      } else {
+        items(sorted, key = { it.id }) { track ->
           val itemIndex = sorted.indexOf(track)
-          TrackRow(track) { onTrackClick(sorted, itemIndex) }
+          TrackRow(
+            track = track,
+            onClick = { onTrackClick(sorted, itemIndex) },
+            onAction = { action -> handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onComingSoon) },
+          )
         }
       }
     }
-    AlphabetScroller(
-      keys = orderedKeys,
-      onLetter = { letter ->
-        val flatIndex = computeFlatIndex(orderedKeys, grouped, letter)
-        if (flatIndex >= 0) scope.launch { listState.scrollToItem(flatIndex) }
-      },
-    )
+    if (orderedKeys.isNotEmpty()) {
+      AlphabetScroller(
+        keys = orderedKeys,
+        onLetter = { letter ->
+          val flatIndex = computeFlatIndex(orderedKeys, grouped, letter)
+          if (flatIndex >= 0) scope.launch { listState.scrollToItem(flatIndex) }
+        },
+      )
+    }
+  }
+}
+
+private fun handleTrackAction(
+  track: Track,
+  list: List<Track>,
+  index: Int,
+  action: TrackRowAction,
+  onPlayQueue: (List<Track>, Int) -> Unit,
+  onComingSoon: (String) -> Unit,
+) {
+  when (action) {
+    TrackRowAction.Play -> onPlayQueue(list, index)
+    TrackRowAction.AddToQueue -> onComingSoon("Add to queue")
+    TrackRowAction.AddToPlaylist -> onComingSoon("Add to playlist")
+    TrackRowAction.GoToAlbum -> onComingSoon("Go to album")
+    TrackRowAction.GoToArtist -> onComingSoon("Go to artist")
+    TrackRowAction.Delete -> onComingSoon("Delete file")
   }
 }
 
@@ -277,19 +497,67 @@ private fun AlphabetScroller(
   }
 }
 
+internal enum class TrackRowAction { Play, AddToQueue, AddToPlaylist, GoToAlbum, GoToArtist, Delete }
+
 @Composable
-private fun TrackRow(track: Track, onClick: () -> Unit) {
-  Column(
-    modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
+private fun TrackRow(
+  track: Track,
+  onClick: () -> Unit,
+  onAction: (TrackRowAction) -> Unit,
+) {
+  var menuOpen by remember { mutableStateOf(false) }
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clickable(onClick = onClick)
+      .padding(horizontal = 16.dp, vertical = 10.dp)
+      .semantics { testTag = "track_row" },
+    verticalAlignment = Alignment.CenterVertically,
   ) {
-    Text(track.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-    Text(
-      text = listOfNotNull(track.artist?.takeIf { it.isNotBlank() }, track.album?.takeIf { it.isNotBlank() })
-        .joinToString(" · ")
-        .ifEmpty { "Unknown" },
-      style = MaterialTheme.typography.bodySmall,
-      maxLines = 1,
-    )
+    Column(modifier = Modifier.weight(1f)) {
+      Text(track.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+      Text(
+        text = listOfNotNull(track.artist?.takeIf { it.isNotBlank() }, track.album?.takeIf { it.isNotBlank() })
+          .joinToString(" · ")
+          .ifEmpty { "Unknown" },
+        style = MaterialTheme.typography.bodySmall,
+        maxLines = 1,
+      )
+    }
+    Box {
+      IconButton(
+        onClick = { menuOpen = true },
+        modifier = Modifier.semantics { testTag = "track_row_overflow" },
+      ) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
+      DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+        DropdownMenuItem(
+          text = { Text("Play") },
+          onClick = { menuOpen = false; onAction(TrackRowAction.Play) },
+        )
+        DropdownMenuItem(
+          text = { Text("Add to queue") },
+          onClick = { menuOpen = false; onAction(TrackRowAction.AddToQueue) },
+        )
+        DropdownMenuItem(
+          text = { Text("Add to playlist…") },
+          onClick = { menuOpen = false; onAction(TrackRowAction.AddToPlaylist) },
+        )
+        DropdownMenuItem(
+          text = { Text("Go to album") },
+          onClick = { menuOpen = false; onAction(TrackRowAction.GoToAlbum) },
+        )
+        DropdownMenuItem(
+          text = { Text("Go to artist") },
+          onClick = { menuOpen = false; onAction(TrackRowAction.GoToArtist) },
+        )
+        // Phase F: file deletion lives here.
+        DropdownMenuItem(
+          text = { Text("Delete file…") },
+          onClick = { menuOpen = false; onAction(TrackRowAction.Delete) },
+          enabled = false,
+        )
+      }
+    }
   }
   HorizontalDivider()
 }
@@ -297,14 +565,18 @@ private fun TrackRow(track: Track, onClick: () -> Unit) {
 // --- Genres ---------------------------------------------------------------
 
 @Composable
-fun GenresListScreen(repository: LibraryRepository) {
+fun GenresListScreen(
+  repository: LibraryRepository,
+  sort: TabSort,
+) {
   val genres by repository.observeGenres().collectAsState(initial = emptyList())
   if (genres.isEmpty()) {
     EmptyState("No genres yet.")
     return
   }
+  val sorted = remember(genres, sort) { sortGenres(genres, sort) }
   LazyColumn(modifier = Modifier.fillMaxSize().semantics { testTag = "genres_list" }) {
-    items(genres, key = { it.id }) { g -> GenreRow(g) }
+    items(sorted, key = { it.id }) { g -> GenreRow(g) }
   }
 }
 

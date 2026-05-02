@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearm.data.LibraryRepository
 import com.eight87.tonearm.playback.PlaybackUiController
+import com.eight87.tonearm.ui.settings.SettingsRepository
 import com.eight87.tonearm.ui.settings.ThemePreferenceStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +34,10 @@ class AppGraph(private val applicationContext: Context) {
 
   val themePreferenceStore: ThemePreferenceStore by lazy {
     ThemePreferenceStore(applicationContext)
+  }
+
+  val settingsRepository: SettingsRepository by lazy {
+    SettingsRepository(applicationContext)
   }
 
   companion object {

@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -43,6 +47,7 @@ import kotlinx.coroutines.flow.flowOf
 fun SearchScreen(
   repository: LibraryRepository,
   onTrackClick: (Track) -> Unit,
+  onBack: () -> Unit = {},
 ) {
   var rawQuery by rememberSaveable { mutableStateOf("") }
   val state = remember { SearchInputReducer() }
@@ -54,7 +59,16 @@ fun SearchScreen(
   }
 
   Scaffold(
-    topBar = { TopAppBar(title = { Text("Search") }) },
+    topBar = {
+      TopAppBar(
+        title = { Text("Search") },
+        navigationIcon = {
+          IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+          }
+        },
+      )
+    },
   ) { innerPadding ->
     Column(modifier = Modifier.fillMaxSize().padding(innerPadding).semantics { testTag = "search_screen" }) {
       OutlinedTextField(

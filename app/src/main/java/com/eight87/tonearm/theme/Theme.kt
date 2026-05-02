@@ -8,6 +8,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 /**
@@ -17,11 +18,12 @@ import androidx.compose.ui.platform.LocalContext
  * - On API 31+ with `dynamicColor = true` (the default), the wallpaper-
  *   derived dynamic palette is used.
  * - Otherwise falls back to the app's brand palette.
+ * - When [blackTheme] is true and the resolved scheme is dark, the
+ *   surface family collapses to pure black for AMOLED-friendly displays.
  *
  * The default is **dark** (per the locked spec) — `darkTheme = true` is
  * only resolved from `isSystemInDarkTheme()` when [TonearmTheme] is
- * called without an explicit value. Caller (the activity) usually drives
- * `darkTheme` from the persisted [com.eight87.tonearm.ui.settings.ThemePreference].
+ * called without an explicit value.
  */
 private val DarkColorScheme = darkColorScheme(primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80)
 
@@ -33,9 +35,10 @@ fun TonearmTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
   // Dynamic color is available on Android 12+
   dynamicColor: Boolean = true,
+  blackTheme: Boolean = false,
   content: @Composable () -> Unit,
 ) {
-  val colorScheme =
+  val baseScheme =
     when {
       dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
         val context = LocalContext.current
@@ -44,6 +47,10 @@ fun TonearmTheme(
       darkTheme -> DarkColorScheme
       else -> LightColorScheme
     }
+
+  val colorScheme = if (darkTheme && blackTheme) {
+    baseScheme.copy(background = Color.Black, surface = Color.Black)
+  } else baseScheme
 
   MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
 }

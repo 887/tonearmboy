@@ -8,88 +8,101 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 
+/**
+ * Settings root, mirroring Auxio's eight-entry layout:
+ *
+ *   1. Look and Feel
+ *   2. Personalize
+ *   3. Content
+ *   4. Audio
+ *   --- Library ---
+ *   5. Music sources (stub)
+ *   6. Refresh music
+ *   7. Rescan music
+ *
+ * Each top-of-list entry navigates to its sub-page; the Library section
+ * exposes the music-source / refresh / rescan actions inline because
+ * they are leaf actions, not sub-pages.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-  store: ThemePreferenceStore,
-  onRescan: () -> Unit,
+  onBack: () -> Unit,
+  onLookAndFeel: () -> Unit,
+  onPersonalize: () -> Unit,
+  onContent: () -> Unit,
+  onAudio: () -> Unit,
+  onMusicSources: () -> Unit,
+  onRefreshMusic: () -> Unit,
+  onRescanMusic: () -> Unit,
+  snackbarHostState: SnackbarHostState,
 ) {
-  val current by store.flow.collectAsState(initial = ThemePreference.Default)
-  val scope = rememberCoroutineScope()
-
   var confirmRescan by remember { mutableStateOf(false) }
-  var confirmClearCache by remember { mutableStateOf(false) }
 
   Scaffold(
-    topBar = { TopAppBar(title = { Text("Settings") }) },
+    topBar = {
+      TopAppBar(
+        title = { Text("Settings") },
+        navigationIcon = {
+          IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+          }
+        },
+      )
+    },
+    snackbarHost = { SnackbarHost(snackbarHostState) },
   ) { innerPadding ->
     LazyColumn(
-      modifier = Modifier.fillMaxSize().padding(innerPadding).semantics { testTag = "settings_screen" },
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(innerPadding)
+        .semantics { testTag = "settings_screen" },
     ) {
-      item {
-        SectionHeader("Theme")
-      }
-      items(items = ThemePreference.entries.toList(), key = { it.name }) { option ->
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .selectable(selected = current == option, onClick = {
-              scope.launch { store.set(option) }
-            })
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          RadioButton(selected = current == option, onClick = null)
-          Text(
-            text = themeLabel(option),
-            modifier = Modifier.padding(start = 12.dp),
-          )
-        }
-        HorizontalDivider()
-      }
+      item { SettingsRow("Look and Feel", "Theme, colour scheme, black mode, round mode.", onClick = onLookAndFeel) }
+      item { SettingsRow("Personalize", "Library tabs, behaviour, custom actions.", onClick = onPersonalize) }
+      item { SettingsRow("Content", "Sorting, separators, album covers.", onClick = onContent) }
+      item { SettingsRow("Audio", "Playback, volume normalization.", onClick = onAudio) }
 
       item { SectionHeader("Library") }
+      item { SettingsRow("Music sources", "Manage where music is loaded from.", onClick = onMusicSources) }
       item {
-        SettingRow(title = "Rescan now", subtitle = "Re-read MediaStore and refresh the library cache.") {
-          confirmRescan = true
-        }
+        SettingsRow(
+          title = "Refresh music",
+          subtitle = "Reload the library, using cached tags when possible.",
+          onClick = onRefreshMusic,
+        )
       }
       item {
-        SettingRow(title = "Clear cache", subtitle = "Delete the cached library. The next launch will rescan.") {
-          confirmClearCache = true
-        }
-      }
-
-      item { SectionHeader("About") }
-      item {
-        SettingRow(
-          title = "tonearm",
-          subtitle = "Version 1.0 · MIT License · github.com/887/tonearm",
+        SettingsRow(
+          title = "Rescan music",
+          subtitle = "Clear the cache and re-read everything. Slower but more complete.",
+          onClick = { confirmRescan = true },
         )
       }
     }
@@ -99,43 +112,21 @@ fun SettingsScreen(
     AlertDialog(
       onDismissRequest = { confirmRescan = false },
       title = { Text("Rescan library?") },
-      text = { Text("This re-reads MediaStore and updates cached metadata. Playback is not interrupted.") },
+      text = { Text("This clears cached metadata and re-reads MediaStore. Playback is not interrupted.") },
       confirmButton = {
-        TextButton(onClick = { onRescan(); confirmRescan = false }) { Text("Rescan") }
+        TextButton(onClick = { onRescanMusic(); confirmRescan = false }) { Text("Rescan") }
       },
       dismissButton = {
         TextButton(onClick = { confirmRescan = false }) { Text("Cancel") }
       },
     )
   }
-
-  if (confirmClearCache) {
-    AlertDialog(
-      onDismissRequest = { confirmClearCache = false },
-      title = { Text("Clear cached library?") },
-      text = {
-        Text(
-          "This drops the local library cache. Your audio files are not affected. " +
-            "The library will be rebuilt the next time you open the Library tab.",
-        )
-      },
-      confirmButton = {
-        TextButton(onClick = {
-          // Phase D scope: clearing cache is a rescan today; the
-          // backing Room db is replaced wholesale by `runScan(initial = true)`.
-          onRescan()
-          confirmClearCache = false
-        }) { Text("Clear") }
-      },
-      dismissButton = {
-        TextButton(onClick = { confirmClearCache = false }) { Text("Cancel") }
-      },
-    )
-  }
 }
 
+// ---- shared row primitives ------------------------------------------------
+
 @Composable
-private fun SectionHeader(label: String) {
+internal fun SectionHeader(label: String) {
   Text(
     text = label,
     style = MaterialTheme.typography.labelLarge,
@@ -145,26 +136,41 @@ private fun SectionHeader(label: String) {
 }
 
 @Composable
-private fun SettingRow(
+internal fun SettingsRow(
   title: String,
-  subtitle: String,
+  subtitle: String? = null,
   onClick: (() -> Unit)? = null,
+  trailing: @Composable (() -> Unit)? = null,
 ) {
-  Column(
+  Row(
     modifier = Modifier
       .fillMaxWidth()
       .let { if (onClick != null) it.clickable(onClick = onClick) else it }
       .padding(horizontal = 16.dp, vertical = 12.dp),
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    verticalAlignment = Alignment.CenterVertically,
   ) {
-    Text(title, style = MaterialTheme.typography.titleSmall)
-    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(modifier = Modifier.weight(1f).padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(title, style = MaterialTheme.typography.titleSmall)
+      if (subtitle != null) {
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+    }
+    if (trailing != null) trailing()
   }
   HorizontalDivider()
 }
 
-private fun themeLabel(p: ThemePreference): String = when (p) {
-  ThemePreference.System -> "Follow system"
-  ThemePreference.Light -> "Light"
-  ThemePreference.Dark -> "Dark"
+@Composable
+internal fun SettingsToggleRow(
+  title: String,
+  subtitle: String?,
+  checked: Boolean,
+  onCheckedChange: (Boolean) -> Unit,
+) {
+  SettingsRow(
+    title = title,
+    subtitle = subtitle,
+    onClick = { onCheckedChange(!checked) },
+    trailing = { Switch(checked = checked, onCheckedChange = onCheckedChange) },
+  )
 }

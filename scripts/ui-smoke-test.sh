@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# Phase D UI smoke test.
+# Phase D UI smoke test, post-Auxio refactor.
 #
-# Installs the current debug APK, launches the app, navigates from the
-# Library tab into the Tracks list, taps a track to start playback, and
-# asserts the Now Playing surface shows up with a non-empty title.
+# Asserts the new chrome:
+#   - app launches directly into the library Songs tab
+#   - top app bar shows "tonearm" title plus Search / Sort / overflow icons
+#   - five top tabs render (Songs / Albums / Artists / Genres / Playlists)
+#   - no bottom navigation bar
+#   - tapping the overflow icon then "Settings" opens the Settings root
+#   - Settings root lists the four sub-page entries
+#   - each sub-page is reachable
 #
 # Like library-smoke-test.sh this assumes a target reachable via
 # `adb devices` (the headless `emulator-5554` AVD is the canonical
 # choice). The `mobile` MCP is not used here — this is a portable shell
-# loop on top of `adb shell uiautomator dump` / `adb shell input tap`
-# so it can run from CI without Claude in the loop.
+# loop on top of `adb shell uiautomator dump` so it can run from CI
+# without Claude in the loop.
 #
 # Usage:
 #   scripts/ui-smoke-test.sh
@@ -31,61 +36,108 @@ fi
 echo "[install] $APK"
 "${ADB[@]}" install -r -d "$APK" >/dev/null
 
-# Permissions are best-effort — the install on a freshly wiped emulator
-# may not have any audio yet. We still grant in case the suite is run
-# right after library-smoke-test.sh.
+# Permissions are best-effort.
 "${ADB[@]}" shell pm grant "$APP_ID" android.permission.READ_MEDIA_AUDIO 2>/dev/null || true
 "${ADB[@]}" shell pm grant "$APP_ID" android.permission.READ_EXTERNAL_STORAGE 2>/dev/null || true
 
-# Force a clean activity start so we land on Home.
+# Force a clean start.
 "${ADB[@]}" shell am force-stop "$APP_ID"
 "${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" >/dev/null
-sleep 2
+sleep 3
 
-# Cheap helper: dump the screen and grep for any node whose text or
-# content-desc attribute contains the supplied pattern. Compose ships
-# its semantics text in `text=`; a few image-only nodes only have
-# `content-desc`, so we grep against both. Note we cannot tr on space
-# because attribute values legitimately contain spaces.
 UIDUMP_LOCAL="${TMPDIR:-/tmp}/tonearm-uidump.xml"
-grep_screen() {
-  local pattern="$1"
+dump() {
   "${ADB[@]}" shell uiautomator dump /sdcard/_uidump.xml >/dev/null 2>&1 || true
   "${ADB[@]}" pull /sdcard/_uidump.xml "$UIDUMP_LOCAL" >/dev/null 2>&1
+}
+have_text() {
+  local pattern="$1"
   grep -oE '(text|content-desc)="[^"]*"' "$UIDUMP_LOCAL" \
-    | grep -E "$pattern" \
-    | head -1
+    | grep -qE "$pattern"
+}
+require() {
+  local pattern="$1" label="$2"
+  if have_text "$pattern"; then
+    echo "[PASS] $label"
+  else
+    echo "[FAIL] $label — pattern $pattern" >&2
+    head -200 "$UIDUMP_LOCAL" >&2
+    exit 1
+  fi
+}
+forbid() {
+  local pattern="$1" label="$2"
+  if have_text "$pattern"; then
+    echo "[FAIL] $label — pattern $pattern unexpectedly present" >&2
+    exit 1
+  fi
+  echo "[PASS] $label"
 }
 
-# Navigate to the Library tab. The bottom-nav is anchored at the
-# bottom of the screen; we tap by relative x for portability across
-# screen densities.
-W=$("${ADB[@]}" shell wm size | awk -F' ' 'END{print $NF}' | cut -d 'x' -f1)
-H=$("${ADB[@]}" shell wm size | awk -F' ' 'END{print $NF}' | cut -d 'x' -f2)
-LIB_X=$(( W * 35 / 100 ))
-NAV_Y=$(( H - 100 ))
-echo "[nav] tapping Library at ${LIB_X},${NAV_Y}"
-"${ADB[@]}" shell input tap "$LIB_X" "$NAV_Y"
-sleep 1
+dump
 
-# Switch to the Tracks tab.
-TRACKS_X=$(( W * 45 / 100 ))
-TRACKS_Y=350
-echo "[nav] tapping Tracks tab"
-"${ADB[@]}" shell input tap "$TRACKS_X" "$TRACKS_Y"
-sleep 1
+# Root chrome.
+require '^text="tonearm"$'                       'top-app-bar title is "tonearm"'
+require 'content-desc="Search"'                  'top-app-bar Search icon'
+require 'content-desc="Sort"'                    'top-app-bar Sort icon'
+require 'content-desc="More options"'            'top-app-bar overflow icon'
+require '^text="Songs"$'                         'Songs tab visible at root'
+require '^text="Albums"$'                        'Albums tab visible at root'
+require '^text="Artists"$'                       'Artists tab visible at root'
+require '^text="Genres"$'                        'Genres tab visible at root'
+require '^text="Playlists?"$'                    'Playlists tab visible at root'
 
-# Tap roughly at the first track row beneath the sticky header.
-FIRST_TRACK_Y=$(( H * 25 / 100 ))
-echo "[nav] tapping first track at 300,${FIRST_TRACK_Y}"
-"${ADB[@]}" shell input tap 300 "$FIRST_TRACK_Y"
-sleep 2
+# There must be no bottom-nav "Home" entry — the tab strip is the only
+# primary surface.
+forbid '^text="Home"$'                           'no Home destination'
 
-# Assert Now Playing has rendered with the expected top app bar title.
-if grep_screen "Now Playing" >/dev/null; then
-  echo "[PASS] Now Playing surface rendered"
-else
-  echo "[FAIL] expected 'Now Playing' top-app-bar title not found" >&2
-  "${ADB[@]}" shell uiautomator dump /dev/stdout 2>/dev/null | head -200 >&2
-  exit 1
-fi
+# Open overflow → Settings.
+"${ADB[@]}" shell input tap 1006 211; sleep 1
+dump
+require '^text="Settings"$'                      'overflow menu Settings entry'
+require '^text="Refresh music"$'                 'overflow menu Refresh entry'
+require '^text="Rescan music"$'                  'overflow menu Rescan entry'
+
+# Tap Settings entry.
+"${ADB[@]}" shell input tap 918 357; sleep 2
+dump
+require '^text="Look and Feel"$'                 'Settings root: Look and Feel'
+require '^text="Personalize"$'                   'Settings root: Personalize'
+require '^text="Content"$'                       'Settings root: Content'
+require '^text="Audio"$'                         'Settings root: Audio'
+require '^text="Music sources"$'                 'Settings root: Music sources'
+require '^text="Refresh music"$'                 'Settings root: Refresh music action'
+require '^text="Rescan music"$'                  'Settings root: Rescan music action'
+
+# Look and Feel sub-page.
+"${ADB[@]}" shell input tap 540 376; sleep 2
+dump
+require '^text="Theme"$'                         'Look and Feel: Theme entry'
+require '^text="Color scheme"$'                  'Look and Feel: Color scheme entry'
+require '^text="Black theme"$'                   'Look and Feel: Black theme toggle'
+require '^text="Round mode"$'                    'Look and Feel: Round mode toggle'
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1
+
+# Personalize sub-page.
+"${ADB[@]}" shell input tap 540 543; sleep 2
+dump
+require '^text="Library tabs"$'                  'Personalize: Library tabs entry'
+require '^text="Remember shuffle"$'              'Personalize: Remember shuffle toggle'
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1
+
+# Content sub-page.
+"${ADB[@]}" shell input tap 540 710; sleep 2
+dump
+require '^text="Intelligent sorting"$'           'Content: Intelligent sorting toggle'
+require '^text="Force square album covers"$'     'Content: Force square covers toggle'
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1
+
+# Audio sub-page.
+"${ADB[@]}" shell input tap 540 877; sleep 2
+dump
+require '^text="Headset autoplay"$'              'Audio: Headset autoplay toggle'
+require '^text="Rewind before skipping back"$'   'Audio: Rewind toggle'
+require '^text="Remember pause"$'                'Audio: Remember pause toggle'
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1
+
+echo "[OK] all assertions passed"

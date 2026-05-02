@@ -1,13 +1,8 @@
 package com.eight87.tonearm.ui.nav
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,90 +10,97 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
+import androidx.compose.material3.Scaffold
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import kotlinx.coroutines.launch
 import com.eight87.tonearm.AppGraph
-import com.eight87.tonearm.ui.home.HomeScreen
 import com.eight87.tonearm.ui.library.LibraryScreen
 import com.eight87.tonearm.ui.library.PlaylistDetailScreen
 import com.eight87.tonearm.ui.playing.MiniPlayer
 import com.eight87.tonearm.ui.playing.NowPlayingScreen
 import com.eight87.tonearm.ui.search.SearchScreen
+import com.eight87.tonearm.ui.settings.SettingsAudioScreen
+import com.eight87.tonearm.ui.settings.SettingsContentScreen
+import com.eight87.tonearm.ui.settings.SettingsLookAndFeelScreen
+import com.eight87.tonearm.ui.settings.SettingsPersonalizeScreen
 import com.eight87.tonearm.ui.settings.SettingsScreen
+import kotlinx.coroutines.launch
 
 /**
- * Root composable: bottom-nav `Scaffold` + Navigation 3 [NavDisplay].
+ * Root composable: a [NavDisplay] over a single back stack rooted at
+ * [LibraryRoot]. There is **no bottom navigation**. The library is the
+ * landing surface (via its own top tabs); search and settings are
+ * pushed on top of it from the top app bar.
  *
- * Per the official `navigation-3` skill's "Common UI" recipe, each
- * top-level destination owns its own back stack via [TonearmBackStack],
- * and detail keys (`NowPlaying`, `PlaylistDetail`) are pushed onto the
- * currently selected tab.
- *
- * The mini-player floats above the bottom nav whenever the controller
- * has media queued, except on the [NowPlaying] surface (where a full
- * player is already visible).
+ * The mini-player floats at the bottom of every destination except
+ * [NowPlaying] (where the full player is already visible).
  */
 @OptIn(UnstableApi::class)
 @Composable
 fun TonearmApp(graph: AppGraph) {
-  val backStackHolder = remember { TonearmBackStack(Home) }
-  val current = backStackHolder.backStack.lastOrNull() ?: Home
+  val backStack = remember { TonearmBackStack(LibraryRoot) }
+  val current = backStack.backStack.lastOrNull() ?: LibraryRoot
 
   val playback = graph.playbackUiController
   val playbackState by playback.state.collectAsStateWithLifecycle()
+  val snackbarHostState = remember { SnackbarHostState() }
 
   // Keep the MediaController bound for the lifetime of the activity.
   // The full-screen NowPlaying re-uses this same connection.
   LaunchedEffect(Unit) { playback.connect() }
 
-  val showBottomBar = current is TopLevelDestination
-  val showMiniPlayer = playbackState.hasMedia && current !is com.eight87.tonearm.ui.nav.NowPlaying
+  val showMiniPlayer = playbackState.hasMedia && current !is NowPlaying
+
+  val onComingSoon: (String) -> Unit = { feature ->
+    graph.applicationScope.launch {
+      snackbarHostState.showSnackbar("$feature — coming in v1.1")
+    }
+  }
+  val onRefreshMusic: () -> Unit = {
+    graph.applicationScope.launch {
+      graph.libraryRepository.rescanNow()
+      snackbarHostState.showSnackbar("Refreshed music library")
+    }
+  }
+  val onRescanMusic: () -> Unit = {
+    graph.applicationScope.launch {
+      graph.libraryRepository.rescanNow()
+      snackbarHostState.showSnackbar("Rescanned music library")
+    }
+  }
 
   Scaffold(
     bottomBar = {
-      if (showBottomBar) {
-        Column {
-          if (showMiniPlayer) {
-            MiniPlayer(
-              state = playbackState,
-              onTogglePlayPause = playback::togglePlayPause,
-              onClose = playback::stop,
-              onExpand = { backStackHolder.push(NowPlaying) },
-            )
-          }
-          BottomNav(backStackHolder)
-        }
-      } else if (showMiniPlayer && current !is com.eight87.tonearm.ui.nav.NowPlaying) {
+      if (showMiniPlayer) {
         MiniPlayer(
           state = playbackState,
           onTogglePlayPause = playback::togglePlayPause,
           onClose = playback::stop,
-          onExpand = { backStackHolder.push(NowPlaying) },
+          onExpand = { backStack.push(NowPlaying) },
         )
       }
     },
   ) { innerPadding ->
     NavDisplay(
-      backStack = backStackHolder.backStack,
-      onBack = { backStackHolder.pop() },
+      backStack = backStack.backStack,
+      onBack = { backStack.pop() },
       modifier = Modifier.fillMaxSize().padding(innerPadding),
       entryProvider = entryProvider {
-        entry<Home> {
-          HomeScreen(
-            onBrowseLibrary = { backStackHolder.switchTo(Library) },
-            onOpenNowPlaying = { backStackHolder.push(NowPlaying) },
-            playbackState = playbackState,
-          )
-        }
-        entry<Library> {
+        entry<LibraryRoot> {
           LibraryScreen(
             repository = graph.libraryRepository,
+            settingsRepository = graph.settingsRepository,
             onTrackClick = { tracks, index ->
               playback.playQueue(tracks, index)
-              backStackHolder.push(NowPlaying)
+              backStack.push(NowPlaying)
             },
-            onPlaylistClick = { id -> backStackHolder.push(PlaylistDetail(id)) },
+            onPlaylistClick = { id -> backStack.push(PlaylistDetail(id)) },
+            onOpenSearch = { backStack.push(Search) },
+            onOpenSettings = { backStack.push(SettingsRootDest) },
+            onRefreshMusic = onRefreshMusic,
+            onRescanMusic = onRescanMusic,
+            onComingSoon = onComingSoon,
+            snackbarHostState = snackbarHostState,
           )
         }
         entry<Search> {
@@ -106,22 +108,15 @@ fun TonearmApp(graph: AppGraph) {
             repository = graph.libraryRepository,
             onTrackClick = { track ->
               playback.playTrack(track)
-              backStackHolder.push(NowPlaying)
+              backStack.push(NowPlaying)
             },
-          )
-        }
-        entry<Settings> {
-          SettingsScreen(
-            store = graph.themePreferenceStore,
-            onRescan = {
-              graph.applicationScope.launch { graph.libraryRepository.rescanNow() }
-            },
+            onBack = { backStack.pop() },
           )
         }
         entry<NowPlaying> {
           NowPlayingScreen(
             playback = playback,
-            onBack = { backStackHolder.pop() },
+            onBack = { backStack.pop() },
           )
         }
         entry<PlaylistDetail> { key ->
@@ -130,26 +125,57 @@ fun TonearmApp(graph: AppGraph) {
             playlistId = key.playlistId,
             onTrackClick = { tracks, index ->
               playback.playQueue(tracks, index)
-              backStackHolder.push(NowPlaying)
+              backStack.push(NowPlaying)
             },
-            onBack = { backStackHolder.pop() },
+            onBack = { backStack.pop() },
+          )
+        }
+        entry<SettingsRootDest> {
+          SettingsScreen(
+            onBack = { backStack.pop() },
+            onLookAndFeel = { backStack.push(SettingsLookAndFeel) },
+            onPersonalize = { backStack.push(SettingsPersonalize) },
+            onContent = { backStack.push(SettingsContent) },
+            onAudio = { backStack.push(SettingsAudio) },
+            onMusicSources = { onComingSoon("Music sources") },
+            onRefreshMusic = onRefreshMusic,
+            onRescanMusic = onRescanMusic,
+            snackbarHostState = snackbarHostState,
+          )
+        }
+        entry<SettingsLookAndFeel> {
+          SettingsLookAndFeelScreen(
+            repository = graph.settingsRepository,
+            onBack = { backStack.pop() },
+            onComingSoon = onComingSoon,
+            snackbarHostState = snackbarHostState,
+          )
+        }
+        entry<SettingsPersonalize> {
+          SettingsPersonalizeScreen(
+            repository = graph.settingsRepository,
+            onBack = { backStack.pop() },
+            onComingSoon = onComingSoon,
+            snackbarHostState = snackbarHostState,
+          )
+        }
+        entry<SettingsContent> {
+          SettingsContentScreen(
+            repository = graph.settingsRepository,
+            onBack = { backStack.pop() },
+            onComingSoon = onComingSoon,
+            snackbarHostState = snackbarHostState,
+          )
+        }
+        entry<SettingsAudio> {
+          SettingsAudioScreen(
+            repository = graph.settingsRepository,
+            onBack = { backStack.pop() },
+            onComingSoon = onComingSoon,
+            snackbarHostState = snackbarHostState,
           )
         }
       },
     )
-  }
-}
-
-@Composable
-private fun BottomNav(backStackHolder: TonearmBackStack) {
-  NavigationBar {
-    TopLevelDestinations.forEach { dest ->
-      NavigationBarItem(
-        selected = backStackHolder.isSelected(dest),
-        onClick = { backStackHolder.switchTo(dest) },
-        icon = { Icon(imageVector = dest.icon, contentDescription = dest.label) },
-        label = { Text(dest.label) },
-      )
-    }
   }
 }
