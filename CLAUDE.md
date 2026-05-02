@@ -131,6 +131,46 @@ When working on a phase:
 
 The user follows Paul Graham's *Keep Your Identity Small*. App copy (settings descriptions, error messages, About text) should be plain, factual, useful. No "vibes" copy, no personal opinions, no humor that pins identity.
 
+## Release workflow
+
+The user's intended pattern: **vibing from their phone with the Claude app**,
+they tell Claude "ship a new build of tonearm." Claude opens a session against
+this repo on the dev machine and runs the local build. The user then pulls the
+APK via [Obtainium](https://github.com/ImranR98/Obtainium) on their phone,
+which auto-detects the new GitHub Release.
+
+**Local build is the primary path. Zero CI minutes by default.**
+
+Canonical commands:
+
+```bash
+# Full one-shot: build + push to GH Releases + install on connected device
+scripts/build-release-apk.sh --gh-release --install
+
+# Just publish to GH Releases (Obtainium pulls from there)
+scripts/build-release-apk.sh --gh-release
+
+# Local APK only, no upload, no install
+scripts/build-release-apk.sh
+```
+
+What `--gh-release` does:
+
+1. Builds `release/tonearm-<version>-<sha7>.apk` (debug-signed by default).
+2. Generates release notes from `git log <prev-tag>..HEAD` plus a
+   "Verify build" table containing the commit hash and APK SHA-256.
+3. Creates the GitHub Release `v<version>-<sha7>` with the APK attached.
+4. Pushes the local annotated tag to `origin`.
+
+The `.github/workflows/release.yml` fallback is **tag-only and self-disabling**:
+it triggers when a `v*` tag is pushed, then queries the matching release; if
+an APK is already attached (which is true after the local script ran), it
+exits 0 without rebuilding. Saves CI minutes by default; only runs when a tag
+shows up without a matching APK (e.g. tag pushed from the GH web UI).
+
+When a phase asks for a release, the happy path is `--gh-release --install`
+against the connected AVD / wifi-adb phone.
+
 ## Subagent dispatching
 
 Subagents working on this repo run in worktrees. Each agent prompt must:

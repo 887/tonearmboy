@@ -72,8 +72,20 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 
 ## Build a release APK
 
-For sideloading onto your phone or distributing via GitHub Releases, use the
-release-build script:
+The canonical happy path is **"phone-vibing"**: you're on your phone, you tell
+Claude (in the Claude app) to ship a new build of tonearm. Claude opens a
+session against this repo on your dev machine, runs:
+
+```bash
+scripts/build-release-apk.sh --gh-release
+```
+
+…and the new APK shows up on `https://github.com/887/tonearm/releases/latest`.
+You then pull it to your phone via [Obtainium](#install-via-obtainium), which
+auto-detects the new release and offers an in-place update. No Play Store, no
+Android Studio, no manual `adb`.
+
+The script supports three flags, individually or combined:
 
 ```bash
 # 1. Build only — APK lands at release/tonearm-<version>-<sha7>.apk
@@ -85,9 +97,17 @@ scripts/build-release-apk.sh --gh-release
 # 3. Build + adb install onto the connected device (AVD or wifi-adb phone)
 scripts/build-release-apk.sh --install
 
-# Combine flags:
+# Combine flags — the full local one-shot:
 scripts/build-release-apk.sh --gh-release --install
 ```
+
+`--gh-release` does the full production handshake:
+
+- Builds the APK and SHA-256-checksums it.
+- Auto-generates release notes from `git log <prev-tag>..HEAD`, including a
+  "Verify build" section listing the commit + APK SHA-256.
+- Pushes the local `v<version>-<sha7>` tag to `origin` (informational; the
+  fallback Action is self-disabling).
 
 By default the APK is signed with Gradle's debug keystore (good enough for
 personal sideload). For production-signed releases set the
@@ -97,6 +117,75 @@ script switches to `assembleRelease`.
 
 The `release/` directory is gitignored. Each build also writes a
 `release/latest.apk` symlink for convenience.
+
+## Install via Obtainium
+
+[Obtainium](https://github.com/ImranR98/Obtainium) is an open-source Android
+app store that pulls APKs directly from GitHub Releases (and other sources).
+We use it instead of the Play Store because:
+
+- No Play Store review / signing-key custody for a personal-scale app.
+- Auto-update from `https://github.com/887/tonearm/releases/latest`.
+- Works on de-Googled Androids (GrapheneOS / CalyxOS / LineageOS).
+
+### Setup (one tap)
+
+If you already have Obtainium installed, tap this link on your phone:
+
+[`obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearm`](obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearm)
+
+Obtainium opens, prefills the source, and shows the "Add" button.
+
+### Setup (manual)
+
+In Obtainium, tap **Add App** and fill in:
+
+| Field            | Value                              |
+| ---------------- | ---------------------------------- |
+| Source URL       | `https://github.com/887/tonearm`   |
+| Source type      | GitHub                             |
+| APK filter regex | `^tonearm-.*\.apk$`                |
+| Update channel   | Releases                           |
+
+Tap **Add**. Obtainium fetches the latest release, picks the APK matching the
+filter, and offers Install. Subsequent releases trigger an auto-update
+notification.
+
+### Verifying a build
+
+Each release ships a "Verify build" table in its notes with the APK SHA-256.
+After installing, you can confirm what you got:
+
+```bash
+adb shell pm path com.eight87.tonearm           # find the installed APK
+adb pull <path-from-above> /tmp/installed.apk   # pull it back
+sha256sum /tmp/installed.apk                    # compare to the release notes
+```
+
+## GitHub Actions fallback
+
+`.github/workflows/release.yml` is a **fallback** for when the local build
+isn't available — for example, if you're shipping from a phone via the GitHub
+web UI. It triggers **only** on `push: tags: [v*]`; it never runs on regular
+pushes, PRs, or schedule, so the default cost is zero CI minutes.
+
+The workflow is **self-disabling**: at the start of the job it queries the
+matching release; if any asset already matches `tonearm-*.apk` (which is what
+`scripts/build-release-apk.sh --gh-release` uploaded), it exits 0 without
+rebuilding. So for the normal local-build flow, even though the tag push
+triggers the workflow, no work happens.
+
+To skip CI for a specific tag entirely (e.g. WIP tags), include `[skip ci]` in
+the **annotated tag's message** (lightweight tags don't have a message):
+
+```bash
+git tag -a v1.0-abcdef1 -m "WIP build [skip ci]"
+git push origin v1.0-abcdef1
+```
+
+If you've configured a release-signing keystore, set repo secrets
+`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`, and the
+fallback build will use `assembleRelease` instead of `assembleDebug`.
 
 ## Populate the library + smoke-test
 
