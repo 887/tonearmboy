@@ -547,6 +547,36 @@ Six sub-steps:
 
 ---
 
+## Phase D.25 — custom-color theme picker + remove dead Round-mode toggle
+
+Real-device feedback round 6 from the Look-and-Feel + Base-theme dialog screenshots: the Base-theme picker has only three options (Default Android / Default colors / Pure black). User wants a fourth option that opens a real color picker so they can pick a primary seed color and have Material 3 derive the full ColorScheme from it. Separately, the "Round mode" toggle in Look-and-Feel currently does nothing visible — user is committing to Material 3 round elements everywhere with no Material-2 fallback, so the toggle is dead code.
+
+Direct user quote: *"I never got to pick the color here. I imagined having material you and a 'pick your own color' option from a color picker. also 'round mode' toggle doesn't do anything in settings and I don't know where this does anything. i'm going with the latest material 3 anyway… if this was indeed for that and doesn't uniformly do anything remove that round mode toggle."*
+
+Three sub-steps:
+
+- [ ] **D.25.1 Custom-color base theme.** Add a fourth Base-theme option, "Custom color". Picking it opens a color-picker dialog (HSV picker: saturation/value square + hue slider; Material 3 `Slider`s; preview swatch on top). Confirm → DataStore stores the seed color as a `Long` (ARGB). Theme generation: `BaseTheme` becomes a sealed class — `data object DefaultAndroid`, `data object DefaultColors`, `data object PureBlack`, `data class Custom(val seedRgb: Long)`. `TonearmTheme` consumes `BaseTheme.Custom` by deriving `lightColorScheme(...)` / `darkColorScheme(...)` from the seed via `dynamicColorScheme(seed: Color)` (Material 3 1.4+) or by hand-deriving `primary` / `secondary` / `tertiary` tonal palettes. The settings catalog row "Base theme" updates to render the picked color as a swatch in the trailing slot when `Custom` is selected. *Implementation freedom*: agent picks whether the picker is hand-rolled (HSV square + hue slider, ~120 lines of Compose) or a small MIT-licensed dependency — picker dependency must be MIT or Apache 2.0, not GPL.
+- [ ] **D.25.2 Remove "Round mode" toggle.** Strip:
+  - `app/src/main/java/com/eight87/tonearm/ui/settings/catalog/SettingsCatalog.kt`: drop `ID_ROUND_MODE` const + the row entry.
+  - `app/src/main/java/com/eight87/tonearm/ui/settings/SettingsSubPages.kt`: drop the Round-mode `SwitchRow` binding (line 122–125).
+  - `SettingsRepository.kt`: drop `roundMode: Boolean` from `SettingsSnapshot`, drop `setRoundMode`, drop `KEY_ROUND_MODE`. Existing user prefs with `round_mode` set are silently ignored on next read (no migration needed — the key just stops being consumed).
+  - Any `roundMode`-driven `Modifier.clip(RoundedCornerShape(...))` branches in the theme / component layer go to "always rounded" (Material 3 default). Verify there's no consumer left after the catalog/repo strip.
+- [ ] **D.25.3 Tests + screenshots.** Robolectric:
+  - `BaseThemeCustomTest` — assert `BaseTheme.fromStored("Custom:0xFF6750A4")` round-trips through DataStore; assert `TonearmTheme` receives a derived `ColorScheme` with the chosen seed.
+  - `ColorPickerTest` — Compose UI test: render the picker, drag the saturation/value square, assert the preview swatch updates; tap confirm, assert the callback fires with the picked `Color`.
+  - `RoundModeRemovedTest` — assert `SettingsCatalog` no longer contains a row with id `look_and_feel.round_mode`; assert `SettingsSnapshot` no longer has a `roundMode` property (compile-time check is enough — the test exists to flag if someone re-adds it).
+  
+  Screenshots via mobile-mcp on the AVD:
+  - `docs/screenshots/phase-d/160-d25-look-and-feel-no-round-mode.png` (Round mode row gone)
+  - `161-d25-base-theme-with-custom.png` (dialog now shows four options)
+  - `162-d25-color-picker.png` (HSV picker open)
+  - `163-d25-look-and-feel-with-custom-swatch.png` (Base theme row shows a colored swatch trailing)
+  - `164-d25-now-playing-themed-by-custom.png` (NowPlaying surface tinted by the picked seed)
+
+**Shipped:** _(not yet)_
+
+---
+
 ## Phase F — file deletion (the differentiator) — shipped in commit `ffef231`
 
 Goal: delete audio files from inside the player, with the system consent dialog and proper cache invalidation.
