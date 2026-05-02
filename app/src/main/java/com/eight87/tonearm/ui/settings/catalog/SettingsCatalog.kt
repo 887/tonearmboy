@@ -56,6 +56,7 @@ enum class Group {
   Appearance,
   Behaviour,
   Library,
+  About,
   // Look and Feel.
   Theme,
   Layout,
@@ -141,7 +142,7 @@ object SettingsCatalog {
   const val ID_LIBRARY_MUSIC_SOURCES = "library.music_sources"
   const val ID_LIBRARY_REFRESH = "library.refresh"
   const val ID_LIBRARY_RESCAN = "library.rescan"
-  const val ID_LIBRARY_ABOUT = "library.about"
+  const val ID_ABOUT = "about"
 
   const val ID_THEME = "look_and_feel.theme"
   const val ID_COLOR_SCHEME = "look_and_feel.color_scheme"
@@ -265,19 +266,20 @@ object SettingsCatalog {
       destination = com.eight87.tonearm.ui.nav.SettingsRootDest,
       breadcrumb = listOf(SECTION_SETTINGS, "Library", "Rescan music"),
     ),
-    // D.16.4 — About sub-page entry. Sits at the bottom of the Library
-    // card on Settings root.
+    // D.16.4 — About sub-page entry. Lives in its own About category at
+    // the very bottom of Settings root (NOT under Library — that was a
+    // categorisation error in the initial D.16 commit; user flagged it).
     SettingsCatalogEntry(
-      id = ID_LIBRARY_ABOUT,
+      id = ID_ABOUT,
       label = "About",
       subtitle = "Version, build, license, and credits.",
       keywords = listOf("about", "version", "build", "license", "credits", "github"),
       icon = Icons.Outlined.Info,
       section = Section.Root,
-      group = Group.Library,
+      group = Group.About,
       kind = RowKind.Navigate,
       destination = SettingsAbout,
-      breadcrumb = listOf(SECTION_SETTINGS, "Library", "About"),
+      breadcrumb = listOf(SECTION_SETTINGS, "About"),
     ),
 
     // ---------------------------------------------------------------

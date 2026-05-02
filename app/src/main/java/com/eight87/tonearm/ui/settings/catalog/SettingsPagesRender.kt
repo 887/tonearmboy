@@ -146,6 +146,7 @@ fun groupTitleFor(group: Group): String = when (group) {
   Group.Appearance -> "Appearance"
   Group.Behaviour -> "Behaviour"
   Group.Library -> "Library"
+  Group.About -> "About"
   Group.Theme -> "Theme"
   Group.Layout -> "Layout"
   Group.Display -> "Display"

@@ -78,7 +78,7 @@ fun SettingsScreen(
     SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES, onClick = onMusicSources),
     SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_REFRESH, onClick = onRefreshMusic),
     SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_RESCAN, onClick = { confirmRescan = true }),
-    SettingsRowBinding.Action(SettingsCatalog.ID_LIBRARY_ABOUT, onClick = onAbout),
+    SettingsRowBinding.Action(SettingsCatalog.ID_ABOUT, onClick = onAbout),
   )
 
   Scaffold(

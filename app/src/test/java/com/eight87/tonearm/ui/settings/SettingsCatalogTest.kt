@@ -45,7 +45,7 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_LIBRARY_REFRESH,
       SettingsCatalog.ID_LIBRARY_RESCAN,
       // D.16.4 — About sub-page entry.
-      SettingsCatalog.ID_LIBRARY_ABOUT,
+      SettingsCatalog.ID_ABOUT,
       // Look and Feel.
       SettingsCatalog.ID_THEME,
       SettingsCatalog.ID_COLOR_SCHEME,

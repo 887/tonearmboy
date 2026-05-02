@@ -1,6 +1,7 @@
 package com.eight87.tonearm.ui.settings
 
 import com.eight87.tonearm.ui.nav.SettingsAbout
+import com.eight87.tonearm.ui.settings.catalog.Group
 import com.eight87.tonearm.ui.settings.catalog.RowKind
 import com.eight87.tonearm.ui.settings.catalog.Section
 import com.eight87.tonearm.ui.settings.catalog.SettingsCatalog
@@ -9,30 +10,42 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * D.16.4 — verifies the new About entry is wired into the catalog and
- * routes to the [SettingsAbout] destination. Pinning these expectations
- * here means a stealth removal during a refactor breaks compile or test.
+ * D.16.4 — verifies the About entry is wired into the catalog and routes
+ * to the [SettingsAbout] destination. About lives in its own [Group.About]
+ * category at the bottom of Settings root (not under Library — see the
+ * post-D.16 user correction). Pinning these expectations here means a
+ * stealth removal or re-categorisation during a refactor breaks the test.
  */
 class AboutCatalogTest {
 
   @Test
-  fun about_entry_is_present_under_root_library_group() {
-    val entry = SettingsCatalog.byId(SettingsCatalog.ID_LIBRARY_ABOUT)
+  fun about_entry_routes_to_settings_about_destination() {
+    val entry = SettingsCatalog.byId(SettingsCatalog.ID_ABOUT)
     assertEquals(Section.Root, entry.section)
+    assertEquals(Group.About, entry.group)
     assertEquals(RowKind.Navigate, entry.kind)
     assertEquals(SettingsAbout, entry.destination)
   }
 
   @Test
-  fun about_appears_after_rescan_in_root_library_card() {
+  fun about_is_its_own_group_at_root() {
     val rootEntries = SettingsCatalog.bySection(Section.Root)
-      .filter { it.group == com.eight87.tonearm.ui.settings.catalog.Group.Library }
-    val ids = rootEntries.map { it.id }
-    val rescanIdx = ids.indexOf(SettingsCatalog.ID_LIBRARY_RESCAN)
-    val aboutIdx = ids.indexOf(SettingsCatalog.ID_LIBRARY_ABOUT)
-    assertTrue("Rescan must be present in Library group", rescanIdx >= 0)
-    assertTrue("About must be present in Library group", aboutIdx >= 0)
-    assertTrue("About must come after Rescan", aboutIdx > rescanIdx)
+    val aboutEntries = rootEntries.filter { it.group == Group.About }
+    assertEquals("Exactly one About entry expected", 1, aboutEntries.size)
+    assertEquals(SettingsCatalog.ID_ABOUT, aboutEntries.single().id)
+  }
+
+  @Test
+  fun about_appears_after_library_group_in_root_order() {
+    val rootEntries = SettingsCatalog.bySection(Section.Root)
+    val firstLibraryIdx = rootEntries.indexOfFirst { it.group == Group.Library }
+    val aboutIdx = rootEntries.indexOfFirst { it.group == Group.About }
+    assertTrue("Library group must exist in root", firstLibraryIdx >= 0)
+    assertTrue("About group must exist in root", aboutIdx >= 0)
+    assertTrue(
+      "About must render after the entire Library group",
+      aboutIdx > rootEntries.indexOfLast { it.group == Group.Library },
+    )
   }
 
   @Test
@@ -41,14 +54,14 @@ class AboutCatalogTest {
       val results = SettingsCatalog.search(term).map { it.id }
       assertTrue(
         "Search for '$term' should include the About entry",
-        results.contains(SettingsCatalog.ID_LIBRARY_ABOUT),
+        results.contains(SettingsCatalog.ID_ABOUT),
       )
     }
   }
 
   @Test
-  fun about_breadcrumb_is_rooted_at_settings() {
-    val entry = SettingsCatalog.byId(SettingsCatalog.ID_LIBRARY_ABOUT)
-    assertEquals(listOf("Settings", "Library", "About"), entry.breadcrumb)
+  fun about_breadcrumb_is_rooted_at_settings_without_library_segment() {
+    val entry = SettingsCatalog.byId(SettingsCatalog.ID_ABOUT)
+    assertEquals(listOf("Settings", "About"), entry.breadcrumb)
   }
 }
