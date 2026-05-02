@@ -1,10 +1,6 @@
 package com.eight87.tonearm.ui.settings
 
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,18 +29,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
-import androidx.compose.foundation.layout.offset
 import com.eight87.tonearm.data.db.CustomTabContentType
 import com.eight87.tonearm.data.db.CustomTabEntity
-import kotlin.math.roundToInt
+import com.eight87.tonearm.ui.common.DragReorderColumn
 
 /**
  * D.18.3 + D.18.4 — Library tabs configuration dialog.
@@ -274,97 +264,7 @@ private fun contentTypeShortLabel(ct: CustomTabContentType): String = when (ct) 
   CustomTabContentType.GENRES -> "Genres"
 }
 
-/**
- * D.18.4 — small hand-rolled drag-and-drop column. Long-press on the
- * exposed `dragHandleModifier` lifts a row; subsequent vertical
- * translation re-orders the list in place; release commits via
- * [onReordered].
- *
- * Vertical-only drag, fixed row height. Computes the target index
- * by snapping the drag delta to whole row-heights. Items animate to
- * their new position via offset modifiers; we don't use a lazy list
- * here because the dialog's row count is bounded (5 built-ins + a
- * realistic upper bound of maybe a dozen custom tabs).
- *
- * The pattern is the same one documented in `android-skills` under
- * "compose-drag-and-drop" — the third-party library
- * `sh.calvin.reorderable` would be functionally equivalent but adds a
- * dependency for ~150 lines of code we can write inline.
- */
-@Composable
-private fun <T : Any> DragReorderColumn(
-  items: List<T>,
-  itemKey: (T) -> String,
-  rowHeightDp: Int,
-  testTagPrefix: String,
-  onReordered: (List<T>) -> Unit,
-  rowContent: @Composable (T, Modifier) -> Unit,
-) {
-  val density = LocalDensity.current
-  val rowPx = with(density) { rowHeightDp.dp.toPx() }
-  // Local working copy so drag updates animate before the parent
-  // notifies. We sync to the supplied [items] when the parent
-  // pushes a new list.
-  var working by remember(items) { mutableStateOf(items) }
-  LaunchedEffect(items) { working = items }
-
-  var draggingIndex by remember { mutableStateOf(-1) }
-  var dragOffsetPx by remember { mutableStateOf(0f) }
-
-  Column(modifier = Modifier
-    .fillMaxWidth()
-    .semantics { testTag = "${testTagPrefix}_drag_column" }) {
-    working.forEachIndexed { index, item ->
-      val isDragging = index == draggingIndex
-      val translateY = if (isDragging) dragOffsetPx else 0f
-      val key = itemKey(item)
-      Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(rowHeightDp.dp)
-          .zIndex(if (isDragging) 1f else 0f)
-          .offset { IntOffset(0, translateY.roundToInt()) }
-      ) {
-        val handleModifier = Modifier.pointerInput(key, working.size) {
-          detectDragGesturesAfterLongPress(
-            onDragStart = {
-              draggingIndex = index
-              dragOffsetPx = 0f
-            },
-            onDrag = { _, drag ->
-              dragOffsetPx += drag.y
-              // Snap to a target index if the drag passes the
-              // threshold of half a row.
-              val current = draggingIndex
-              if (current >= 0) {
-                val targetDelta = (dragOffsetPx / rowPx).roundToInt()
-                val target = (current + targetDelta).coerceIn(0, working.size - 1)
-                if (target != current) {
-                  val swapped = working.toMutableList()
-                  val moved = swapped.removeAt(current)
-                  swapped.add(target, moved)
-                  working = swapped
-                  draggingIndex = target
-                  // Normalize the running offset so the visual
-                  // doesn't jump after the swap.
-                  dragOffsetPx -= (target - current) * rowPx
-                }
-              }
-            },
-            onDragEnd = {
-              draggingIndex = -1
-              dragOffsetPx = 0f
-              if (working != items) onReordered(working)
-            },
-            onDragCancel = {
-              draggingIndex = -1
-              dragOffsetPx = 0f
-              working = items
-            },
-          )
-        }
-        rowContent(item, handleModifier)
-      }
-    }
-  }
-}
+// D.21.3: `DragReorderColumn` graduated to `ui/common/DragReorderColumn.kt`
+// so the queue sheet can reuse the same lift / drag / drop helper. Same
+// behaviour, same testTagPrefix contract — the helper just lives in a
+// shared package now.

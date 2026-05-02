@@ -14,18 +14,25 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOn
+import androidx.compose.material.icons.filled.RepeatOneOn
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.ShuffleOn
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.media3.common.Player
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -141,10 +148,18 @@ fun NowPlayingScreen(
       if (showQueue) {
         QueueSheet(
           snapshot = queueSnapshot,
+          shuffleEnabled = state.shuffleEnabled,
+          repeatMode = state.repeatMode,
           onDismiss = { showQueue = false },
           onJumpTo = { idx -> playback.seekToQueueIndex(idx) },
           onRemove = { idx -> playback.removeQueueItem(idx) },
           onMove = { from, to -> playback.moveQueueItem(from, to) },
+          onSeek = { playback.seekTo(it) },
+          onToggleShuffle = { playback.toggleShuffle() },
+          onCycleRepeat = { playback.cycleRepeatMode() },
+          positionMs = state.positionMs,
+          durationMs = state.durationMs,
+          albumCoversMode = albumCoversMode,
         )
       }
 
@@ -153,6 +168,17 @@ fun NowPlayingScreen(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
       ) {
+        // D.21.4: shuffle toggle in the transport row.
+        IconToggleButton(
+          checked = state.shuffleEnabled,
+          onCheckedChange = { playback.toggleShuffle() },
+          modifier = Modifier.semantics { testTag = "now_playing_shuffle" },
+        ) {
+          Icon(
+            imageVector = if (state.shuffleEnabled) Icons.Filled.ShuffleOn else Icons.Filled.Shuffle,
+            contentDescription = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
+          )
+        }
         IconButton(onClick = { playback.seekToPrevious() }, enabled = state.hasPrevious) {
           Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(36.dp))
         }
@@ -171,6 +197,19 @@ fun NowPlayingScreen(
         }
         IconButton(onClick = { playback.seekToNext() }, enabled = state.hasNext) {
           Icon(Icons.Filled.SkipNext, contentDescription = "Next", modifier = Modifier.size(36.dp))
+        }
+        // D.21.4: repeat toggle on the right side of the transport row.
+        IconToggleButton(
+          checked = state.repeatMode != Player.REPEAT_MODE_OFF,
+          onCheckedChange = { playback.cycleRepeatMode() },
+          modifier = Modifier.semantics { testTag = "now_playing_repeat" },
+        ) {
+          val (icon, desc) = when (state.repeatMode) {
+            Player.REPEAT_MODE_ONE -> Icons.Filled.RepeatOneOn to "Repeat one"
+            Player.REPEAT_MODE_ALL -> Icons.Filled.RepeatOn to "Repeat all"
+            else -> Icons.Filled.Repeat to "Repeat off"
+          }
+          Icon(imageVector = icon, contentDescription = desc)
         }
       }
     }

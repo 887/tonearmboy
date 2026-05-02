@@ -221,6 +221,18 @@ class PlaybackUiController(private val applicationContext: Context) {
     override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
       pushState()
     }
+
+    // D.21.4: shuffle / repeat toggles in the queue header + NowPlaying
+    // transport row read these straight off PlaybackUiState. Mirror the
+    // controller's events into pushState so the toggles light up
+    // synchronously with system / Bluetooth-driven changes.
+    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+      pushState()
+    }
+
+    override fun onRepeatModeChanged(repeatMode: Int) {
+      pushState()
+    }
   }
 
   /** Connect to the running [PlaybackService]. Idempotent. */
@@ -356,6 +368,28 @@ class PlaybackUiController(private val applicationContext: Context) {
     val ctl = controller ?: return
     if (index < 0 || index >= ctl.mediaItemCount) return
     ctl.removeMediaItem(index)
+    pushState()
+  }
+
+  /**
+   * D.21.4 — toggle shuffle on the underlying [MediaController]. Mirrors
+   * `CustomBarAction.ShuffleToggle` but bound to the explicit toggle
+   * buttons in the queue header + NowPlaying transport row.
+   */
+  fun toggleShuffle() {
+    val ctl = controller ?: return
+    ctl.shuffleModeEnabled = !ctl.shuffleModeEnabled
+    pushState()
+  }
+
+  /**
+   * D.21.4 — cycle the controller's repeat mode through OFF → ALL → ONE
+   * → OFF. Same state machine `nextRepeatMode` already drives via
+   * [CustomBarAction.RepeatToggle].
+   */
+  fun cycleRepeatMode() {
+    val ctl = controller ?: return
+    ctl.repeatMode = nextRepeatMode(ctl.repeatMode)
     pushState()
   }
 
@@ -496,15 +530,20 @@ class PlaybackUiController(private val applicationContext: Context) {
       durationMs = ctl.duration.takeIf { it > 0 } ?: 0,
       hasNext = ctl.hasNextMediaItem(),
       hasPrevious = ctl.hasPreviousMediaItem(),
+      shuffleEnabled = ctl.shuffleModeEnabled,
+      repeatMode = ctl.repeatMode,
     )
     val items = ArrayList<QueueItem>(ctl.mediaItemCount)
     for (i in 0 until ctl.mediaItemCount) {
       val mi = ctl.getMediaItemAt(i)
       val mmd = mi.mediaMetadata
+      val itemAlbumId = mmd.extras?.getLong(EXTRA_MEDIA_STORE_ALBUM_ID, -1L)
+        ?.takeIf { it >= 0 }
       items += QueueItem(
         mediaId = mi.mediaId,
         title = mmd.title?.toString().orEmpty(),
         artist = mmd.artist?.toString().orEmpty(),
+        mediaStoreAlbumId = itemAlbumId,
       )
     }
     _queue.value = QueueSnapshot(items = items, currentIndex = ctl.currentMediaItemIndex)
@@ -541,6 +580,17 @@ data class PlaybackUiState(
   val durationMs: Long,
   val hasNext: Boolean,
   val hasPrevious: Boolean,
+  /**
+   * D.21.4 — controller-driven shuffle / repeat state, surfaced so the
+   * queue header + NowPlaying transport row can render their toggle
+   * buttons without polling the controller from the UI thread.
+   */
+  val shuffleEnabled: Boolean = false,
+  /**
+   * One of [Player.REPEAT_MODE_OFF], [Player.REPEAT_MODE_ALL],
+   * [Player.REPEAT_MODE_ONE].
+   */
+  val repeatMode: Int = Player.REPEAT_MODE_OFF,
 ) {
   companion object {
     val Empty = PlaybackUiState(
@@ -554,6 +604,8 @@ data class PlaybackUiState(
       durationMs = 0,
       hasNext = false,
       hasPrevious = false,
+      shuffleEnabled = false,
+      repeatMode = Player.REPEAT_MODE_OFF,
     )
   }
 }
@@ -569,6 +621,12 @@ data class QueueItem(
   val mediaId: String,
   val title: String,
   val artist: String,
+  /**
+   * D.21.2 — MediaStore album id of the queued track, when the source
+   * surface attached one as an extra. Used by `QueueSheet`'s pinned
+   * active-track header to render real cover art via `CoverArt`.
+   */
+  val mediaStoreAlbumId: Long? = null,
 )
 
 data class QueueSnapshot(

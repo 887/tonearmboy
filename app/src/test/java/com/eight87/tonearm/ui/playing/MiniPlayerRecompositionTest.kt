@@ -51,7 +51,8 @@ class MiniPlayerRecompositionTest {
       }
     }
     composeRule.onNodeWithText("Cipher Light").assertIsDisplayed()
-    composeRule.onNodeWithText("The Synth Foxes").assertIsDisplayed()
+    // D.21.1: subtitle is now "artist · album" joined.
+    composeRule.onNodeWithText("The Synth Foxes · Velvet Den").assertIsDisplayed()
 
     // Advance to the next track — same shape as MediaController firing
     // onMediaItemTransition and pushState() emitting fresh metadata.
@@ -59,7 +60,7 @@ class MiniPlayerRecompositionTest {
     composeRule.waitForIdle()
 
     composeRule.onNodeWithText("Quiet Hours").assertIsDisplayed()
-    composeRule.onNodeWithText("Field Recordings Trio").assertIsDisplayed()
+    composeRule.onNodeWithText("Field Recordings Trio · Field Recordings").assertIsDisplayed()
   }
 
   @Test

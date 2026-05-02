@@ -63,7 +63,8 @@ class MiniPlayerVisibilityTest {
     }
     composeRule.onNodeWithTag("mini_player").assertIsDisplayed()
     composeRule.onNodeWithText("Cipher Light").assertIsDisplayed()
-    composeRule.onNodeWithText("The Synth Foxes").assertIsDisplayed()
+    // D.21.1: subtitle is now "artist · album", not artist-only.
+    composeRule.onNodeWithText("The Synth Foxes · Velvet Den").assertIsDisplayed()
     composeRule.onNodeWithTag("mini_player_play_button").assertExists()
     // The transport icon's contentDescription flips with `isPlaying`.
     composeRule.onNodeWithContentDescription("Pause").assertExists()
@@ -84,7 +85,7 @@ class MiniPlayerVisibilityTest {
     }
     composeRule.onNodeWithTag("mini_player").assertIsDisplayed()
     composeRule.onNodeWithText("Cipher Light").assertIsDisplayed()
-    composeRule.onNodeWithText("The Synth Foxes").assertIsDisplayed()
+    composeRule.onNodeWithText("The Synth Foxes · Velvet Den").assertIsDisplayed()
     // Paused: the icon is `PlayArrow` with contentDescription "Play".
     composeRule.onNodeWithContentDescription("Play").assertExists()
     composeRule.onNodeWithContentDescription("Pause").assertDoesNotExist()

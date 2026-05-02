@@ -168,6 +168,7 @@ fun TonearmApp(
           onPlayButtonLongPress = {
             playback.performCustomBarAction(settingsSnapshot.customBarAction)
           },
+          albumCoversMode = settingsSnapshot.albumCoversMode,
         )
       }
     },
