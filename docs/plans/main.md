@@ -365,6 +365,46 @@ User real-device-tested `v1.0-eab1fd8` and surfaced three deferrals + one bug:
 
 ---
 
+## Phase D.19 — Permission gate + scan progress + parallel ReplayGain
+
+User real-device-tested `v1.0-472bb2d` and saw "No tracks yet" forever. Then `v1.0-a1f84e5` got stuck "App Not Responding" during the post-grant scan.
+
+- [x] **D.19.1** Runtime READ_MEDIA_AUDIO permission gate. `RequireAudioPermission` Compose wrapper around `TonearmApp`; system dialog on first launch, rationale + "Open app settings" fallback for don't-ask-again. Triggers `LibraryRepository.rescanNow()` on grant. — shipped in commit `a1f84e5`.
+- [x] **D.19.2** Parallel ReplayGain reads (concurrency 4 via `async + Semaphore.withPermit` on `Dispatchers.IO`) + `ScanProgress` `StateFlow<ScanProgress?>` + `ScanProgressBar` Compose composable rendered at the top of `LibraryScreen`. Fixes the IO-thread saturation that was causing the post-grant ANR. — shipped in commit `faebe22`.
+
+**Shipped:** D.19.1 in `a1f84e5` + D.19.2 in `faebe22`.
+
+---
+
+## Phase D.20 — Real-device regression sweep (bugs found during testing)
+
+User real-device-tested `v1.0-faebe22`. Four shipped behaviours don't actually work on a phone (the AVD smoke tests didn't exercise these paths). All four need fixing AND test coverage so they don't regress again.
+
+- [ ] **D.20.1 Notification tap routes to Now Playing** (not the library). `MediaSession.Builder.setSessionActivity(pendingIntent)` in `PlaybackService.onCreate` with `Intent.putExtra("tonearm.deeplink", "now_playing")`; `MainActivity` reads the extra and pushes `Destinations.NowPlaying` onto the back stack. Robolectric `NotificationDeepLinkTest` proves the extra makes the round trip.
+- [ ] **D.20.2 Mini-player tap doesn't ANR.** Diagnose first (likely `MediaController.buildAsync().get()` on Main, or `PlaybackUiController.connect()` awaited from main thread). Move the connection off Main; `NowPlayingScreen`'s first composition must render with sane initial values without blocking. Robolectric `MiniPlayerTapTest` asserts the click handler doesn't suspend on Main.
+- [ ] **D.20.3 Queue + position restore regression.** Phase E shipped `QueuePersistence` but it's not restoring on cold start. Verify DataStore writes via `adb shell run-as` cat; verify `MediaSession.Callback.onPlaybackResumption` fires; reduce `POSITION_DEBOUNCE_MS` to 500 ms or force a synchronous flush in `PlaybackService.onDestroy`. Round-trip test in `QueuePersistenceRoundTripTest` extends to assert the restore branch.
+- [ ] **D.20.4 Album-palette tint regression + base-theme picker.** D.8b shipped `LocalAlbumPalette` but the tint isn't visible on device. Diagnose (likely `mediaStoreAlbumId` extra not on the queued `MediaItem`, or `TonearmTheme` not actually consuming `LocalAlbumPalette`). Wire it correctly. Add a **Base theme picker** in Look and Feel: `Default Android (dynamic) | Default colors (static) | Pure black`. **Album-art tint toggle** sits on top, default **on**. Persist both via `SettingsRepository`. `AlbumPaletteThemeTest` pins the bias from a known bitmap.
+- [ ] **D.20.5 Tests + screenshots.** Each sub-step has a Robolectric assertion covering the unit logic AND a `scripts/ui-smoke-test.sh` integration step (where exercisable on `emulator-5554`). Screenshots: `100-d20-notification-tap-to-now-playing.png`, `101-d20-mini-player-tap-no-anr.png`, `102-d20-queue-restored-after-restart.png`, `103-d20-album-tint-velvet-den.png`, `104-d20-look-and-feel-theme-picker.png`.
+
+**Shipped:** _(D.20 agent dispatched but didn't push; redispatching)_
+
+---
+
+## Phase D.21 — Mini-player polish + queue UX overhaul
+
+User compared tonearm's currently-playing surfaces side-by-side with Auxio. Two surfaces lag visually + UX-functionally.
+
+- [ ] **D.21.1 Mini-player visual polish.** Match Auxio's denser-but-clearer hierarchy: larger album cover thumbnail (~56 dp), title in `bodyLarge`, artist · album in `bodySmall`, slim under-bar progress strip (Auxio shows current-position progress via a thin bar at the bottom edge of the mini-player), tappable transport icons (play/pause + close-X-or-next). Take an actual side-by-side screenshot pair vs. Auxio.
+- [ ] **D.21.2 Queue sheet — currently-playing on top + up-next below.** Currently the queue sheet is a flat list. Auxio renders the active track as a pinned header with cover/title/artist/seek-progress, then "Up next" section below, with everything pushed down. Implement: top section = active track (no drag handle), section divider with "Up next" label, scrollable list of upcoming tracks below.
+- [ ] **D.21.3 Queue drag-drop.** D.18.4 shipped DnD for the Library tabs dialog — port the same `DragReorderColumn` to the queue sheet. Released-position calls `MediaController.moveMediaItem`. Queue can also be reordered via row-end drag handle without leaving the sheet.
+- [ ] **D.21.4 Shuffle + repeat-one controls in queue + now-playing.** Two `IconToggleButton`s in the queue header AND in the NowPlaying transport row: shuffle (`Shuffle` icon, on/off) and repeat (`Repeat` / `RepeatOne` / `RepeatOff` cycling). Wires `MediaController.shuffleModeEnabled` and `MediaController.repeatMode = REPEAT_MODE_ONE / REPEAT_MODE_ALL / REPEAT_MODE_OFF`.
+- [ ] **D.21.5 Quick filter/search inside queue.** `OutlinedTextField` at the top of the queue sheet (under the active-track header). Substring filter on title / artist. As-you-type. Filtered view is a render-only filter; reorder is disabled while a filter is active (drag handles dim) so the user doesn't try to drag a row to a position outside the filtered view.
+- [ ] **D.21.6 Tests + screenshots.** Robolectric: `MiniPlayerStylingTest` (semantic structure + progress bar), `QueueHeaderTest` (active track on top, up-next below), `QueueDragDropTest` (port from D.18.4), `ShuffleRepeatToggleTest` (state machine), `QueueFilterTest` (substring filter, drag-disabled-while-filtered). UI smoke extended with each. Screenshots: `110-d21-mini-player-polished.png`, `111-d21-queue-active-on-top.png`, `112-d21-queue-drag-mid.png`, `113-d21-queue-shuffle-repeat-on.png`, `114-d21-queue-filtered.png`.
+
+**Shipped:** _(not yet — dispatches after D.20 lands)_
+
+---
+
 ## Phase F — file deletion (the differentiator)
 
 Goal: delete audio files from inside the player, with the system consent dialog and proper cache invalidation.
