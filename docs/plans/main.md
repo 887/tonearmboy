@@ -1,9 +1,8 @@
 # tonearm — main build plan
 
-## Status: ✅ DONE
+## Status: 🔄 In progress — Phase D.27 (daily-driver gaps round 8)
 
-_Phases 0 + A–H shipped 2026-05-03. Real-device feedback round 7 reopened the plan with Phase D.26._
-_Re-completed 2026-05-02 after Phase D.26 daily-driver polish._
+_Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. Round 8 reopened the plan with D.27 covering search bug, multi-select Add-to-Playlist, playlist detail empty state, single-song queue scroll, advanced filtering, and playlist tile UX._
 
 
 ## Stack (locked)
@@ -636,6 +635,77 @@ Five sub-steps:
   - `183-d26-shuffle-on-after-restart.png` — verify shuffle survives an app force-stop + relaunch
 
 **Shipped:** D.26.1–D.26.5 in commit `77669b8`. Verified end-to-end on the headless AVD `medium_phone` (Android 16 / API 36): mini-player renders shuffle / prev / play / next / repeat with a draggable Material 3 slider + time labels (screenshot `180`); queue list shows all entries with the active row highlighted by a `primaryContainer` background + leading speaker icon + bodyLarge title (screenshot `181`); typing a no-match filter at scrolled position keeps the LazyColumn scroll position in place via the `fillParentMaxHeight` placeholder (screenshot `182`); shuffle + repeat survive `am force-stop` + relaunch via `QueuePersistence` keys `shuffle_enabled` / `repeat_mode` (screenshot `183`). Tapping a previously-played row in the queue now scrolls back to that track without removing the row from the visible list — the user's "scroll back two songs" flow works end-to-end.
+
+---
+
+## Phase D.27 — daily-driver gaps round 8
+
+Real-device feedback round 8: six discrete asks from a user who's now living in the player. User pulled praise (*"average fox. good foxes think ahead"*) — every one of these is a gap I should have caught.
+
+User quotes:
+
+1. *"no way to add songs here to a playlist or that explains how to add songs to a playlist"* — empty playlist detail screen has zero discoverable affordance. The long-press → "Add to playlist" flow exists but isn't surfaced from the empty playlist.
+2. *"multiselect in library doesn't actually intuitively allow us to add songs to a playlist *disappointed*"* — `MultiSelectBar` (LibraryScreen.kt:1008) has Close + Delete only, no "Add to playlist".
+3. *"when you have a single song in the queue you can't scroll down one screenlength and also there are issues with the android keyboard hiding the song"* — D.26.3's `heightIn(min = N×rowHeight)` fix degenerates to ~56dp when N=1, leaving no scroll room. Also IME insets cover the active row when filter focuses.
+4. *"search function currently broken"* — root cause confirmed: `SearchInputReducer.MIN_LENGTH = 2` silently drops single-char queries to empty string but renders "No matches for 'a'." with the user's raw input. Trivial fix.
+5. *"we have a way to search but no good way to filter for example I can't filter by year inside the metadata or by year this got added to the files on my phone. both would be filter. but also probably ways to sort. I want both. also I want to filter in between two dates and by a name. so I need some kind of AND gating for filters and a new button in library."*
+6. *"the way to enter a new name for a playlist is totally ugly. playlists should be tiles and you should be able to give them pictures or stick with the letter naming we do when we don't have pictures. however you should also be able to retroactively choose pictures and/or choose one from a song in the playlist."*
+
+Seven sub-steps:
+
+- [ ] **D.27.1 Fix search.** `app/src/main/java/com/eight87/tonearm/ui/search/SearchInputReducer.kt` — change `MIN_LENGTH = 2` to `MIN_LENGTH = 1` so single-char queries actually search. Also: when the user types something *under* MIN_LENGTH (after a future bump), render "Type at least N characters" instead of the misleading "No matches for 'X'." message. Update `SearchInputReducerTest`.
+- [ ] **D.27.2 Multi-select "Add to playlist" action.** `LibraryScreen.kt:1008 MultiSelectBar` — add an `IconButton` with `Icons.Filled.PlaylistAdd` between Close and Delete. New callback `onAddToPlaylist: ((List<Long>) -> Unit)?`. Tap opens the existing `PlaylistPickerSheet` (with create-and-add path) for the selected track ids. Wire through `LibraryScreen` callbacks and `TonearmApp`.
+- [ ] **D.27.3 Playlist detail empty state CTA.** `app/src/main/java/com/eight87/tonearm/ui/library/PlaylistDetailScreen.kt` — when the playlist has zero tracks, replace the bare "No tracks in this playlist yet." with:
+  - Centered illustration / icon + the message
+  - A primary `Button("Add tracks")` that pushes a track-picker destination (a multi-select-only library Songs view that returns selected track ids on confirm).
+  - A secondary text hint: "Or long-press a song in your library and choose 'Add to playlist'."
+  
+  Also: top app bar gets a `+` `IconButton` ("Add tracks") on every playlist detail (not just empty) for the same flow. Tracks-already-in-playlist are pre-selected and disabled in the picker so the user can also remove from there.
+- [ ] **D.27.4 Single-song queue scroll + IME handling.** `QueueSection.kt` — refactor the heightIn computation to `heightIn(min = max((allEntries.size * QUEUE_ROW_HEIGHT_DP).dp, parentViewportHeight))`. The placeholder branch already has `noMatchFillModifier = fillParentMaxHeight()` available — combine with the `heightIn` so even N=1 reserves ≥ one viewport. For the queue rows in a non-empty queue: also add `Modifier.imePadding()` on the parent `LazyColumn` (or the `QueueSection` outer column) so the keyboard doesn't cover the active row when the filter focuses. Verify on the AVD with a single-track queue: filter focused → keyboard up → active row stays visible.
+- [ ] **D.27.5 Library filter button + composite filters.** New `Filter` icon in `LibraryScreen` top app bar (alongside the existing Sort and Settings icons). Tap opens a `ModalBottomSheet` with:
+  - **Name** — substring match on title / artist / album. `OutlinedTextField`.
+  - **Track year (metadata)** — range slider with two thumbs, min..max derived from the library's actual year span. Track entity already carries `year: Int?` — verify or add the column.
+  - **Date added (filesystem)** — range picker via two `DatePicker`s (start / end). Reads `dateAdded` from MediaStore (already in the cursor pull-down — confirm the field is in the Track entity, add if missing).
+  - **Apply** / **Reset** buttons. Filter state lives in a new `LibraryFilter` data class wired through `LibraryRepository.tracksMatching(criteria + filter)`. Combinator is AND across all non-null fields.
+  - Indicator badge on the Filter icon when any filter is active.
+  - Persist last-applied filter in DataStore so it survives app restart? *Optional* — default off, user can opt in via a "Remember filter" toggle. Default behaviour: filter clears on app close.
+- [ ] **D.27.6 Playlist tile UX overhaul.** `app/src/main/java/com/eight87/tonearm/ui/library/PlaylistsScreen.kt` (or wherever the Playlists tab renders) — switch from list rows to a `LazyVerticalGrid` of square tiles (2 columns on phone, 3 on tablet). Each tile:
+  - Cover art if the playlist has a chosen cover URI (new column on the playlist entity)
+  - Otherwise: first track's album art if any track in the playlist has one
+  - Otherwise: letter avatar with the playlist's first letter (existing fallback)
+  - Title below the tile
+  - Track count below the title
+  
+  Long-press a tile → context menu: Rename / Choose cover / Delete.
+  
+  "Choose cover" sheet:
+  - "Pick from a track in this playlist" — sub-sheet listing tracks with album art available, pick one
+  - "Pick from device" — `ActivityResultContracts.GetContent("image/*")` SAF picker (cover URI persisted)
+  - "Use letter" — clear the cover, fall back to letter
+  
+  Replace the existing "Enter playlist name" `AlertDialog` with a Material 3 bottom sheet with: name `OutlinedTextField`, "Pick a cover" (optional, shows the same chooser), Create button. Preserves the existing playlist creation entry points (`+` in playlists tab, "Add to playlist" → "+ New playlist" path).
+
+- [ ] **D.27.7 Tests + screenshots.** Robolectric / unit:
+  - `SearchInputReducerSingleCharTest` — assert `reduce("a") == "a"` after MIN_LENGTH change.
+  - `MultiSelectAddToPlaylistTest` — assert MultiSelectBar exposes the playlist-add icon, callback fires with the selected ids.
+  - `PlaylistDetailEmptyCtaTest` — assert empty playlist renders the "Add tracks" button + secondary hint, tapping pushes the track-picker destination.
+  - `QueueSingleTrackScrollTest` — assert `heightIn` on the queue list resolves to ≥ viewport when N=1.
+  - `LibraryFilterTest` — round-trip a filter with year range, date-added range, name substring; assert AND-combined matching against a fixture library; assert the badge state on the filter icon when any field is non-null.
+  - `PlaylistCoverResolutionTest` — assert the tile resolves to: chosen cover URI > first-track album art > letter fallback.
+  
+  Screenshots via mobile-mcp on the AVD:
+  - `docs/screenshots/phase-d/190-d27-search-single-char.png`
+  - `191-d27-multi-select-add-to-playlist.png`
+  - `192-d27-empty-playlist-cta.png`
+  - `193-d27-single-song-queue-scrolled.png`
+  - `194-d27-library-filter-sheet.png`
+  - `195-d27-library-filter-applied-badge.png`
+  - `196-d27-playlist-tiles-grid.png`
+  - `197-d27-playlist-cover-picker.png`
+
+**Shipped:** _(not yet)_
+
+After all seven sub-steps land, restore `## Status: ✅ DONE` at the top of the plan with a fresh re-completion note.
 
 ---
 
