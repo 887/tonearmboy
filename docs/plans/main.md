@@ -414,6 +414,50 @@ User compared tonearm's currently-playing surfaces side-by-side with Auxio. Two 
 
 ---
 
+## Phase D.22 — cold-start coordination (scan + session resume)
+
+Real-device feedback round 3: three failure modes after task-switcher swipe-away, all rooted in the splash → permission gate → scan → session-reconnect handshake on cold start.
+
+1. Cold start triggers a full library scan; the ScanProgressBar appears, but the rest of the LibraryScreen is unresponsive while it runs (~2 minutes on a 157-track collection). User can't navigate to NowPlaying / Settings / Search until the scan finishes. Per user: "I want a useable UI while you're scanning."
+2. With playback active, swiping the app away from the recents stack correctly keeps the song playing (the foreground MediaSessionService survives). Tapping the system notification re-launches MainActivity. The splash dismisses → blank black screen. No mini-player, no library, no NowPlaying. Compose tree is mounted but rendering nothing.
+3. Same scenario but the activity hasn't been killed (warm) → notification tap routes to NowPlaying correctly (D.20.1 holds). The bug is specifically the cold-from-zero case where the foreground service is still alive in another process.
+
+Diagnosis (verified by reading `MainActivity`, `RequireAudioPermission`, `TonearmApp`, `PlaybackUiController.connect`, `PlaybackController.connect`):
+
+- `MainActivity.handleIntent` runs before `setContent`, sets `pendingDeeplink.value = "now_playing"`.
+- `setContent` mounts the permission gate. Permission is already granted from earlier session → gate falls through to `TonearmApp` immediately, `onGranted()` fires → `rescanNow()` kicks off (re-scans the whole library every cold start).
+- `TonearmApp`'s `LaunchedEffect(deeplinkNonce, pendingDeeplink)` reads the deeplink and pushes `NowPlaying` onto the back stack immediately.
+- `LaunchedEffect(Unit)` in TonearmApp calls `playback.connect()`, which awaits the Media3 session-binding `ListenableFuture`. This is async — first emission of `playback.state` is `PlaybackUiState.Empty` (`hasMedia = false`).
+- `NowPlayingScreen` collects `playback.state`. While `hasMedia = false`, the screen renders no transport surface, no album art, no controls — the screenshot the user posted is the resulting empty composition.
+- The mini-player is hidden (`showMiniPlayer = playbackState.hasMedia && current !is NowPlaying`), so when current IS NowPlaying with `hasMedia = false`, the user sees pure background colour with both the mini-player and the screen content hidden.
+
+Fixes ship in five sub-steps:
+
+- [ ] **D.22.1 Non-blocking library UI during scan.** The scan should be a *progress overlay* on top of cached Room data, not a gate. Audit `LibraryScreen` + each tab (`AlbumsGridScreen`, `TracksListContent` inside `LibraryScreen.kt`, `Artists*`, `Genres*`, `Playlists*`) — any code path that gates content rendering on "scan in progress" gets removed. Cached tracks render immediately on cold launch, scan refreshes them in the background. Verify nothing on the main thread is blocked by scan progress emissions; if `LibraryRepository.scanProgress` emits more than ~5 Hz, throttle / `conflate()` the StateFlow so Compose doesn't recompose every track row on each progress tick. Also: confirm the rail / top-app-bar / overflow / settings-gear are tappable while the bar is visible (regression test: tap Settings during a scan, assert nav succeeded).
+- [ ] **D.22.2 Splash-screen hold-until-ready.** Use `androidx.core.splashscreen.SplashScreen.setKeepOnScreenCondition` to keep the splash visible until **either** (a) `playback.connect()` resolves (StateFlow reports a non-pending state) **or** (b) a 600 ms timeout expires — whichever lands first. This eliminates the "blank Compose tree" frame race on cold start with an active session. The 600 ms cap is a safety net so a stuck connect future doesn't pin the splash forever. Implement in `MainActivity.onCreate` via a `var splashHold = true` + `setKeepOnScreenCondition { splashHold }` + an `applicationScope.launch { withTimeoutOrNull(600) { playback.firstReadyState() }; splashHold = false }`.
+- [ ] **D.22.3 NowPlayingScreen connecting / empty states.** Currently rendering nothing when `state.hasMedia == false` is wrong — three valid sub-states need distinct UI:
+  - `connecting`: `playback.connect()` not yet resolved (cold start scenario). Render a `CircularProgressIndicator` + "Connecting to playback…" caption. Auto-recomposes when the state arrives.
+  - `connected, no media`: connected to an empty session. Render an empty-state card "Nothing playing" with a CTA back to Library. Auto-pops the screen 300 ms after settling on this state (so the user lands on Library, not on a dead screen).
+  - `connected, has media`: the existing transport surface.
+  
+  Plumb a `connectionPhase: ConnectionPhase` field through `PlaybackUiState` (enum: `Connecting`, `Connected`). Default value `Connecting`; flips to `Connected` when `controller.addListener` returns. Without this, NowPlaying can't distinguish "service unreachable" from "service reachable, queue empty".
+- [ ] **D.22.4 MediaController reconnect to running session.** Verify (via real-device repro on the AVD, swipe-away + notification-tap) that `PlaybackController.connect()` actually finds and binds to the still-alive `PlaybackService` instance. Suspected good — the `SessionToken(context, ComponentName(context, PlaybackService::class.java))` pattern is canonical — but needs proof. If the future never resolves on cold-after-swipe, fix the service lifecycle (`stopSelf` on task removal? `onTaskRemoved` already preserved per D.20.3 — confirm). WebSearch fair game: keywords `MediaSessionService onTaskRemoved cold start`, `MediaController.Builder buildAsync timeout`, `Media3 foreground service swipe to dismiss` — Auxio's GitHub is also a good reference for how they handle this exact case.
+- [ ] **D.22.5 Tests + screenshots.** Robolectric:
+  - `ColdStartUiResponsivenessTest` — assert that during an in-flight scan (mocked progress emissions at 1 Hz), tapping the settings-gear in `LibraryScreen` actually pushes `SettingsRootDest` onto the back stack within 300 ms. This is the regression test that "UI is unresponsive while scanning" stays fixed.
+  - `SplashHoldTest` — assert `splashHold` flips to `false` when the playback state transitions to `Connected` OR after the 600 ms timeout (use a virtual time scheduler).
+  - `NowPlayingConnectingStateTest` — assert the `Connecting` empty state renders a progress indicator and the "Nothing playing" card when in `Connected` + empty.
+  - `MediaControllerColdResumeTest` — exercise the cold-start path by spinning up a fake `MediaSessionService` with a pre-loaded queue, asserting `playback.connect()` resolves with the existing media items intact.
+  
+  Screenshots via mobile-mcp on the AVD (must use the cold-start path — `adb shell am force-stop com.eight87.tonearm` then re-launch via the notification tap):
+  - `docs/screenshots/phase-d/130-d22-scan-with-usable-ui.png` — scan in progress, user has navigated to Settings (no gating)
+  - `131-d22-cold-start-from-notification.png` — cold launch via notification tap with a running session, lands on NowPlaying with full transport
+  - `132-d22-now-playing-connecting.png` — the brief connecting state (capture mid-handshake; screen-record + extract frame if a single-shot tap is too fast)
+  - `133-d22-now-playing-empty-card.png` — connected state with no queue, "Nothing playing" CTA visible
+
+**Shipped:** _(not yet)_
+
+---
+
 ## Phase F — file deletion (the differentiator) — shipped in commit `ffef231`
 
 Goal: delete audio files from inside the player, with the system consent dialog and proper cache invalidation.
