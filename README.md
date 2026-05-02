@@ -70,6 +70,34 @@ Or via the Android CLI directly (which handles the toolchain internally):
 android run --apks=app/build/outputs/apk/debug/app-debug.apk
 ```
 
+## Build a release APK
+
+For sideloading onto your phone or distributing via GitHub Releases, use the
+release-build script:
+
+```bash
+# 1. Build only — APK lands at release/tonearm-<version>-<sha7>.apk
+scripts/build-release-apk.sh
+
+# 2. Build + upload to GitHub Releases (uses gh CLI; creates a vN.N.N-<sha7> tag)
+scripts/build-release-apk.sh --gh-release
+
+# 3. Build + adb install onto the connected device (AVD or wifi-adb phone)
+scripts/build-release-apk.sh --install
+
+# Combine flags:
+scripts/build-release-apk.sh --gh-release --install
+```
+
+By default the APK is signed with Gradle's debug keystore (good enough for
+personal sideload). For production-signed releases set the
+`TONEARM_RELEASE_KEYSTORE`, `TONEARM_RELEASE_KEY_ALIAS`, and
+`TONEARM_RELEASE_KEY_PASSWORD` environment variables before running, and the
+script switches to `assembleRelease`.
+
+The `release/` directory is gitignored. Each build also writes a
+`release/latest.apk` symlink for convenience.
+
 ## Populate the library + smoke-test
 
 ```bash

@@ -31,3 +31,6 @@ Thumbs.db
 
 # Downloaded test fixtures (re-fetchable via scripts/fetch-test-music.sh)
 test-music/
+
+# Release artifacts (rebuildable via scripts/build-release-apk.sh)
+release/

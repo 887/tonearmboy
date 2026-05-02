@@ -131,7 +131,21 @@ Goal: replace the horizontal top tabs with Harmony's vertical-rail pattern, dyna
 - [x] **D.8e** Folded into D.8a — auto-discover-album-art toggle stub lands in the same commit. Real fetch is `H.7`. — shipped in commit `0e92fda`.
 - [ ] **D.8f** Phase D.8 verification: extend `scripts/ui-smoke-test.sh` with rail / dynamic-title / custom-tab assertions. Live screenshots on the AVD via `mobile` MCP after `scripts/fetch-test-music.sh --push`: `01-rail-songs`, `02-rail-albums-with-cover`, `03-rail-albums-without-cover`, `04-tinted-velvet-den`, `05-tinted-field-recordings`, `06-custom-tab-editor`, `07-custom-tab-rendered`, `08-auto-discover-toggle`, `09-tabs-config-with-add-button` — replace any same-numbered files under `docs/screenshots/phase-d/`.
 
-**Shipped:** _(in progress — D.8a starts now)_
+**Shipped:** _(in progress — D.8a + D.8e shipped in commit `0e92fda`)_
+
+---
+
+## Phase D.8.5 — Settings UX rework (M3 Expressive + global search + icons)
+
+Goal: replace the linear list-of-rows settings UI with a hybrid of Android-system-Settings + Google-app-Settings — M3 Expressive grouped rounded cards "sitting in the middle", global search across every settings page (results show breadcrumb path), leading icons on every entry. **Lands before D.9** so the Auxio settings completion builds on the right shape, not on top of the wrong shape.
+
+- [ ] **D.8.5.1 Grouped rounded cards.** Settings root + sub-pages render rows inside `Card`s with `RoundedCornerShape(16.dp)` and `~16 dp` horizontal padding (the M3 Expressive "sitting in the middle" pattern). Related settings are clustered into one card; unrelated entries get their own. Build a small DSL: `SettingsCard { SettingsRow(...) SettingsRow(...) Divider() }` so the layout stays declarative. The dividers between rows inside a card are subtle but visible.
+- [ ] **D.8.5.2 Leading icons on every row.** Every `SettingsRow` takes an `icon: ImageVector` parameter. Icons follow Android Settings convention: monochrome line icons, ~24 dp. Pick from `Icons.Outlined.*` for breadth (Theme = `Palette`, Color scheme = `ColorLens`, Black theme = `DarkMode`, Round mode = `RoundedCorner`, Library tabs = `ViewList`, Headset autoplay = `Headphones`, ReplayGain = `GraphicEq`, etc.). When a row hasn't picked an icon yet, the placeholder is `Icons.Outlined.Settings`.
+- [ ] **D.8.5.3 Global settings search.** Search bar pinned at the top of the Settings root (pill-shaped, M3 Expressive). Build a `SettingsCatalog` indexed at compile time — every `SettingsRow` registers itself with `(label, subtitle, breadcrumbPath, icon, navigateTo)`. Search filters the catalog by substring on `label OR subtitle`. Results render as flat list with the same icon + label + breadcrumb-path subtitle pattern Android uses ("ReplayGain pre-amp: Audio > Volume normalization"). Tap navigates straight to the destination settings sub-page with the row scrolled-and-highlighted.
+- [ ] **D.8.5.4 Sub-page chrome consistency.** Each settings sub-page (Look and Feel, Personalize, Content, Audio) gets the same treatment: back arrow + section title at top, search bar pinned right under it (scoped to that sub-page's entries OR keep global, decide based on which feels less weird), then grouped rounded cards with iconed rows.
+- [ ] **D.8.5.5 Tests + screenshots.** Robolectric for the `SettingsCatalog` (registration completeness — every wired setting must be searchable; no orphan rows). Live screenshots on `emulator-5554`: settings root with cards, settings root with search results for "shuffle" showing breadcrumb-path matches across multiple sub-pages, sub-page (Audio) with its grouped cards, sub-page (Content) with the auto-discover toggle styled in the new chrome. Save under `docs/screenshots/phase-d/`.
+
+**Shipped:** _(not yet — dispatches next)_
 
 ---
 
