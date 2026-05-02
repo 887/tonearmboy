@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
@@ -147,18 +148,33 @@ fun QueueSection(
         Text("Nothing in the queue", style = MaterialTheme.typography.bodyMedium)
       }
     } else if (visibleEntries.isEmpty()) {
-      // D.26.3 — fill the parent viewport so the LazyColumn keeps a
-      // stable content height when the user types a no-match filter.
-      // Without this, item 2 (this section) collapses to its placeholder
-      // size, total content drops below viewport height, and the
-      // LazyColumn snaps back to firstVisibleItemIndex = 0.
+      // D.26.3 — claim the SAME vertical space the unfiltered list
+      // would have occupied, so the queue_section item's overall
+      // height stays stable when the user types a no-match filter.
+      // The earlier fix only used `fillParentMaxHeight()` (passed in
+      // as `noMatchFillModifier`), which forced the placeholder to
+      // exactly one viewport tall — fine for shallow scroll, broken
+      // when the user is scrolled deep into a long queue (N*rowHeight
+      // far exceeds the viewport). With `heightIn(min = N*rowHeight)`
+      // the placeholder reserves the full unfiltered list height, so
+      // the LazyColumn's content height stays stable and scroll
+      // position is preserved at any depth. We *don't* compose with
+      // `fillParentMaxHeight()` here — that modifier forces an exact
+      // size and would clobber the heightIn's larger min constraint.
+      // The `noMatchFillModifier` is intentionally ignored in this
+      // branch (kept on the API surface for legacy callers / future
+      // alternate strategies).
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .then(noMatchFillModifier)
+          .heightIn(min = (allEntries.size * QUEUE_ROW_HEIGHT_DP).dp)
           .padding(24.dp)
           .semantics { testTag = "queue_no_match_placeholder" },
-        contentAlignment = Alignment.Center,
+        // Anchor the message at the top of the reserved space — the
+        // box is N×rowHeight tall (potentially several screens) so a
+        // centered message would land off-screen for any non-trivial
+        // queue size, leaving the user staring at blank space.
+        contentAlignment = Alignment.TopCenter,
       ) {
         Text("No tracks match your filter", style = MaterialTheme.typography.bodyMedium)
       }
