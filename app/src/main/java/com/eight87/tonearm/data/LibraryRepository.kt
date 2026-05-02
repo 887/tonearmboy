@@ -221,6 +221,10 @@ class LibraryRepository(
     db.playlistDao().delete(playlistId)
   }
 
+  suspend fun renamePlaylist(playlistId: Long, name: String) {
+    db.playlistDao().rename(playlistId, name)
+  }
+
   suspend fun addTrackToPlaylist(playlistId: Long, trackId: Long) {
     val dao = db.playlistDao()
     val next = (dao.maxPosition(playlistId) ?: -1) + 1

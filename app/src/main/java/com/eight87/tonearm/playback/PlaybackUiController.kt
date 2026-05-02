@@ -51,6 +51,14 @@ class PlaybackUiController(private val applicationContext: Context) {
   private val _state = MutableStateFlow(PlaybackUiState.Empty)
   val state: StateFlow<PlaybackUiState> = _state.asStateFlow()
 
+  /**
+   * D.15.5 — snapshot of the current MediaController queue, recomputed
+   * whenever items change or the playing index advances. The queue
+   * sheet observes this Flow to render rows + the "now playing" marker.
+   */
+  private val _queue = MutableStateFlow(QueueSnapshot.Empty)
+  val queue: StateFlow<QueueSnapshot> = _queue.asStateFlow()
+
   private var controller: MediaController? = null
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
   private var positionTickerStarted = false
@@ -209,6 +217,10 @@ class PlaybackUiController(private val applicationContext: Context) {
     ) {
       pushState()
     }
+
+    override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+      pushState()
+    }
   }
 
   /** Connect to the running [PlaybackService]. Idempotent. */
@@ -309,6 +321,50 @@ class PlaybackUiController(private val applicationContext: Context) {
   fun stop() {
     controller?.stop()
     controller?.clearMediaItems()
+    pushState()
+  }
+
+  /**
+   * D.15.6.1 — append a track to the end of the queue. If the queue is
+   * empty, also `prepare()` and start playing so the user immediately
+   * hears the result instead of staring at a silent player.
+   */
+  fun addToQueue(track: Track) {
+    val ctl = controller ?: return
+    val item = track.toMediaItem()
+    if (ctl.mediaItemCount == 0) {
+      ctl.setMediaItem(item)
+      ctl.prepare()
+      ctl.play()
+    } else {
+      ctl.addMediaItem(item)
+    }
+    pushState()
+  }
+
+  /** D.15.5 — jump to [index] in the current queue and play. */
+  fun seekToQueueIndex(index: Int) {
+    val ctl = controller ?: return
+    if (index < 0 || index >= ctl.mediaItemCount) return
+    ctl.seekTo(index, 0L)
+    ctl.play()
+    pushState()
+  }
+
+  /** D.15.5 — remove the queue entry at [index]. */
+  fun removeQueueItem(index: Int) {
+    val ctl = controller ?: return
+    if (index < 0 || index >= ctl.mediaItemCount) return
+    ctl.removeMediaItem(index)
+    pushState()
+  }
+
+  /** D.15.5 — move queue item from [from] to [to]. */
+  fun moveQueueItem(from: Int, to: Int) {
+    val ctl = controller ?: return
+    val n = ctl.mediaItemCount
+    if (from < 0 || from >= n || to < 0 || to >= n || from == to) return
+    ctl.moveMediaItem(from, to)
     pushState()
   }
 
@@ -422,26 +478,50 @@ class PlaybackUiController(private val applicationContext: Context) {
     val ctl = controller
     if (ctl == null || ctl.mediaItemCount == 0) {
       _state.value = PlaybackUiState.Empty
+      _queue.value = QueueSnapshot.Empty
       return
     }
     val item = ctl.currentMediaItem
     val md = item?.mediaMetadata
+    val mediaStoreAlbumId = (md?.extras?.getLong(EXTRA_MEDIA_STORE_ALBUM_ID, -1L))
+      ?.takeIf { it >= 0 }
     _state.value = PlaybackUiState(
       hasMedia = true,
       title = md?.title?.toString().orEmpty(),
       artist = md?.artist?.toString().orEmpty(),
       album = md?.albumTitle?.toString().orEmpty(),
+      mediaStoreAlbumId = mediaStoreAlbumId,
       isPlaying = ctl.isPlaying,
       positionMs = ctl.currentPosition.coerceAtLeast(0),
       durationMs = ctl.duration.takeIf { it > 0 } ?: 0,
       hasNext = ctl.hasNextMediaItem(),
       hasPrevious = ctl.hasPreviousMediaItem(),
     )
+    val items = ArrayList<QueueItem>(ctl.mediaItemCount)
+    for (i in 0 until ctl.mediaItemCount) {
+      val mi = ctl.getMediaItemAt(i)
+      val mmd = mi.mediaMetadata
+      items += QueueItem(
+        mediaId = mi.mediaId,
+        title = mmd.title?.toString().orEmpty(),
+        artist = mmd.artist?.toString().orEmpty(),
+      )
+    }
+    _queue.value = QueueSnapshot(items = items, currentIndex = ctl.currentMediaItemIndex)
   }
 
   companion object {
     private const val SEEK_INCREMENT_MS = 10_000L
     private const val POSITION_TICK_MS = 250L
+
+    /**
+     * D.15.7 — extras key carrying the MediaStore album id through to
+     * the [MediaItem.mediaMetadata]. The Now Playing screen reads this
+     * to drive the same `CoverArt` composable the library tabs use,
+     * giving real album art on tracks that have it instead of the
+     * MusicNote placeholder.
+     */
+    const val EXTRA_MEDIA_STORE_ALBUM_ID = "tonearm.mediaStoreAlbumId"
   }
 }
 
@@ -451,6 +531,11 @@ data class PlaybackUiState(
   val title: String,
   val artist: String,
   val album: String,
+  /**
+   * D.15.7 — MediaStore album id of the playing track, when the source
+   * surface attached one. Used by `NowPlayingScreen` to drive `CoverArt`.
+   */
+  val mediaStoreAlbumId: Long? = null,
   val isPlaying: Boolean,
   val positionMs: Long,
   val durationMs: Long,
@@ -463,12 +548,35 @@ data class PlaybackUiState(
       title = "",
       artist = "",
       album = "",
+      mediaStoreAlbumId = null,
       isPlaying = false,
       positionMs = 0,
       durationMs = 0,
       hasNext = false,
       hasPrevious = false,
     )
+  }
+}
+
+/**
+ * D.15.5 — one queue entry, denormalized from a Media3 [MediaItem]
+ * into the fields the queue sheet renders. [mediaId] is the same
+ * `track.id.toString()` we feed into the controller, so callers can
+ * round-trip back to the Track domain object via the library cache
+ * if they need to.
+ */
+data class QueueItem(
+  val mediaId: String,
+  val title: String,
+  val artist: String,
+)
+
+data class QueueSnapshot(
+  val items: List<QueueItem>,
+  val currentIndex: Int,
+) {
+  companion object {
+    val Empty = QueueSnapshot(emptyList(), -1)
   }
 }
 
@@ -541,12 +649,21 @@ private fun Track.toMediaItem(): MediaItem {
   // audio file. Tracks without embedded art simply render no large
   // icon, which is the same fallback the platform notification uses.
   val fileUri = Uri.parse("file://${data}")
+  // D.15.7 — also stash the MediaStore album id so the in-app
+  // NowPlaying surface can drive the same legacy-albumart Coil
+  // request the library tabs do (cheaper + already cached).
+  val extras = mediaStoreAlbumId?.let { id ->
+    android.os.Bundle().apply {
+      putLong(PlaybackUiController.EXTRA_MEDIA_STORE_ALBUM_ID, id)
+    }
+  }
   val metadata = MediaMetadata.Builder()
     .setTitle(title)
     .setArtist(artist)
     .setAlbumTitle(album)
     .setAlbumArtist(albumArtist)
     .setArtworkUri(fileUri)
+    .also { if (extras != null) it.setExtras(extras) }
     .build()
   return MediaItem.Builder()
     .setMediaId(id.toString())

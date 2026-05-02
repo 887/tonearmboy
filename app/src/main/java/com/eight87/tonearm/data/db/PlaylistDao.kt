@@ -13,6 +13,9 @@ interface PlaylistDao {
   @Insert(onConflict = OnConflictStrategy.ABORT)
   suspend fun insert(playlist: PlaylistEntity): Long
 
+  @Query("UPDATE playlists SET name = :name WHERE id = :id")
+  suspend fun rename(id: Long, name: String)
+
   @Query("DELETE FROM playlists WHERE id = :id")
   suspend fun delete(id: Long)
 

@@ -1,8 +1,6 @@
 package com.eight87.tonearm.ui.playing
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -14,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
@@ -44,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearm.playback.PlaybackUiController
+import com.eight87.tonearm.ui.library.CoverArt
+import com.eight87.tonearm.ui.settings.AlbumCoversMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -66,8 +65,11 @@ import kotlinx.coroutines.launch
 fun NowPlayingScreen(
   playback: PlaybackUiController,
   onBack: () -> Unit,
+  albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
 ) {
   val state by playback.state.collectAsStateWithLifecycle()
+  val queueSnapshot by playback.queue.collectAsStateWithLifecycle()
+  var showQueue by remember { mutableStateOf(false) }
   val scope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
 
   // Connect on first composition; do not release on dispose because
@@ -88,7 +90,10 @@ fun NowPlayingScreen(
           }
         },
         actions = {
-          IconButton(onClick = { /* Phase D queue hook is open in plan; F+ */ }) {
+          IconButton(
+            onClick = { showQueue = true },
+            modifier = Modifier.semantics { testTag = "now_playing_queue" },
+          ) {
             Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
           }
         },
@@ -104,20 +109,20 @@ fun NowPlayingScreen(
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-      Box(
+      // D.15.7 — drive the same CoverArt the library tabs use; falls
+      // back to the music-note placeholder when albumId is null
+      // (Field Recordings tracks have no embedded art).
+      CoverArt(
+        albumId = state.mediaStoreAlbumId,
+        size = 96.dp,
+        mode = albumCoversMode,
+        contentDescription = state.title.ifEmpty { null },
         modifier = Modifier
           .fillMaxWidth()
           .aspectRatio(1f)
           .clip(RoundedCornerShape(12.dp))
-          .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center,
-      ) {
-        Icon(
-          imageVector = Icons.Filled.MusicNote,
-          contentDescription = null,
-          modifier = Modifier.size(96.dp),
-        )
-      }
+          .semantics { testTag = "now_playing_cover" },
+      )
 
       Text(
         text = state.title.ifEmpty { "No track" },
@@ -138,6 +143,16 @@ fun NowPlayingScreen(
         durationMs = state.durationMs,
         onSeek = { playback.seekTo(it) },
       )
+
+      if (showQueue) {
+        QueueSheet(
+          snapshot = queueSnapshot,
+          onDismiss = { showQueue = false },
+          onJumpTo = { idx -> playback.seekToQueueIndex(idx) },
+          onRemove = { idx -> playback.removeQueueItem(idx) },
+          onMove = { from, to -> playback.moveQueueItem(from, to) },
+        )
+      }
 
       Row(
         modifier = Modifier.fillMaxWidth(),

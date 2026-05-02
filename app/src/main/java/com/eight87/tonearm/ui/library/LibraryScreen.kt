@@ -3,6 +3,7 @@ package com.eight87.tonearm.ui.library
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -96,6 +97,14 @@ fun LibraryScreen(
   onRescanMusic: () -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
+  // D.15: navigation hooks for the new detail screens + track-row overflow.
+  onOpenAlbum: (name: String, albumArtist: String?) -> Unit,
+  onOpenArtist: (name: String) -> Unit,
+  onOpenGenre: (name: String) -> Unit,
+  onAddToQueue: (Track) -> Unit,
+  onAddToPlaylist: (Track) -> Unit,
+  onRenamePlaylist: (Long, String) -> Unit,
+  onDeletePlaylist: (Long) -> Unit,
 ) {
   val snapshot by settingsRepository.snapshot.collectAsState(
     initial = com.eight87.tonearm.ui.settings.SettingsSnapshot.Default,
@@ -185,6 +194,10 @@ fun LibraryScreen(
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
             onTrackClick = onTrackClick,
+            onAddToQueue = onAddToQueue,
+            onAddToPlaylist = onAddToPlaylist,
+            onGoToAlbum = { t -> onOpenAlbum(t.album ?: return@TracksListScreen, t.albumArtist ?: t.artist) },
+            onGoToArtist = { t -> onOpenArtist((t.albumArtist?.takeIf { it.isNotBlank() } ?: t.artist) ?: return@TracksListScreen) },
             onComingSoon = onComingSoon,
           )
           LibraryTab.Albums -> AlbumsGridScreen(
@@ -194,20 +207,25 @@ fun LibraryScreen(
             forceSquare = snapshot.forceSquareCovers,
             albumCoversMode = snapshot.albumCoversMode,
             contentPadding = PaddingValues(8.dp),
+            onAlbumClick = { a -> onOpenAlbum(a.name, a.artist) },
           )
           LibraryTab.Artists -> ArtistsListScreen(
             repository = repository,
             settingsRepository = settingsRepository,
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
+            onArtistClick = { a -> onOpenArtist(a.name) },
           )
           LibraryTab.Genres -> GenresListScreen(
             repository = repository,
             sort = activeSort,
+            onGenreClick = { g -> onOpenGenre(g.name) },
           )
           LibraryTab.Playlists -> PlaylistsListScreen(
             repository = repository,
             onPlaylistClick = onPlaylistClick,
+            onRenamePlaylist = onRenamePlaylist,
+            onDeletePlaylist = onDeletePlaylist,
           )
         }
       }
@@ -303,6 +321,7 @@ fun AlbumsGridScreen(
   forceSquare: Boolean,
   albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode,
   contentPadding: PaddingValues = PaddingValues(0.dp),
+  onAlbumClick: (Album) -> Unit = {},
 ) {
   val albums by repository.observeAlbums().collectAsState(initial = emptyList())
   if (albums.isEmpty()) {
@@ -318,7 +337,12 @@ fun AlbumsGridScreen(
     modifier = Modifier.fillMaxSize().semantics { testTag = "albums_grid" },
   ) {
     items(sorted, key = { it.id }) { album ->
-      AlbumCell(album = album, forceSquare = forceSquare, albumCoversMode = albumCoversMode)
+      AlbumCell(
+        album = album,
+        forceSquare = forceSquare,
+        albumCoversMode = albumCoversMode,
+        onClick = { onAlbumClick(album) },
+      )
     }
   }
 }
@@ -328,8 +352,14 @@ private fun AlbumCell(
   album: Album,
   forceSquare: Boolean,
   albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode,
+  onClick: () -> Unit,
 ) {
-  Column(modifier = Modifier.padding(4.dp)) {
+  Column(
+    modifier = Modifier
+      .padding(4.dp)
+      .clickable(onClick = onClick)
+      .semantics { testTag = "album_cell" },
+  ) {
     val shape = if (forceSquare) RoundedCornerShape(0.dp) else RoundedCornerShape(8.dp)
     CoverArt(
       // The MediaStore album id (captured at scan time) is what the
@@ -369,6 +399,7 @@ fun ArtistsListScreen(
   settingsRepository: SettingsRepository,
   sort: TabSort,
   intelligentSorting: Boolean,
+  onArtistClick: (Artist) -> Unit = {},
 ) {
   // D.9a.6 — `observeArtists(hideCollaboratorsFlow)` re-emits when the
   // user flips the toggle without forcing a library rescan.
@@ -386,16 +417,17 @@ fun ArtistsListScreen(
   LazyColumn(modifier = Modifier.fillMaxSize().semantics { testTag = "artists_list" }) {
     grouped.forEach { (initial, group) ->
       stickyHeader { SectionHeader(initial) }
-      items(group, key = { it.id }) { artist -> ArtistRow(artist) }
+      items(group, key = { it.id }) { artist -> ArtistRow(artist, onClick = { onArtistClick(artist) }) }
     }
   }
 }
 
 @Composable
-private fun ArtistRow(artist: Artist) {
+private fun ArtistRow(artist: Artist, onClick: () -> Unit) {
   TwoLineRow(
     primary = artist.name,
     secondary = "${artist.albumCount} albums · ${artist.trackCount} tracks",
+    onClick = onClick,
   )
 }
 
@@ -409,6 +441,10 @@ fun TracksListScreen(
   intelligentSorting: Boolean,
   onTrackClick: (List<Track>, Int) -> Unit,
   onComingSoon: (String) -> Unit,
+  onAddToQueue: (Track) -> Unit = {},
+  onAddToPlaylist: (Track) -> Unit = {},
+  onGoToAlbum: (Track) -> Unit = {},
+  onGoToArtist: (Track) -> Unit = {},
 ) {
   val tracks by repository.observeTracks().collectAsState(initial = emptyList())
   if (tracks.isEmpty()) {
@@ -435,7 +471,7 @@ fun TracksListScreen(
             TrackRow(
               track = track,
               onClick = { onTrackClick(sorted, itemIndex) },
-              onAction = { action -> handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onComingSoon) },
+              onAction = { action -> handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon) },
             )
           }
         }
@@ -445,7 +481,7 @@ fun TracksListScreen(
           TrackRow(
             track = track,
             onClick = { onTrackClick(sorted, itemIndex) },
-            onAction = { action -> handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onComingSoon) },
+            onAction = { action -> handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon) },
           )
         }
       }
@@ -468,14 +504,20 @@ private fun handleTrackAction(
   index: Int,
   action: TrackRowAction,
   onPlayQueue: (List<Track>, Int) -> Unit,
+  onAddToQueue: (Track) -> Unit,
+  onAddToPlaylist: (Track) -> Unit,
+  onGoToAlbum: (Track) -> Unit,
+  onGoToArtist: (Track) -> Unit,
   onComingSoon: (String) -> Unit,
 ) {
   when (action) {
     TrackRowAction.Play -> onPlayQueue(list, index)
-    TrackRowAction.AddToQueue -> onComingSoon("Add to queue")
-    TrackRowAction.AddToPlaylist -> onComingSoon("Add to playlist")
-    TrackRowAction.GoToAlbum -> onComingSoon("Go to album")
-    TrackRowAction.GoToArtist -> onComingSoon("Go to artist")
+    TrackRowAction.AddToQueue -> onAddToQueue(track)
+    TrackRowAction.AddToPlaylist -> onAddToPlaylist(track)
+    TrackRowAction.GoToAlbum -> onGoToAlbum(track)
+    TrackRowAction.GoToArtist -> onGoToArtist(track)
+    // Phase F (file deletion) wires this; the menu item is `enabled = false`
+    // in the meantime so the snackbar stays out of the user's way.
     TrackRowAction.Delete -> onComingSoon("Delete file")
   }
 }
@@ -589,6 +631,7 @@ private fun TrackRow(
 fun GenresListScreen(
   repository: LibraryRepository,
   sort: TabSort,
+  onGenreClick: (Genre) -> Unit = {},
 ) {
   val genres by repository.observeGenres().collectAsState(initial = emptyList())
   if (genres.isEmpty()) {
@@ -597,24 +640,30 @@ fun GenresListScreen(
   }
   val sorted = remember(genres, sort) { sortGenres(genres, sort) }
   LazyColumn(modifier = Modifier.fillMaxSize().semantics { testTag = "genres_list" }) {
-    items(sorted, key = { it.id }) { g -> GenreRow(g) }
+    items(sorted, key = { it.id }) { g -> GenreRow(g, onClick = { onGenreClick(g) }) }
   }
 }
 
 @Composable
-private fun GenreRow(genre: Genre) {
-  TwoLineRow(primary = genre.name, secondary = "${genre.trackCount} tracks")
+private fun GenreRow(genre: Genre, onClick: () -> Unit) {
+  TwoLineRow(primary = genre.name, secondary = "${genre.trackCount} tracks", onClick = onClick)
 }
 
 // --- Playlists ------------------------------------------------------------
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PlaylistsListScreen(
   repository: LibraryRepository,
   onPlaylistClick: (Long) -> Unit,
+  onRenamePlaylist: (Long, String) -> Unit = { _, _ -> },
+  onDeletePlaylist: (Long) -> Unit = {},
 ) {
   val playlists by repository.observePlaylists().collectAsState(initial = emptyList())
   var showCreate by remember { mutableStateOf(false) }
+  var contextMenuFor by remember { mutableStateOf<com.eight87.tonearm.data.model.Playlist?>(null) }
+  var renameFor by remember { mutableStateOf<com.eight87.tonearm.data.model.Playlist?>(null) }
+  var deleteFor by remember { mutableStateOf<com.eight87.tonearm.data.model.Playlist?>(null) }
   val scope = rememberCoroutineScope()
 
   Box(modifier = Modifier.fillMaxSize().semantics { testTag = "playlists_screen" }) {
@@ -623,11 +672,38 @@ fun PlaylistsListScreen(
     } else {
       LazyColumn(modifier = Modifier.fillMaxSize().semantics { testTag = "playlists_list" }) {
         items(playlists, key = { it.id }) { p ->
-          TwoLineRow(
-            primary = p.name,
-            secondary = "${p.trackCount} tracks",
-            onClick = { onPlaylistClick(p.id) },
-          )
+          Box {
+            Column(
+              modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                  onClick = { onPlaylistClick(p.id) },
+                  onLongClick = { contextMenuFor = p },
+                )
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .semantics { testTag = "playlist_row" },
+            ) {
+              Text(p.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+              Text("${p.trackCount} tracks", style = MaterialTheme.typography.bodySmall, maxLines = 1)
+            }
+            HorizontalDivider(modifier = Modifier.align(Alignment.BottomCenter))
+            DropdownMenu(
+              expanded = contextMenuFor?.id == p.id,
+              onDismissRequest = { contextMenuFor = null },
+              modifier = Modifier.semantics { testTag = "playlist_context_menu" },
+            ) {
+              DropdownMenuItem(
+                text = { Text("Rename") },
+                onClick = { contextMenuFor = null; renameFor = p },
+                modifier = Modifier.semantics { testTag = "playlist_context_rename" },
+              )
+              DropdownMenuItem(
+                text = { Text("Delete") },
+                onClick = { contextMenuFor = null; deleteFor = p },
+                modifier = Modifier.semantics { testTag = "playlist_context_delete" },
+              )
+            }
+          }
         }
       }
     }
@@ -635,7 +711,7 @@ fun PlaylistsListScreen(
       onClick = { showCreate = true },
       icon = { Icon(Icons.Filled.Add, contentDescription = null) },
       text = { Text("New playlist") },
-      modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+      modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).semantics { testTag = "new_playlist_fab" },
     )
   }
 
@@ -661,9 +737,51 @@ fun PlaylistsListScreen(
             }
             showCreate = false
           },
+          modifier = Modifier.semantics { testTag = "new_playlist_confirm" },
         ) { Text("Create") }
       },
       dismissButton = { TextButton(onClick = { showCreate = false }) { Text("Cancel") } },
+    )
+  }
+
+  renameFor?.let { target ->
+    var name by remember(target.id) { mutableStateOf(target.name) }
+    AlertDialog(
+      onDismissRequest = { renameFor = null },
+      title = { Text("Rename playlist") },
+      text = {
+        OutlinedTextField(
+          value = name,
+          onValueChange = { name = it },
+          label = { Text("Name") },
+          singleLine = true,
+        )
+      },
+      confirmButton = {
+        TextButton(onClick = {
+          val trimmed = name.trim()
+          if (trimmed.isNotEmpty() && trimmed != target.name) {
+            onRenamePlaylist(target.id, trimmed)
+          }
+          renameFor = null
+        }) { Text("Rename") }
+      },
+      dismissButton = { TextButton(onClick = { renameFor = null }) { Text("Cancel") } },
+    )
+  }
+
+  deleteFor?.let { target ->
+    AlertDialog(
+      onDismissRequest = { deleteFor = null },
+      title = { Text("Delete playlist") },
+      text = { Text("Delete \"${target.name}\"? This removes the playlist but not the tracks themselves.") },
+      confirmButton = {
+        TextButton(onClick = {
+          onDeletePlaylist(target.id)
+          deleteFor = null
+        }) { Text("Delete") }
+      },
+      dismissButton = { TextButton(onClick = { deleteFor = null }) { Text("Cancel") } },
     )
   }
 }

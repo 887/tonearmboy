@@ -1,0 +1,384 @@
+package com.eight87.tonearm.ui.library
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.model.Album
+import com.eight87.tonearm.data.model.Track
+import com.eight87.tonearm.ui.nav.LocalSectionTitle
+import com.eight87.tonearm.ui.settings.AlbumCoversMode
+
+/**
+ * D.15 — detail screens for Albums / Artists / Genres.
+ *
+ * Each screen reads from the existing LibraryRepository Flows
+ * (observeTracks / observeAlbums) and filters in-memory. For the
+ * library sizes tonearm targets (single-digit thousands of tracks),
+ * filtering at the Compose layer is plenty cheap; if the user pushes
+ * past that we'd add per-screen DAO queries.
+ *
+ * The track rows reuse the same overflow-menu callbacks the library
+ * tabs use so Add-to-queue / Add-to-playlist / Go-to-album/artist all
+ * work identically here.
+ */
+
+// --- Album --------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AlbumDetailScreen(
+  repository: LibraryRepository,
+  albumName: String,
+  albumArtist: String?,
+  albumCoversMode: AlbumCoversMode,
+  onTrackClick: (List<Track>, Int) -> Unit,
+  onTrackAction: (Track, AlbumDetailTrackAction) -> Unit,
+  onBack: () -> Unit,
+) {
+  val allTracks by repository.observeTracks().collectAsState(initial = emptyList())
+  val albums by repository.observeAlbums().collectAsState(initial = emptyList())
+
+  val tracks = remember(allTracks, albumName, albumArtist) {
+    allTracks
+      .filter { it.album == albumName && (it.albumArtist ?: it.artist) == albumArtist }
+      .sortedWith(compareBy({ it.year ?: Int.MIN_VALUE }, { it.trackNumber ?: Int.MAX_VALUE }, { it.title }))
+  }
+  val album: Album? = remember(albums, albumName, albumArtist) {
+    albums.firstOrNull { it.name == albumName && it.artist == albumArtist }
+  }
+  val totalDurationMs = remember(tracks) { tracks.sumOf { it.durationMs } }
+
+  val sectionTitle = LocalSectionTitle.current
+  LaunchedEffect(albumName) { sectionTitle.value = albumName }
+
+  Scaffold(
+    topBar = {
+      TopAppBar(
+        title = { Text(albumName) },
+        navigationIcon = {
+          IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+          }
+        },
+      )
+    },
+  ) { innerPadding ->
+    LazyColumn(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(innerPadding)
+        .semantics { testTag = "album_detail" },
+    ) {
+      item {
+        Column(
+          modifier = Modifier.fillMaxWidth().padding(16.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          CoverArt(
+            albumId = album?.mediaStoreAlbumId ?: tracks.firstOrNull()?.mediaStoreAlbumId,
+            size = 192.dp,
+            mode = albumCoversMode,
+            contentDescription = albumName,
+            modifier = Modifier
+              .fillMaxWidth(0.7f)
+              .aspectRatio(1f)
+              .clip(RoundedCornerShape(12.dp))
+              .semantics { testTag = "album_detail_cover" },
+          )
+          Spacer(Modifier.height(12.dp))
+          Text(albumName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+          Text(
+            text = albumArtist ?: "Unknown artist",
+            style = MaterialTheme.typography.bodyMedium,
+          )
+          Text(
+            text = listOfNotNull(
+              album?.year?.toString(),
+              "${tracks.size} tracks",
+              formatDuration(totalDurationMs),
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+          )
+        }
+        HorizontalDivider()
+      }
+      items(tracks, key = { it.id }) { track ->
+        val itemIndex = tracks.indexOf(track)
+        DetailTrackRow(
+          track = track,
+          onClick = { onTrackClick(tracks, itemIndex) },
+          onAction = { action -> onTrackAction(track, action) },
+        )
+      }
+    }
+  }
+}
+
+// --- Artist --------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun ArtistDetailScreen(
+  repository: LibraryRepository,
+  artistName: String,
+  albumCoversMode: AlbumCoversMode,
+  onTrackClick: (List<Track>, Int) -> Unit,
+  onTrackAction: (Track, AlbumDetailTrackAction) -> Unit,
+  onAlbumClick: (Album) -> Unit,
+  onBack: () -> Unit,
+) {
+  val allTracks by repository.observeTracks().collectAsState(initial = emptyList())
+  val allAlbums by repository.observeAlbums().collectAsState(initial = emptyList())
+
+  val tracks = remember(allTracks, artistName) {
+    allTracks
+      .filter { (it.albumArtist ?: it.artist) == artistName || it.artist == artistName }
+      .sortedWith(compareBy({ it.album ?: "" }, { it.trackNumber ?: Int.MAX_VALUE }, { it.title }))
+  }
+  val albums = remember(allAlbums, artistName) {
+    allAlbums.filter { it.artist == artistName }
+      .sortedWith(compareBy({ it.year ?: Int.MIN_VALUE }, { it.name }))
+  }
+
+  val sectionTitle = LocalSectionTitle.current
+  LaunchedEffect(artistName) { sectionTitle.value = artistName }
+
+  Scaffold(
+    topBar = {
+      TopAppBar(
+        title = { Text(artistName) },
+        navigationIcon = {
+          IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+          }
+        },
+      )
+    },
+  ) { innerPadding ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(innerPadding)
+        .semantics { testTag = "artist_detail" },
+    ) {
+      Column(modifier = Modifier.padding(16.dp)) {
+        Text(artistName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        Text(
+          text = "${albums.size} albums · ${tracks.size} tracks",
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+      HorizontalDivider()
+      if (albums.isNotEmpty()) {
+        Text(
+          text = "Albums",
+          style = MaterialTheme.typography.titleSmall,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        LazyHorizontalGrid(
+          rows = GridCells.Fixed(1),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          modifier = Modifier
+            .fillMaxWidth()
+            .height(160.dp)
+            .padding(horizontal = 16.dp)
+            .semantics { testTag = "artist_detail_albums" },
+        ) {
+          items(albums, key = { it.id }) { album ->
+            Column(
+              modifier = Modifier
+                .clickable { onAlbumClick(album) }
+                .padding(4.dp),
+            ) {
+              CoverArt(
+                albumId = album.mediaStoreAlbumId,
+                size = 48.dp,
+                mode = albumCoversMode,
+                contentDescription = album.name,
+                modifier = Modifier
+                  .size(120.dp)
+                  .clip(RoundedCornerShape(8.dp)),
+              )
+              Text(album.name, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+            }
+          }
+        }
+        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+      }
+      Text(
+        text = "Tracks",
+        style = MaterialTheme.typography.titleSmall,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+      )
+      LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(tracks, key = { it.id }) { track ->
+          val itemIndex = tracks.indexOf(track)
+          DetailTrackRow(
+            track = track,
+            onClick = { onTrackClick(tracks, itemIndex) },
+            onAction = { action -> onTrackAction(track, action) },
+          )
+        }
+      }
+    }
+  }
+}
+
+// --- Genre --------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GenreDetailScreen(
+  repository: LibraryRepository,
+  genreName: String,
+  onTrackClick: (List<Track>, Int) -> Unit,
+  onTrackAction: (Track, AlbumDetailTrackAction) -> Unit,
+  onBack: () -> Unit,
+) {
+  val allTracks by repository.observeTracks().collectAsState(initial = emptyList())
+  val tracks = remember(allTracks, genreName) {
+    allTracks.filter { it.genre == genreName }
+      .sortedBy { it.title }
+  }
+
+  val sectionTitle = LocalSectionTitle.current
+  LaunchedEffect(genreName) { sectionTitle.value = genreName }
+
+  Scaffold(
+    topBar = {
+      TopAppBar(
+        title = { Text(genreName) },
+        navigationIcon = {
+          IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+          }
+        },
+      )
+    },
+  ) { innerPadding ->
+    LazyColumn(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(innerPadding)
+        .semantics { testTag = "genre_detail" },
+    ) {
+      item {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+          Text(genreName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+          Text(
+            text = "${tracks.size} tracks",
+            style = MaterialTheme.typography.bodySmall,
+          )
+        }
+        HorizontalDivider()
+      }
+      items(tracks, key = { it.id }) { track ->
+        val itemIndex = tracks.indexOf(track)
+        DetailTrackRow(
+          track = track,
+          onClick = { onTrackClick(tracks, itemIndex) },
+          onAction = { action -> onTrackAction(track, action) },
+        )
+      }
+    }
+  }
+}
+
+// --- Track row + actions used across detail surfaces -------------------
+
+enum class AlbumDetailTrackAction { Play, AddToQueue, AddToPlaylist, GoToAlbum, GoToArtist }
+
+@Composable
+private fun DetailTrackRow(
+  track: Track,
+  onClick: () -> Unit,
+  onAction: (AlbumDetailTrackAction) -> Unit,
+) {
+  var menuOpen by remember { mutableStateOf(false) }
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clickable(onClick = onClick)
+      .padding(horizontal = 16.dp, vertical = 10.dp)
+      .semantics { testTag = "detail_track_row" },
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Column(modifier = Modifier.weight(1f)) {
+      Text(track.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+      Text(
+        text = listOfNotNull(track.artist?.takeIf { it.isNotBlank() }, track.album?.takeIf { it.isNotBlank() })
+          .joinToString(" · ").ifEmpty { "Unknown" },
+        style = MaterialTheme.typography.bodySmall,
+        maxLines = 1,
+      )
+    }
+    Box {
+      IconButton(
+        onClick = { menuOpen = true },
+        modifier = Modifier.semantics { testTag = "detail_track_overflow" },
+      ) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
+      DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+        DropdownMenuItem(text = { Text("Play") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.Play) })
+        DropdownMenuItem(text = { Text("Add to queue") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.AddToQueue) })
+        DropdownMenuItem(text = { Text("Add to playlist…") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.AddToPlaylist) })
+        DropdownMenuItem(text = { Text("Go to album") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.GoToAlbum) })
+        DropdownMenuItem(text = { Text("Go to artist") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.GoToArtist) })
+      }
+    }
+  }
+  HorizontalDivider()
+}
+
+internal fun formatDuration(durationMs: Long): String {
+  val totalSeconds = durationMs / 1000
+  val hours = totalSeconds / 3600
+  val minutes = (totalSeconds % 3600) / 60
+  val seconds = totalSeconds % 60
+  return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds)
+  else "%d:%02d".format(minutes, seconds)
+}

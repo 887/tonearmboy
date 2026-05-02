@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
@@ -16,10 +17,16 @@ import androidx.compose.material3.Scaffold
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.eight87.tonearm.AppGraph
+import com.eight87.tonearm.ui.library.AlbumDetailScreen
+import com.eight87.tonearm.ui.library.AlbumDetailTrackAction
+import com.eight87.tonearm.ui.library.ArtistDetailScreen
+import com.eight87.tonearm.ui.library.GenreDetailScreen
 import com.eight87.tonearm.ui.library.LibraryScreen
 import com.eight87.tonearm.ui.library.PlaylistDetailScreen
+import com.eight87.tonearm.ui.library.PlaylistPickerSheet
 import com.eight87.tonearm.ui.playing.MiniPlayer
 import com.eight87.tonearm.ui.playing.NowPlayingScreen
+import com.eight87.tonearm.data.model.Track
 import com.eight87.tonearm.ui.search.SearchScreen
 import com.eight87.tonearm.ui.settings.SettingsSnapshot
 import com.eight87.tonearm.ui.settings.SettingsAudioScreen
@@ -93,6 +100,12 @@ fun TonearmApp(graph: AppGraph) {
       snackbarHostState.showSnackbar("$feature — coming in v1.1")
     }
   }
+
+  // D.15.6.2 — track currently being added to a playlist; non-null
+  // shows the picker sheet on top of whichever destination triggered it.
+  var addingToPlaylistTrack by remember { mutableStateOf<Track?>(null) }
+  val playlists by graph.libraryRepository.observePlaylists()
+    .collectAsStateWithLifecycle(initialValue = emptyList())
   val onRefreshMusic: () -> Unit = {
     graph.applicationScope.launch {
       graph.libraryRepository.rescanNow()
@@ -153,6 +166,110 @@ fun TonearmApp(graph: AppGraph) {
             onRescanMusic = onRescanMusic,
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,
+            onOpenAlbum = { name, albumArtist -> backStack.push(AlbumDetail(name, albumArtist)) },
+            onOpenArtist = { name -> backStack.push(ArtistDetail(name)) },
+            onOpenGenre = { name -> backStack.push(GenreDetail(name)) },
+            onAddToQueue = { track ->
+              playback.addToQueue(track)
+              graph.applicationScope.launch {
+                snackbarHostState.showSnackbar("Added to queue: ${track.title}")
+              }
+            },
+            onAddToPlaylist = { track -> addingToPlaylistTrack = track },
+            onRenamePlaylist = { id, name ->
+              graph.applicationScope.launch {
+                graph.libraryRepository.renamePlaylist(id, name)
+                snackbarHostState.showSnackbar("Renamed to \"$name\"")
+              }
+            },
+            onDeletePlaylist = { id ->
+              graph.applicationScope.launch {
+                graph.libraryRepository.deletePlaylist(id)
+                snackbarHostState.showSnackbar("Playlist deleted")
+              }
+            },
+          )
+        }
+        entry<AlbumDetail> { key ->
+          AlbumDetailScreen(
+            repository = graph.libraryRepository,
+            albumName = key.name,
+            albumArtist = key.albumArtist,
+            albumCoversMode = settingsSnapshot.albumCoversMode,
+            onTrackClick = { tracks, index ->
+              playback.playFromDetail(
+                surroundingList = tracks,
+                tappedIndex = index,
+                strategy = settingsSnapshot.playFromItemDetails,
+              )
+              backStack.push(NowPlaying)
+            },
+            onTrackAction = { track, action ->
+              handleDetailTrackAction(
+                track = track,
+                action = action,
+                playback = playback,
+                backStack = backStack,
+                snackbarHostState = snackbarHostState,
+                applicationScope = graph.applicationScope,
+                onAddToPlaylist = { addingToPlaylistTrack = it },
+              )
+            },
+            onBack = { backStack.pop() },
+          )
+        }
+        entry<ArtistDetail> { key ->
+          ArtistDetailScreen(
+            repository = graph.libraryRepository,
+            artistName = key.name,
+            albumCoversMode = settingsSnapshot.albumCoversMode,
+            onTrackClick = { tracks, index ->
+              playback.playFromDetail(
+                surroundingList = tracks,
+                tappedIndex = index,
+                strategy = settingsSnapshot.playFromItemDetails,
+              )
+              backStack.push(NowPlaying)
+            },
+            onTrackAction = { track, action ->
+              handleDetailTrackAction(
+                track = track,
+                action = action,
+                playback = playback,
+                backStack = backStack,
+                snackbarHostState = snackbarHostState,
+                applicationScope = graph.applicationScope,
+                onAddToPlaylist = { addingToPlaylistTrack = it },
+              )
+            },
+            onAlbumClick = { album -> backStack.push(AlbumDetail(album.name, album.artist)) },
+            onBack = { backStack.pop() },
+          )
+        }
+        entry<GenreDetail> { key ->
+          GenreDetailScreen(
+            repository = graph.libraryRepository,
+            genreName = key.name,
+            onTrackClick = { tracks, index ->
+              playback.playFromDetail(
+                surroundingList = tracks,
+                tappedIndex = index,
+                strategy = settingsSnapshot.playFromItemDetails,
+              )
+              backStack.push(NowPlaying)
+            },
+            onTrackAction = { track, action ->
+              handleDetailTrackAction(
+                track = track,
+                action = action,
+                playback = playback,
+                backStack = backStack,
+                snackbarHostState = snackbarHostState,
+                applicationScope = graph.applicationScope,
+                onAddToPlaylist = { addingToPlaylistTrack = it },
+              )
+            },
+            onBack = { backStack.pop() },
           )
         }
         entry<Search> {
@@ -171,6 +288,7 @@ fun TonearmApp(graph: AppGraph) {
           NowPlayingScreen(
             playback = playback,
             onBack = { backStack.pop() },
+            albumCoversMode = settingsSnapshot.albumCoversMode,
           )
         }
         entry<PlaylistDetail> { key ->
@@ -266,6 +384,61 @@ fun TonearmApp(graph: AppGraph) {
         }
       },
     )
+
+    // D.15.6.2 — global "Add to playlist" picker overlay. Hosted at the
+    // app level so any track-row action (library, detail screens) can
+    // trigger the same sheet.
+    addingToPlaylistTrack?.let { track ->
+      PlaylistPickerSheet(
+        playlists = playlists,
+        onDismiss = { addingToPlaylistTrack = null },
+        onPick = { p ->
+          addingToPlaylistTrack = null
+          graph.applicationScope.launch {
+            graph.libraryRepository.addTrackToPlaylist(p.id, track.id)
+            snackbarHostState.showSnackbar("Added \"${track.title}\" to ${p.name}")
+          }
+        },
+        onCreateAndPick = { name ->
+          addingToPlaylistTrack = null
+          graph.applicationScope.launch {
+            val id = graph.libraryRepository.createPlaylist(name)
+            graph.libraryRepository.addTrackToPlaylist(id, track.id)
+            snackbarHostState.showSnackbar("Added \"${track.title}\" to $name")
+          }
+        },
+      )
+    }
   }
+  }
+}
+
+@OptIn(UnstableApi::class)
+private fun handleDetailTrackAction(
+  track: Track,
+  action: AlbumDetailTrackAction,
+  playback: com.eight87.tonearm.playback.PlaybackUiController,
+  backStack: TonearmBackStack,
+  snackbarHostState: SnackbarHostState,
+  applicationScope: kotlinx.coroutines.CoroutineScope,
+  onAddToPlaylist: (Track) -> Unit,
+) {
+  when (action) {
+    AlbumDetailTrackAction.Play -> playback.playTrack(track)
+    AlbumDetailTrackAction.AddToQueue -> {
+      playback.addToQueue(track)
+      applicationScope.launch {
+        snackbarHostState.showSnackbar("Added to queue: ${track.title}")
+      }
+    }
+    AlbumDetailTrackAction.AddToPlaylist -> onAddToPlaylist(track)
+    AlbumDetailTrackAction.GoToAlbum -> {
+      val name = track.album ?: return
+      backStack.push(AlbumDetail(name, track.albumArtist ?: track.artist))
+    }
+    AlbumDetailTrackAction.GoToArtist -> {
+      val name = track.albumArtist?.takeIf { it.isNotBlank() } ?: track.artist ?: return
+      backStack.push(ArtistDetail(name))
+    }
   }
 }
