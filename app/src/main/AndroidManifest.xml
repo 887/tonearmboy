@@ -13,6 +13,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
+    <!-- D.9d.2: low-priority foreground service that watches MediaStore +
+         configured SAF trees for changes and triggers a debounced rescan
+         via WorkManager. Android 14+ requires a foreground-service type
+         to be declared at install time and at runtime; `dataSync` is the
+         documented category for "user-initiated background data sync /
+         scan / index work". -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
     <!-- Notification posting (Android 13+) for the playback notification. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -79,6 +87,26 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="com.eight87.tonearm.action.LIBRARY_SCAN" />
+            </intent-filter>
+        </receiver>
+
+        <!-- D.9d.2: low-priority foreground service that observes
+             MediaStore + every persisted SAF tree URI and enqueues a
+             debounced LibraryRescanWorker on change. Started + stopped
+             by the "Automatic reloading" toggle in Settings > Content. -->
+        <service
+            android:name=".data.watcher.LibraryWatcherService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- D.9d.2: tap-to-disable receiver for the watcher's sticky
+             notification. Stops the service AND flips the persisted
+             "Automatic reloading" setting back to off. -->
+        <receiver
+            android:name=".data.watcher.LibraryWatcherDisableReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.eight87.tonearm.action.WATCHER_DISABLE" />
             </intent-filter>
         </receiver>
     </application>

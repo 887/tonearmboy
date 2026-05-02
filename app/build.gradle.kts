@@ -111,6 +111,13 @@ dependencies {
   // DataStore — persists Phase D Settings (theme preference).
   implementation(libs.androidx.datastore.preferences)
 
+  // WorkManager — D.9d.2 LibraryRescanWorker debouncing the
+  // automatic-reload content observer.
+  implementation(libs.androidx.work.runtime.ktx)
+
+  // DocumentFile — D.9d.1 SAF tree walker for music-source URIs.
+  implementation("androidx.documentfile:documentfile:1.0.1")
+
   // Coroutines bridge to Guava ListenableFuture for the Media3
   // MediaController.connect() handshake on the UI thread.
   implementation(libs.kotlinx.coroutines.guava)
@@ -129,4 +136,5 @@ dependencies {
   testImplementation(libs.androidx.test.ext.junit)
   testImplementation(libs.androidx.arch.core.testing)
   testImplementation(libs.androidx.room.testing)
+  testImplementation(libs.androidx.work.testing)
 }

@@ -285,6 +285,84 @@ sleep 1; dump
 # multi-language subtitle still appears (catalog entry is wired).
 require '^text="Intelligent sorting"$'           'Content: Intelligent sorting toggle (D.9c.2)'
 require 'articles'                               'Content: Intelligent sorting subtitle mentions articles (D.9c.2)'
+
+# --- D.9d.2: automatic reloading is now a real toggle (no v1.1 stub) ---
+# The catalog row's subtitle should mention foreground service; tapping
+# the toggle starts the watcher service. We assert presence of the
+# subtitle here; the foreground-service start-up is asserted separately
+# below by querying `dumpsys activity services`.
+require '^text="Automatic reloading"$'           'Content: Automatic reloading (D.9d.2) entry'
+require 'foreground service'                     'Content: Automatic reloading subtitle mentions service (D.9d.2)'
+forbid 'Coming in v1.1' 'Content: no "Coming in v1.1" stubs left after D.9d'
+
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
+
+# --- D.9d.1: Music sources sub-page renders --------------------------
+# Re-enter Settings; the Music sources row is at the Library card.
+# Tapping it pushes a sub-page with header "Sources" + "Add source"
+# button. Empty-state copy mentions /sdcard/Music — we assert that.
+"${ADB[@]}" shell input tap 1006 211; sleep 1
+dump
+tap_row_label 'Settings' || "${ADB[@]}" shell input keyevent KEYCODE_BACK
+sleep 1; dump
+tap_row_label 'Music sources'; sleep 2
+dump
+require '^text="Music sources"$'                 'D.9d.1: Music sources sub-page title'
+require '^text="Add source"$'                    'D.9d.1: Add source button'
+# Either the empty-state copy OR an existing source row is acceptable.
+if have_text '/sdcard/Music'; then
+  echo "[PASS] D.9d.1: empty-state copy mentions /sdcard/Music"
+elif have_text 'externalstorage.documents'; then
+  echo "[PASS] D.9d.1: existing source row visible"
+else
+  echo "[FAIL] D.9d.1: neither empty-state copy nor source row found" >&2
+  exit 1
+fi
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
+"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
+
+# --- D.9d.2: Automatic reloading toggle starts the foreground service -
+# Toggle the row on and assert the watcher service is running plus the
+# sticky notification is posted.
+"${ADB[@]}" shell input tap 1006 211; sleep 1
+dump
+tap_row_label 'Settings' || "${ADB[@]}" shell input keyevent KEYCODE_BACK
+sleep 1; dump
+tap_row_label 'Content'; sleep 2; dump
+# The toggle-row coordinates aren't deterministic across resolutions,
+# but uiautomator-dump bounds give the row's right-side switch.
+auto_bounds=$(grep -oE 'text="Automatic reloading"[^>]*bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' "$UIDUMP_LOCAL" 2>/dev/null | head -1 || true)
+if [[ "$auto_bounds" =~ bounds=\"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]\" ]]; then
+  # Tap near the right edge of the row to hit the trailing Switch.
+  ty=$(( (${BASH_REMATCH[2]} + ${BASH_REMATCH[4]}) / 2 ))
+  "${ADB[@]}" shell input tap 920 "$ty"; sleep 3
+  if "${ADB[@]}" shell dumpsys activity services com.eight87.tonearm 2>/dev/null \
+      | grep -q 'LibraryWatcherService.*c:com.eight87.tonearm'; then
+    echo "[PASS] D.9d.2: LibraryWatcherService is running after toggle ON"
+  else
+    echo "[FAIL] D.9d.2: LibraryWatcherService not found after toggle ON" >&2
+    exit 1
+  fi
+  if "${ADB[@]}" shell dumpsys notification --noredact 2>/dev/null \
+      | grep -q "Watching for library changes"; then
+    echo "[PASS] D.9d.2: Watching-for-library-changes notification posted"
+  else
+    echo "[WARN] D.9d.2: notification text not found in dumpsys (may be redacted)" >&2
+  fi
+  # Toggle off — service must stop.
+  "${ADB[@]}" shell input tap 920 "$ty"; sleep 3
+  if "${ADB[@]}" shell dumpsys activity services com.eight87.tonearm 2>/dev/null \
+      | grep -q 'LibraryWatcherService.*c:com.eight87.tonearm'; then
+    echo "[FAIL] D.9d.2: LibraryWatcherService still running after toggle OFF" >&2
+    exit 1
+  else
+    echo "[PASS] D.9d.2: LibraryWatcherService stopped after toggle OFF"
+  fi
+else
+  echo "[WARN] could not parse Automatic reloading bounds, skipping toggle assertion" >&2
+fi
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 

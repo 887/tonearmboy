@@ -42,6 +42,9 @@ import com.eight87.tonearm.ui.settings.catalog.Section
 import com.eight87.tonearm.ui.settings.catalog.SettingsCatalog
 import com.eight87.tonearm.ui.settings.catalog.SettingsCatalogPage
 import com.eight87.tonearm.ui.settings.catalog.SettingsRowBinding
+import androidx.compose.ui.platform.LocalContext
+import androidx.media3.common.util.UnstableApi
+import com.eight87.tonearm.data.watcher.LibraryWatcherService
 import kotlinx.coroutines.launch
 
 // =============================================================================
@@ -380,6 +383,7 @@ private fun tabLabel(tab: LibraryTab): String = when (tab) {
 // Content
 // =============================================================================
 
+@OptIn(UnstableApi::class)
 @Composable
 fun SettingsContentScreen(
   repository: SettingsRepository,
@@ -391,11 +395,23 @@ fun SettingsContentScreen(
   val scope = rememberCoroutineScope()
   var albumCoversPicker by remember { mutableStateOf(false) }
   var separatorsPicker by remember { mutableStateOf(false) }
+  val context = LocalContext.current
 
   val bindings = listOf(
-    SettingsRowBinding.Action(
+    // D.9d.2 — Automatic reloading toggle. Persists immediately and
+    // starts / stops the foreground watcher service in the same gesture
+    // so the user sees the sticky notification appear within ~1 frame.
+    SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_AUTOMATIC_RELOADING,
-      onClick = { onComingSoon("Automatic reloading") },
+      checked = snapshot.automaticReloading,
+      onCheckedChange = { value ->
+        scope.launch { repository.setAutomaticReloading(value) }
+        if (value) {
+          LibraryWatcherService.start(context)
+        } else {
+          LibraryWatcherService.stop(context)
+        }
+      },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_MULTI_VALUE_SEPARATORS,

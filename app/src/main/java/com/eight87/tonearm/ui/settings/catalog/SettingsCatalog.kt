@@ -32,6 +32,7 @@ import androidx.navigation3.runtime.NavKey
 import com.eight87.tonearm.ui.nav.SettingsAudio
 import com.eight87.tonearm.ui.nav.SettingsContent
 import com.eight87.tonearm.ui.nav.SettingsLookAndFeel
+import com.eight87.tonearm.ui.nav.SettingsMusicSources
 import com.eight87.tonearm.ui.nav.SettingsPersonalize
 
 /**
@@ -233,8 +234,8 @@ object SettingsCatalog {
       icon = Icons.Outlined.Folder,
       section = Section.Root,
       group = Group.Library,
-      kind = RowKind.Stub,
-      destination = com.eight87.tonearm.ui.nav.SettingsRootDest,
+      kind = RowKind.Navigate,
+      destination = SettingsMusicSources,
       breadcrumb = listOf(SECTION_SETTINGS, "Library", "Music sources"),
     ),
     SettingsCatalogEntry(
@@ -396,12 +397,12 @@ object SettingsCatalog {
     SettingsCatalogEntry(
       id = ID_AUTOMATIC_RELOADING,
       label = "Automatic reloading",
-      subtitle = "Coming in v1.1.",
-      keywords = listOf("watch", "reload", "background"),
+      subtitle = "Watch for library changes and rescan automatically. Runs a foreground service.",
+      keywords = listOf("watch", "reload", "background", "observer", "rescan"),
       icon = Icons.Outlined.Sync,
       section = Section.Content,
       group = Group.Music,
-      kind = RowKind.Stub,
+      kind = RowKind.Toggle,
       destination = SettingsContent,
       breadcrumb = listOf(SECTION_CONTENT, "Music", "Automatic reloading"),
     ),

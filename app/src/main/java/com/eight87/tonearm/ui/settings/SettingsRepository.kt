@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -257,6 +258,20 @@ data class SettingsSnapshot(
   val replayGainPreampDb: Float,
   val albumCoversMode: AlbumCoversMode,
   val multiValueSeparators: Set<MultiValueSeparator>,
+  /**
+   * D.9d.1 — set of persisted SAF tree URIs the library scanner walks.
+   * Empty means "use the legacy MediaStore default scope". Stored as
+   * Strings so the snapshot stays equality-stable across emissions.
+   */
+  val musicSourceUris: Set<String>,
+  /**
+   * D.9d.2 — when true the [LibraryWatcherService] is running with a
+   * sticky low-priority notification, observing MediaStore and each
+   * configured source URI for changes and enqueuing a debounced
+   * `LibraryRescanWorker` on change. Default is **off** because a
+   * foreground service costs battery; the user opts in.
+   */
+  val automaticReloading: Boolean,
 ) {
   companion object {
     val Default: SettingsSnapshot = SettingsSnapshot(
@@ -282,6 +297,8 @@ data class SettingsSnapshot(
       replayGainPreampDb = 0f,
       albumCoversMode = AlbumCoversMode.Default,
       multiValueSeparators = MultiValueSeparator.Default,
+      musicSourceUris = emptySet(),
+      automaticReloading = false,
     )
   }
 }
@@ -413,6 +430,49 @@ class SettingsRepository(private val context: Context) {
     MultiValueSeparator.fromStored(it[KEY_MULTI_VALUE_SEPARATORS])
   }
 
+  // --- D.9d.1: music sources -----------------------------------------------
+
+  /**
+   * Hot Flow of the configured tree URIs (as Strings). The scanner reads
+   * this on every scan; subscribers in the UI render the list of rows.
+   * An empty set means "scan MediaStore using the legacy default" (the
+   * existing behaviour, preserved for backward compatibility).
+   */
+  val musicSourceUris: Flow<Set<String>> = store.data.map {
+    it[KEY_MUSIC_SOURCE_URIS] ?: emptySet()
+  }
+
+  /** Append a tree URI. Idempotent — no-op when the URI is already in the set. */
+  suspend fun addMusicSourceUri(uri: String) {
+    store.edit { prefs ->
+      val current = prefs[KEY_MUSIC_SOURCE_URIS] ?: emptySet()
+      prefs[KEY_MUSIC_SOURCE_URIS] = current + uri
+    }
+  }
+
+  /** Remove a tree URI. No-op when missing. */
+  suspend fun removeMusicSourceUri(uri: String) {
+    store.edit { prefs ->
+      val current = prefs[KEY_MUSIC_SOURCE_URIS] ?: emptySet()
+      prefs[KEY_MUSIC_SOURCE_URIS] = current - uri
+    }
+  }
+
+  /** Replace the full set. Used by tests and the deduplicating helper. */
+  suspend fun setMusicSourceUris(value: Set<String>) {
+    store.edit { it[KEY_MUSIC_SOURCE_URIS] = value }
+  }
+
+  // --- D.9d.2: automatic reloading toggle ----------------------------------
+
+  val automaticReloading: Flow<Boolean> = store.data.map {
+    it[KEY_AUTOMATIC_RELOADING] ?: SettingsSnapshot.Default.automaticReloading
+  }
+
+  suspend fun setAutomaticReloading(value: Boolean) {
+    store.edit { it[KEY_AUTOMATIC_RELOADING] = value }
+  }
+
   /**
    * Hot Flow of [SettingsSnapshot.hideCollaborators]; used by
    * [com.eight87.tonearm.data.LibraryRepository] to filter the artists
@@ -464,6 +524,8 @@ class SettingsRepository(private val context: Context) {
       .coerceIn(REPLAYGAIN_PREAMP_MIN_DB, REPLAYGAIN_PREAMP_MAX_DB),
     albumCoversMode = AlbumCoversMode.fromStored(this[KEY_ALBUM_COVERS_MODE]),
     multiValueSeparators = MultiValueSeparator.fromStored(this[KEY_MULTI_VALUE_SEPARATORS]),
+    musicSourceUris = this[KEY_MUSIC_SOURCE_URIS] ?: emptySet(),
+    automaticReloading = this[KEY_AUTOMATIC_RELOADING] ?: SettingsSnapshot.Default.automaticReloading,
   )
 
   companion object {
@@ -488,6 +550,8 @@ class SettingsRepository(private val context: Context) {
     internal val KEY_REPLAYGAIN_PREAMP = floatPreferencesKey("replaygain_preamp_db")
     internal val KEY_ALBUM_COVERS_MODE = stringPreferencesKey("album_covers_mode")
     internal val KEY_MULTI_VALUE_SEPARATORS = stringPreferencesKey("multi_value_separators")
+    internal val KEY_MUSIC_SOURCE_URIS = stringSetPreferencesKey("music_source_uris")
+    internal val KEY_AUTOMATIC_RELOADING = booleanPreferencesKey("automatic_reloading")
 
     /** D.9b.2 — pre-amp slider bounds, fixed at [-15, +15] dB. */
     const val REPLAYGAIN_PREAMP_MIN_DB: Float = -15f

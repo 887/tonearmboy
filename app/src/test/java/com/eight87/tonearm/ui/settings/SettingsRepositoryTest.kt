@@ -52,6 +52,8 @@ class SettingsRepositoryTest {
     repo.setTheme(ThemePreference.System)
     repo.setColorScheme(ColorScheme.Default)
     repo.setMultiValueSeparators(MultiValueSeparator.Default)
+    repo.setMusicSourceUris(emptySet())
+    repo.setAutomaticReloading(false)
   }
 
   @After

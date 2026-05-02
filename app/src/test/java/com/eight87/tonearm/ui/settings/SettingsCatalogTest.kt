@@ -3,6 +3,7 @@ package com.eight87.tonearm.ui.settings
 import com.eight87.tonearm.ui.nav.SettingsAudio
 import com.eight87.tonearm.ui.nav.SettingsContent
 import com.eight87.tonearm.ui.nav.SettingsLookAndFeel
+import com.eight87.tonearm.ui.nav.SettingsMusicSources
 import com.eight87.tonearm.ui.nav.SettingsPersonalize
 import com.eight87.tonearm.ui.nav.SettingsRootDest
 import com.eight87.tonearm.ui.settings.catalog.RowKind
@@ -102,6 +103,7 @@ class SettingsCatalogTest {
       SettingsPersonalize,
       SettingsContent,
       SettingsAudio,
+      SettingsMusicSources,
     )
     SettingsCatalog.entries.forEach { entry ->
       assertTrue(
@@ -192,6 +194,9 @@ class SettingsCatalogTest {
         SettingsPersonalize -> Section.Personalize
         SettingsContent -> Section.Content
         SettingsAudio -> Section.Audio
+        // Music sources is its own root-level destination; it's
+        // navigable from the Settings root entry of the same id.
+        SettingsMusicSources -> Section.Root
         SettingsRootDest -> Section.Root
         else -> null
       }
@@ -210,20 +215,31 @@ class SettingsCatalogTest {
   }
 
   @Test
-  fun stubs_render_with_coming_soon_subtitle_so_search_results_are_honest() {
-    // Phase D.9b removed the audio-quality stubs (ReplayGain strategy /
-    // pre-amp / Album covers); D.9c removed the Multi-value separators
-    // stub. The only remaining sub-page stub is Automatic reloading
-    // (deferred to D.9d); Music sources lives at the Root.
-    SettingsCatalog.entries
-      .filter { it.kind == RowKind.Stub && it.section != Section.Root }
-      .forEach { entry ->
-        assertEquals(
-          "Stub ${entry.id} should advertise 'Coming in v1.1.' to keep search results honest",
-          "Coming in v1.1.",
-          entry.subtitle,
-        )
-      }
+  fun no_v1_1_stubs_remain_after_d9d() {
+    // D.9d shipped the last two stubs (Music sources and Automatic
+    // reloading), so no catalog entry should still advertise the
+    // deferral text.
+    SettingsCatalog.entries.forEach { entry ->
+      assertFalse(
+        "Entry ${entry.id} still advertises 'Coming in v1.1.' after D.9d",
+        entry.subtitle == "Coming in v1.1.",
+      )
+    }
+    // No entry should be marked as a stub anymore.
+    SettingsCatalog.entries.forEach { entry ->
+      assertFalse(
+        "Entry ${entry.id} is a Stub after D.9d — every setting must be wired",
+        entry.kind == RowKind.Stub,
+      )
+    }
+  }
+
+  @Test
+  fun phase_d9d_library_management_settings_are_wired_not_stubbed() {
+    val musicSources = SettingsCatalog.byId(SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES)
+    val autoReload = SettingsCatalog.byId(SettingsCatalog.ID_AUTOMATIC_RELOADING)
+    assertEquals(RowKind.Navigate, musicSources.kind)
+    assertEquals(RowKind.Toggle, autoReload.kind)
   }
 
   @Test

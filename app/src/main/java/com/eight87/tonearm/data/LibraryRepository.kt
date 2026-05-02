@@ -14,6 +14,7 @@ import com.eight87.tonearm.data.db.PlaylistEntity
 import com.eight87.tonearm.data.db.SearchExpressions
 import com.eight87.tonearm.data.db.TrackEntity
 import com.eight87.tonearm.data.mediastore.MediaStoreScanner
+import com.eight87.tonearm.data.mediastore.SafScopeMapping
 import com.eight87.tonearm.data.model.Album
 import com.eight87.tonearm.data.model.Artist
 import com.eight87.tonearm.data.model.Genre
@@ -258,11 +259,21 @@ class LibraryRepository(
     val separators: Set<String> =
       settingsRepository.multiValueSeparators.first().map { it.token }.toSet()
 
+    // D.9d.1 — when the user has configured one or more music sources,
+    // restrict the scan to MediaStore rows whose `DATA` path lives
+    // under one of the source trees. Empty set keeps the legacy
+    // "scan everything MediaStore knows about" behaviour, including
+    // the original `/sdcard/Music` default for users on a fresh install.
+    val sourceUris: Set<String> = settingsRepository.musicSourceUris.first()
+    val scopePrefixes: Set<String> = sourceUris
+      .mapNotNull { raw -> SafScopeMapping.treeUriToPathPrefix(Uri.parse(raw)) }
+      .toSet()
+
     // Snapshot the domain Track list so we keep the per-track album
     // ReplayGain values around long enough to fold them into the
     // derived AlbumEntity list. Track entities themselves only store
     // track-level fields; the album-level fields land on AlbumEntity.
-    val tracksDomain = scanner.scanTracks(separators)
+    val tracksDomain = scanner.scanTracks(separators, scopePrefixes)
     val snapshot = tracksDomain.map { it.toEntity() }
     val snapshotIds = snapshot.map { it.id }.toHashSet()
 

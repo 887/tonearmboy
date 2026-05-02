@@ -38,9 +38,17 @@ class MediaStoreScanner(
    * `REPLAYGAIN_ALBUM_*` tags via [ReplayGainTagReader]. The probe
    * is best-effort — a missing or malformed tag yields a null gain
    * value, never an exception that breaks the scan.
+   *
+   * D.9d.1: when [scopePathPrefixes] is non-empty, the scan is
+   * restricted to MediaStore rows whose `DATA` column begins with one
+   * of the supplied filesystem prefixes (e.g. `/storage/emulated/0/Music`
+   * derived from a SAF tree URI). When empty (the legacy default) the
+   * scan covers every audio file MediaStore knows about, matching the
+   * pre-D.9d.1 behaviour.
    */
   fun scanTracks(
     separators: Set<String> = emptySet(),
+    scopePathPrefixes: Set<String> = emptySet(),
   ): List<Track> {
     if (!MediaStorePermissions.hasAudioPermission(context)) {
       Log.w(TAG, "scanTracks: no audio permission, skipping")
@@ -62,13 +70,31 @@ class MediaStoreScanner(
       MediaStore.Audio.Media.DATE_ADDED,
       MediaStore.Audio.Media.ALBUM_ID,
     )
-    val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+
+    // Compose the WHERE clause. Always include the "is music" filter;
+    // when sources are configured, AND it with an OR-chain of `DATA
+    // LIKE ?` predicates. Each prefix maps to a single bind parameter
+    // ending in `%` so the SQLite query plan can use the standard
+    // prefix index on DATA.
+    val (selection, selectionArgs) = if (scopePathPrefixes.isEmpty()) {
+      "${MediaStore.Audio.Media.IS_MUSIC} != 0" to null
+    } else {
+      val likeClauses = scopePathPrefixes.joinToString(" OR ") { "${MediaStore.Audio.Media.DATA} LIKE ?" }
+      val args = scopePathPrefixes.map { prefix ->
+        // Normalize trailing slash; the LIKE pattern needs exactly one
+        // separator before the wildcard so `/Music` matches `/Music/a.mp3`
+        // but NOT `/MusicVideos/a.mp3`.
+        val trimmed = prefix.trimEnd('/')
+        "$trimmed/%"
+      }.toTypedArray()
+      "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ($likeClauses)" to args
+    }
 
     return resolver.query(
       MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
       projection,
       selection,
-      /* selectionArgs = */ null,
+      selectionArgs,
       "${MediaStore.Audio.Media.TITLE} ASC",
     )?.use { cursor ->
       buildTracks(cursor, genreById, separators)

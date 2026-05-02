@@ -25,6 +25,7 @@ import com.eight87.tonearm.ui.settings.SettingsSnapshot
 import com.eight87.tonearm.ui.settings.SettingsAudioScreen
 import com.eight87.tonearm.ui.settings.SettingsContentScreen
 import com.eight87.tonearm.ui.settings.SettingsLookAndFeelScreen
+import com.eight87.tonearm.ui.settings.SettingsMusicSourcesScreen
 import com.eight87.tonearm.ui.settings.SettingsPersonalizeScreen
 import com.eight87.tonearm.ui.settings.SettingsScreen
 import com.eight87.tonearm.ui.settings.catalog.LocalHighlightedSettingId
@@ -196,7 +197,7 @@ fun TonearmApp(graph: AppGraph) {
             onPersonalize = { backStack.push(SettingsPersonalize) },
             onContent = { backStack.push(SettingsContent) },
             onAudio = { backStack.push(SettingsAudio) },
-            onMusicSources = { onComingSoon("Music sources") },
+            onMusicSources = { backStack.push(SettingsMusicSources) },
             onRefreshMusic = onRefreshMusic,
             onRescanMusic = onRescanMusic,
             onOpenSearch = { backStack.push(SettingsSearch) },
@@ -243,6 +244,14 @@ fun TonearmApp(graph: AppGraph) {
             repository = graph.settingsRepository,
             onBack = { backStack.pop() },
             onComingSoon = onComingSoon,
+            snackbarHostState = snackbarHostState,
+          )
+        }
+        entry<SettingsMusicSources> {
+          LaunchedEffect(Unit) { sectionTitle.value = "Music sources" }
+          SettingsMusicSourcesScreen(
+            repository = graph.settingsRepository,
+            onBack = { backStack.pop() },
             snackbarHostState = snackbarHostState,
           )
         }

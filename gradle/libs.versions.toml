@@ -22,6 +22,7 @@ androidxDataStore = "1.1.2"
 kotlinxCoroutinesGuava = "1.10.2"
 kotlinxSerializationJson = "1.7.3"
 coil3 = "3.1.0"
+work = "2.10.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -61,6 +62,9 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 # Coil 3 — Compose-first image loading. Used by D.9b.3 album covers.
 coil3-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }
 coil3-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil3" }
+# WorkManager — D.9d.2 Library rescan worker (debounced foreground watcher).
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

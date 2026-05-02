@@ -53,6 +53,14 @@ data object SettingsContent : Destination
 @Serializable
 data object SettingsAudio : Destination
 
+/**
+ * D.9d.1 — Music sources sub-page (Settings > Library > Music sources).
+ * Hosts the SAF directory picker entry-point and the list of currently
+ * configured tree URIs.
+ */
+@Serializable
+data object SettingsMusicSources : Destination
+
 /** Full-screen global settings search overlay (entered from the Settings root). */
 @Serializable
 data object SettingsSearch : Destination

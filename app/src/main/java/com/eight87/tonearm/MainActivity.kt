@@ -14,9 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearm.theme.TonearmTheme
 import com.eight87.tonearm.ui.nav.TonearmApp
+import com.eight87.tonearm.data.watcher.LibraryWatcherService
 import com.eight87.tonearm.ui.settings.ColorScheme
 import com.eight87.tonearm.ui.settings.SettingsSnapshot
 import com.eight87.tonearm.ui.settings.ThemePreference
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @UnstableApi
 class MainActivity : ComponentActivity() {
@@ -25,6 +28,16 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
 
     val graph = AppGraph.get(applicationContext)
+
+    // D.9d.2 — re-arm the watcher service if Automatic reloading was
+    // on across a process restart. The service is the only owner of
+    // the sticky notification + observers; toggling the setting in
+    // the UI also start/stops it directly, this branch covers cold
+    // start / boot.
+    graph.applicationScope.launch {
+      val on = graph.settingsRepository.automaticReloading.first()
+      if (on) LibraryWatcherService.start(applicationContext)
+    }
 
     setContent {
       val snapshot by graph.settingsRepository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
