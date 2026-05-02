@@ -715,7 +715,7 @@ After all eight sub-steps land, restore `## Status: ✅ DONE` at the top of the 
 
 ---
 
-## Phase D.28 — per-tab view mode (list ↔ tile) + alphabet rail on every tab
+## Phase D.28 — per-tab view mode (list ↔ tile) + alphabet rail on every tab — shipped in commit `517f097`
 
 User screenshots showed:
 - Library Artists tab: list view with sticky letter headers, **no** alphabet rail on the right.
@@ -765,7 +765,7 @@ The combined goal: every library tab supports **both** view modes (list with sti
   - `205-d28-toggle-icon-list.png` and `206-d28-toggle-icon-tile.png` showing the top-bar icon swap.
   - `207-d28-alphabet-rail-on-tile.png` — Albums tile grid with the rail mounted on the right.
 
-**Shipped:** D.28.1–D.28.6 in commit `<pending>`. Per-tab view mode persisted via `SettingsRepository.setViewModeFor` / `viewModes: Flow<Map<LibraryTab, ViewMode>>`. `LibraryTileGrid.kt` ships the shared tile renderer (`GridCells.Adaptive(minSize = 160.dp)`, full-row span letter section headers) consumed by Songs / Albums / Artists / Genres tabs; Playlists keeps `PlaylistsTilesScreen` (D.27.6) for tile mode and gets a new sticky-header list mode. Top-bar icon between Sort and Filter swaps between `Icons.AutoMirrored.Filled.ViewList` and `Icons.Filled.GridView`. Alphabet rail mounted on every tab × both modes (rail-tap on a `LazyGridState` uses the new `tileIndexFor(sectionKeys, letter)` helper); rail hidden when sort isn't alphabetical. Four new unit-test classes (`LibraryViewModeToggleTest`, `LibraryTileGridSongsTest`, `LibraryAlbumsListViewTest`, `AlphabetScrollerTileTest`) raise the suite from 595 → 617 cases. Eight screenshots captured at `docs/screenshots/phase-d/200-d28-*.png` through `207-d28-*.png` on the headless `medium_phone` AVD.
+**Shipped:** D.28.1–D.28.6 in commit `517f097`. Per-tab view mode persisted via `SettingsRepository.setViewModeFor` / `viewModes: Flow<Map<LibraryTab, ViewMode>>`. `LibraryTileGrid.kt` ships the shared tile renderer (`GridCells.Adaptive(minSize = 160.dp)`, full-row span letter section headers) consumed by Songs / Albums / Artists / Genres tabs; Playlists keeps `PlaylistsTilesScreen` (D.27.6) for tile mode and gets a new sticky-header list mode. Top-bar icon between Sort and Filter swaps between `Icons.AutoMirrored.Filled.ViewList` and `Icons.Filled.GridView`. Alphabet rail mounted on every tab × both modes (rail-tap on a `LazyGridState` uses the new `tileIndexFor(sectionKeys, letter)` helper); rail hidden when sort isn't alphabetical. Four new unit-test classes (`LibraryViewModeToggleTest`, `LibraryTileGridSongsTest`, `LibraryAlbumsListViewTest`, `AlphabetScrollerTileTest`) raise the suite from 595 → 617 cases. Eight screenshots captured at `docs/screenshots/phase-d/200-d28-*.png` through `207-d28-*.png` on the headless `medium_phone` AVD.
 
 After D.28 lands, restore `## Status: ✅ DONE` at the top of the plan once D.27 + D.28 are both ticked.
 
