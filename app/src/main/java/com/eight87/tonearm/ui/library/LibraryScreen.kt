@@ -221,7 +221,11 @@ fun LibraryScreen(
     // Vertical-rail layout: rail on the left, content on the right.
     // The rail extends the full content height (Scaffold-padded so we
     // sit under the top app bar and over the mini-player).
-    Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+    // Library scan progress — appears at the top while a scan runs,
+    // disappears when done. Bound to LibraryRepository.scanProgress.
+    ScanProgressBar(repository = repository)
+    Row(modifier = Modifier.fillMaxSize()) {
       LibraryRail(
         tabs = visibleTabs,
         selectedIndex = selectedIndex,
@@ -289,6 +293,7 @@ fun LibraryScreen(
           )
         }
       }
+    }
     }
   }
 

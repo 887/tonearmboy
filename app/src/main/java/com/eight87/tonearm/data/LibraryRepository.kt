@@ -28,6 +28,9 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -71,6 +74,23 @@ class LibraryRepository(
   private val rescanRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 16)
   private val initialScanDone = AtomicBoolean(false)
   private val scanMutex = Mutex()
+
+  /**
+   * Per-track progress emitted as the scanner walks MediaStore.
+   * `null` means no scan is in flight; non-null means UI should render
+   * a progress indicator. The StateFlow is conflated, so a UI consumer
+   * sees the latest value and never blocks the scanner producer even
+   * if it's recomposing slowly.
+   */
+  data class ScanProgress(
+    val scanned: Int,
+    val total: Int,
+    val currentTitle: String?,
+  ) {
+    val fraction: Float get() = if (total <= 0) 0f else scanned.toFloat() / total.toFloat()
+  }
+  private val _scanProgress = MutableStateFlow<ScanProgress?>(null)
+  val scanProgress: StateFlow<ScanProgress?> = _scanProgress.asStateFlow()
 
   private val observerThread by lazy {
     HandlerThread("tonearm-mediastore-observer").apply { start() }
@@ -366,7 +386,13 @@ class LibraryRepository(
     // ReplayGain values around long enough to fold them into the
     // derived AlbumEntity list. Track entities themselves only store
     // track-level fields; the album-level fields land on AlbumEntity.
-    val tracksDomain = scanner.scanTracks(separators, scopePrefixes)
+    val tracksDomain = try {
+      scanner.scanTracks(separators, scopePrefixes) { scanned, total, title ->
+        _scanProgress.value = ScanProgress(scanned, total, title)
+      }
+    } finally {
+      _scanProgress.value = null
+    }
     val snapshot = tracksDomain.map { it.toEntity() }
     val snapshotIds = snapshot.map { it.id }.toHashSet()
 

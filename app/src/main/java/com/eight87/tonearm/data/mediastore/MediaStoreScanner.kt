@@ -10,6 +10,11 @@ import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearm.data.model.Track
 import com.eight87.tonearm.playback.replaygain.ReplayGainTagReader
 import com.eight87.tonearm.playback.replaygain.ReplayGainTags
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 /**
  * Pulls audio metadata out of [MediaStore]. Returns domain [Track]
@@ -49,6 +54,7 @@ class MediaStoreScanner(
   fun scanTracks(
     separators: Set<String> = emptySet(),
     scopePathPrefixes: Set<String> = emptySet(),
+    onProgress: ((scanned: Int, total: Int, currentTitle: String?) -> Unit)? = null,
   ): List<Track> {
     if (!MediaStorePermissions.hasAudioPermission(context)) {
       Log.w(TAG, "scanTracks: no audio permission, skipping")
@@ -97,7 +103,7 @@ class MediaStoreScanner(
       selectionArgs,
       "${MediaStore.Audio.Media.TITLE} ASC",
     )?.use { cursor ->
-      buildTracks(cursor, genreById, separators)
+      buildTracks(cursor, genreById, separators, onProgress)
     } ?: emptyList()
   }
 
@@ -109,6 +115,7 @@ class MediaStoreScanner(
     cursor: Cursor,
     genreById: Map<Long, String>,
     separators: Set<String>,
+    onProgress: ((Int, Int, String?) -> Unit)?,
   ): List<Track> {
     val idIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
     val titleIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
@@ -122,52 +129,89 @@ class MediaStoreScanner(
     val dateAddedIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
     val albumIdIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
 
-    val out = ArrayList<Track>(cursor.count.coerceAtLeast(0))
+    // ----- Pass 1: cursor walk (fast, no IO besides the cursor itself) -----
+    // Build a List<TrackStub> with everything except the ReplayGain tags.
+    // The ReplayGain reader involves a Media3 MetadataRetriever per file
+    // with a 1500ms timeout — sequentially that's 25min on a 1k-track
+    // library and ANRs the IO threadpool. Pass 2 parallelises it.
+    data class Stub(val track: Track, val uri: Uri)
+    val total = cursor.count.coerceAtLeast(0)
+    val stubs = ArrayList<Stub>(total)
     while (cursor.moveToNext()) {
       val id = cursor.getLong(idIdx)
       val trackUri = uriFor(id)
-      val rg: ReplayGainTags = try {
-        replayGainReader.read(trackUri)
-      } catch (t: Throwable) {
-        Log.w(TAG, "ReplayGain read failed for id=$id: ${t.message}")
-        ReplayGainTags.Empty
-      }
       val rawArtist = cursor.getStringOrNull(artistIdx)
       val rawAlbumArtist = cursor.getStringOrNull(albumArtistIdx)
       val rawGenre = genreById[id]
-
       val artistsSplit = MultiValueSplitter.split(rawArtist, separators)
       val albumArtistsSplit = MultiValueSplitter.split(rawAlbumArtist, separators)
       val genresSplit = MultiValueSplitter.split(rawGenre, separators)
-
-      // The primary value is the *first* split value (used for display);
-      // the rest are folded into the rollup-derivation step.
       val primaryArtist = artistsSplit.firstOrNull() ?: rawArtist
       val primaryAlbumArtist = albumArtistsSplit.firstOrNull() ?: rawAlbumArtist
       val primaryGenre = genresSplit.firstOrNull() ?: rawGenre
+      val title = cursor.getString(titleIdx) ?: ""
 
-      out += Track(
-        id = id,
-        title = cursor.getString(titleIdx) ?: "",
-        artist = primaryArtist,
-        album = cursor.getStringOrNull(albumIdx),
-        albumArtist = primaryAlbumArtist,
-        durationMs = cursor.getLong(durationIdx),
-        trackNumber = cursor.getIntOrNull(trackIdx),
-        year = cursor.getIntOrNull(yearIdx),
-        genre = primaryGenre,
-        data = cursor.getString(dataIdx) ?: "",
-        dateAddedSeconds = cursor.getLong(dateAddedIdx),
-        replayGainTrackDb = rg.trackGainDb,
-        replayGainTrackPeak = rg.trackPeak,
-        replayGainAlbumDb = rg.albumGainDb,
-        replayGainAlbumPeak = rg.albumPeak,
-        mediaStoreAlbumId = if (cursor.isNull(albumIdIdx)) null else cursor.getLong(albumIdIdx),
-        additionalArtists = artistsSplit.drop(1),
-        additionalAlbumArtists = albumArtistsSplit.drop(1),
-        additionalGenres = genresSplit.drop(1),
+      stubs += Stub(
+        track = Track(
+          id = id,
+          title = title,
+          artist = primaryArtist,
+          album = cursor.getStringOrNull(albumIdx),
+          albumArtist = primaryAlbumArtist,
+          durationMs = cursor.getLong(durationIdx),
+          trackNumber = cursor.getIntOrNull(trackIdx),
+          year = cursor.getIntOrNull(yearIdx),
+          genre = primaryGenre,
+          data = cursor.getString(dataIdx) ?: "",
+          dateAddedSeconds = cursor.getLong(dateAddedIdx),
+          // ReplayGain tags filled in pass 2.
+          replayGainTrackDb = null,
+          replayGainTrackPeak = null,
+          replayGainAlbumDb = null,
+          replayGainAlbumPeak = null,
+          mediaStoreAlbumId = if (cursor.isNull(albumIdIdx)) null else cursor.getLong(albumIdIdx),
+          additionalArtists = artistsSplit.drop(1),
+          additionalAlbumArtists = albumArtistsSplit.drop(1),
+          additionalGenres = genresSplit.drop(1),
+        ),
+        uri = trackUri,
       )
     }
+    // First progress emission once we know the total — UI can show 0/N
+    // before any per-track work begins.
+    onProgress?.invoke(0, total, null)
+
+    // ----- Pass 2: parallel ReplayGain reads -----
+    // Bounded concurrency = 4. Each read is a short blocking section
+    // wrapped by the reader's 1500ms timeout. Bounded so we don't
+    // saturate Dispatchers.IO and starve the rest of the app.
+    val out = ArrayList<Track>(stubs.size)
+    val scanned = java.util.concurrent.atomic.AtomicInteger(0)
+    runBlocking {
+      val sem = kotlinx.coroutines.sync.Semaphore(REPLAYGAIN_PARALLELISM)
+      val deferred = stubs.map { stub ->
+        async(Dispatchers.IO) {
+          sem.withPermit {
+            val rg = try {
+              replayGainReader.read(stub.uri)
+            } catch (t: Throwable) {
+              Log.w(TAG, "ReplayGain read failed for id=${stub.track.id}: ${t.message}")
+              ReplayGainTags.Empty
+            }
+            val done = scanned.incrementAndGet()
+            onProgress?.invoke(done, total, stub.track.title)
+            stub.track.copy(
+              replayGainTrackDb = rg.trackGainDb,
+              replayGainTrackPeak = rg.trackPeak,
+              replayGainAlbumDb = rg.albumGainDb,
+              replayGainAlbumPeak = rg.albumPeak,
+            )
+          }
+        }
+      }
+      for (d in deferred) out += d.await()
+    }
+    onProgress?.invoke(total, total, null)
     return out
   }
 
@@ -224,5 +268,6 @@ class MediaStoreScanner(
 
   companion object {
     private const val TAG = "tonearm-scanner"
+    private const val REPLAYGAIN_PARALLELISM = 4
   }
 }
