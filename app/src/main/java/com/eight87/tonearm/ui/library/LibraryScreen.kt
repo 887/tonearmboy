@@ -214,9 +214,9 @@ fun LibraryScreen(
   val sectionTitle = LocalSectionTitle.current
   LaunchedEffect(activeTab, activeCustomTab) {
     sectionTitle.value = if (activeCustomTab != null) {
-      "Library ${activeCustomTab.name}"
+      activeCustomTab.name
     } else {
-      "Library ${tabLabel(activeTab)}"
+      tabLabel(activeTab)
     }
   }
 

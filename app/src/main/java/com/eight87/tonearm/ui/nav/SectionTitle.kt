@@ -8,7 +8,7 @@ import androidx.compose.runtime.mutableStateOf
  * Per-section title shown in the root [androidx.compose.material3.TopAppBar].
  *
  * Each destination sets its own title in a `LaunchedEffect(Unit)` on
- * entry, e.g. `LocalSectionTitle.current.value = "Library Songs"`. The
+ * entry, e.g. `LocalSectionTitle.current.value = "Songs"`. The
  * root scaffold reads this value and re-renders. No cleanup is required
  * because the next destination's effect overwrites the previous value.
  *
