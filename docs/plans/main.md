@@ -237,32 +237,32 @@ Goal: the mini-player is the **most-touched** UI element after the rail — ever
 
 Goal: enable a "vibing from my phone with the Claude app" workflow. User asks Claude to ship a new build → Claude builds locally → uploads to GitHub Releases via `gh` → user downloads via [Obtainium](https://github.com/ImranR98/Obtainium) on their phone. **Local-build-by-default. GitHub Actions only as a fallback when the dev machine isn't available, and ONLY triggered by a tag push (zero CI minutes burned on every commit).**
 
-- [x] **D.14.1 Local-build-and-publish — already partially shipped.** `scripts/build-release-apk.sh --gh-release` (in `460dd0c`) covers the happy path: build APK → upload to GitHub Releases. Polish: — shipped in commit `<HASH>`
-    - [x] **D.14.1.1** Auto-tag the release `v<version>-<sha7>` (already does this) AND push the tag to `origin` so GH Action could pick it up if available. Don't trigger CI from tag push by default — tag is informational. — shipped in commit `<HASH>`
-    - [x] **D.14.1.2** Release notes auto-generated from commits since the previous tag (use `gh api` + `git log` formatting). Include a section "Verify build" with the SHA + APK SHA-256 checksum so users can confirm what they're installing. — shipped in commit `<HASH>`
-    - [x] **D.14.1.3** Smoke-test the script: `./scripts/build-release-apk.sh --gh-release --install` should build, push to GH Releases, AND `adb install` to the connected AVD/phone in one shot. — shipped in commit `<HASH>`
-- [x] **D.14.2 Obtainium configuration documented in README.** — shipped in commit `<HASH>`
-    - [x] **D.14.2.1** README section explaining Obtainium: what it is (open-source app store that pulls from GitHub Releases / direct URLs / F-Droid), why we use it (no Play Store, sideload-friendly, auto-update from releases). — shipped in commit `<HASH>`
+- [x] **D.14.1 Local-build-and-publish — already partially shipped.** `scripts/build-release-apk.sh --gh-release` (in `460dd0c`) covers the happy path: build APK → upload to GitHub Releases. Polish: — shipped in commit `2582adc`
+    - [x] **D.14.1.1** Auto-tag the release `v<version>-<sha7>` (already does this) AND push the tag to `origin` so GH Action could pick it up if available. Don't trigger CI from tag push by default — tag is informational. — shipped in commit `2582adc`
+    - [x] **D.14.1.2** Release notes auto-generated from commits since the previous tag (use `gh api` + `git log` formatting). Include a section "Verify build" with the SHA + APK SHA-256 checksum so users can confirm what they're installing. — shipped in commit `2582adc`
+    - [x] **D.14.1.3** Smoke-test the script: `./scripts/build-release-apk.sh --gh-release --install` should build, push to GH Releases, AND `adb install` to the connected AVD/phone in one shot. — shipped in commit `2582adc`
+- [x] **D.14.2 Obtainium configuration documented in README.** — shipped in commit `2582adc`
+    - [x] **D.14.2.1** README section explaining Obtainium: what it is (open-source app store that pulls from GitHub Releases / direct URLs / F-Droid), why we use it (no Play Store, sideload-friendly, auto-update from releases). — shipped in commit `2582adc`
     - [x] **D.14.2.2** Explicit "add to Obtainium" steps:
         - Source URL: `https://github.com/887/tonearm`
         - Source type: GitHub
         - APK filter regex: `^tonearm-.*\.apk$`
-        - Update channel: Releases — shipped in commit `<HASH>`
-    - [x] **D.14.2.3** Add an Obtainium deep-link / config-export QR code (optional polish — Obtainium supports config export which can be embedded in an `obtainium://` URL). Generate the URL string in the README so users can share it. — shipped in commit `<HASH>` (`obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearm`)
-- [x] **D.14.3 GitHub Actions fallback workflow (tag-only).** `.github/workflows/release.yml` that triggers **ONLY** on `push: tags: [v*]` — never on regular pushes, never on PRs. Builds the APK, signs with debug keystore (or release if secrets are present), uploads to the GitHub Release matching the tag. Document loudly that this is a **fallback** for when local build isn't available — not the primary path. — shipped in commit `<HASH>`
-    - [x] **D.14.3.1** Workflow YAML with the tag-only trigger. — shipped in commit `<HASH>`
-    - [x] **D.14.3.2** Self-disabling logic: if the release already has the APK uploaded (e.g. from a local build), the workflow exits 0 without rebuilding. Saves minutes on the tags I push from local machine. — shipped in commit `<HASH>`
-    - [x] **D.14.3.3** README section on when CI runs and how to disable for individual tags (`[skip ci]` in the tag annotation). — shipped in commit `<HASH>`
-- [x] **D.14.4 Repo description + CLAUDE.md updates.** — shipped in commit `<HASH>`
-    - [x] **D.14.4.1** Update GitHub repo description (`gh repo edit 887/tonearm --description "..."`) to mention "Modern Android music player. Compose + Media3 + Room. Built CLI-only on AGP 9. Distribute via Obtainium." — shipped in commit `<HASH>`
-    - [x] **D.14.4.2** Add a CLAUDE.md section "Release workflow" documenting the user's intended workflow ("vibing from phone, ask Claude to build, install via Obtainium") so future Claude sessions in this repo know the pattern without re-explaining. — shipped in commit `<HASH>`
-    - [x] **D.14.4.3** Add the "phone-vibing" use case to the README's "Build a release APK" section as the canonical happy path. — shipped in commit `<HASH>`
-- [x] **D.14.5 End-to-end verification.** — shipped in commit `<HASH>`
-    - [x] **D.14.5.1** Run `./scripts/build-release-apk.sh --gh-release` from a clean checkout against the actual `887/tonearm` GitHub. Assert release `v<version>-<sha7>` appears at `https://github.com/887/tonearm/releases/latest` with the APK attached. — shipped in commit `<HASH>` (release: <https://github.com/887/tonearm/releases/tag/v1.0-503517f>)
+        - Update channel: Releases — shipped in commit `2582adc`
+    - [x] **D.14.2.3** Add an Obtainium deep-link / config-export QR code (optional polish — Obtainium supports config export which can be embedded in an `obtainium://` URL). Generate the URL string in the README so users can share it. — shipped in commit `2582adc` (`obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearm`)
+- [x] **D.14.3 GitHub Actions fallback workflow (tag-only).** `.github/workflows/release.yml` that triggers **ONLY** on `push: tags: [v*]` — never on regular pushes, never on PRs. Builds the APK, signs with debug keystore (or release if secrets are present), uploads to the GitHub Release matching the tag. Document loudly that this is a **fallback** for when local build isn't available — not the primary path. — shipped in commit `2582adc`
+    - [x] **D.14.3.1** Workflow YAML with the tag-only trigger. — shipped in commit `2582adc`
+    - [x] **D.14.3.2** Self-disabling logic: if the release already has the APK uploaded (e.g. from a local build), the workflow exits 0 without rebuilding. Saves minutes on the tags I push from local machine. — shipped in commit `2582adc`
+    - [x] **D.14.3.3** README section on when CI runs and how to disable for individual tags (`[skip ci]` in the tag annotation). — shipped in commit `2582adc`
+- [x] **D.14.4 Repo description + CLAUDE.md updates.** — shipped in commit `2582adc`
+    - [x] **D.14.4.1** Update GitHub repo description (`gh repo edit 887/tonearm --description "..."`) to mention "Modern Android music player. Compose + Media3 + Room. Built CLI-only on AGP 9. Distribute via Obtainium." — shipped in commit `2582adc`
+    - [x] **D.14.4.2** Add a CLAUDE.md section "Release workflow" documenting the user's intended workflow ("vibing from phone, ask Claude to build, install via Obtainium") so future Claude sessions in this repo know the pattern without re-explaining. — shipped in commit `2582adc`
+    - [x] **D.14.4.3** Add the "phone-vibing" use case to the README's "Build a release APK" section as the canonical happy path. — shipped in commit `2582adc`
+- [x] **D.14.5 End-to-end verification.** — shipped in commit `2582adc`
+    - [x] **D.14.5.1** Run `./scripts/build-release-apk.sh --gh-release` from a clean checkout against the actual `887/tonearm` GitHub. Assert release `v<version>-<sha7>` appears at `https://github.com/887/tonearm/releases/latest` with the APK attached. — shipped in commit `2582adc` (release: <https://github.com/887/tonearm/releases/tag/v1.0-503517f>)
     - [x] **D.14.5.2** (If user has a real phone with Obtainium) Add the source via the README config, hit Refresh, assert Obtainium shows tonearm at the latest version + offers to install. — phone test deferred to user; `obtainium://` deep-link parses cleanly via the regex in D.14.5.3.
-    - [x] **D.14.5.3** SHA-256 of the locally-built APK matches the SHA-256 in the release notes. — shipped in commit `<HASH>` (sha256 `1d47dc6a302d56acc3cb1082789c888ed69f7a871a41a976a520f6caa5ec83c3` matched between local APK and release body for `v1.0-503517f`)
+    - [x] **D.14.5.3** SHA-256 of the locally-built APK matches the SHA-256 in the release notes. — shipped in commit `2582adc` (sha256 `1d47dc6a302d56acc3cb1082789c888ed69f7a871a41a976a520f6caa5ec83c3` matched between local APK and release body for `v1.0-503517f`)
 
-**Shipped:** D.14.1–D.14.5 in commit `<HASH>`
+**Shipped:** D.14.1–D.14.5 in commit `2582adc`
 
 ---
 
