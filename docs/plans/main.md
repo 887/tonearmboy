@@ -464,6 +464,43 @@ Screenshots `130`-`133` captured against the headless AVD `medium_phone` (Androi
 
 ---
 
+## Phase D.23 — system MediaStyle controls + lock screen + notification permissions
+
+Real-device feedback round 4 from the system Quick Settings media card screenshot: the repeat-cycle button on the right is rendered by SystemUI but tapping it doesn't change the repeat mode. Also: no album art visible in the system card, lock screen, or notification — even on tracks that have MediaStore album covers. POST_NOTIFICATIONS is declared in the manifest but never requested at runtime, which on API 33+ silently denies the foreground-service notification ribbon.
+
+Hypotheses (to confirm during implementation):
+
+- **Repeat button no-op**: `MediaSession.Builder` defaults the available player commands to whatever the player advertises. ExoPlayer should advertise `COMMAND_SET_REPEAT_MODE` + `COMMAND_SET_SHUFFLE_MODE` by default, but our `SessionCallback.onConnect` calls `AcceptedResultBuilder(session)` without `setAvailablePlayerCommands(Player.Commands.Builder().addAll().build())`. If our session-command extension shadowed the default player-command set, SystemUI taps would silently no-op. Verify and call `setAvailablePlayerCommands` explicitly.
+- **No artwork**: `MediaItem.mediaMetadata.artworkUri = file://${data}` works only when the audio file has an embedded picture frame (ID3v2 APIC, FLAC PICTURE, MP4 covr). Tracks without embedded art (the user's "Alchemy / River Song" library has none) need a fallback to `content://media/external/audio/albumart/<albumId>`. Without a custom `BitmapLoader` that tries embedded first then content-uri fallback, SystemUI gets `null` and renders no art.
+- **POST_NOTIFICATIONS**: API 33+ requires a runtime grant. We declare the permission but never ask. The MediaSession-driven Quick Settings card still works (it's session-state-driven), but the in-tray notification ribbon doesn't post.
+
+Five sub-steps:
+
+- [ ] **D.23.1 SystemUI media-controls audit + fix.** Audit `PlaybackService.SessionCallback.onConnect` — explicitly call `.setAvailablePlayerCommands(Player.Commands.Builder().addAllCommands().build())` (or use `MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS`) so SystemUI's repeat button has the command available. Repro on the headless AVD: start playback → open Quick Settings → tap the repeat icon → assert `mediaController.repeatMode` cycles `OFF → ALL → ONE → OFF`. Same for shuffle. Same for prev / play-pause / next.
+- [ ] **D.23.2 Custom BitmapLoader for artwork.** New file `app/src/main/java/com/eight87/tonearm/playback/TonearmBitmapLoader.kt`. Extends Media3's `BitmapLoader`; for each `loadBitmap(uri)`:
+  1. If the uri is `file://...`, delegate to `DataSourceBitmapLoader` to extract an embedded picture frame.
+  2. If that fails AND the `MediaItem.mediaMetadata.extras` carries a `mediaStoreAlbumId`, fall back to `Uri.parse("content://media/external/audio/albumart/$albumId")` and load via `ContentResolver.openInputStream(...).readBytes() → BitmapFactory.decodeByteArray`.
+  3. If both fail, return a `Futures.immediateFailedFuture` (Media3 falls back to no art).
+  Wire into `PlaybackService.onCreate` via `MediaSession.Builder(...).setBitmapLoader(TonearmBitmapLoader(applicationContext))`. Reuse the `EXTRA_MEDIA_STORE_ALBUM_ID` extras key already in `PlaybackUiController.toMediaItem`.
+- [ ] **D.23.3 POST_NOTIFICATIONS runtime grant.** API 33+: extend `RequireAudioPermission` (or add a sibling gate `RequirePostNotifications` after audio is granted) that runs `ActivityResultContracts.RequestPermission(android.Manifest.permission.POST_NOTIFICATIONS)`. Granted → continue. Denied → snackbar "Notifications disabled — playback controls won't appear in your notification tray." (KYIS, plain language) + offer the same "Open app settings" fallback as the audio gate. The user can still play music; only the notification ribbon is affected.
+- [ ] **D.23.4 Lock screen verification.** With device locked + playback active, the lock screen should render the Media3 MediaStyle media surface (Android draws this from the active MediaSession). Verify via the AVD: `adb shell input keyevent KEYCODE_POWER` (lock), then `adb shell input keyevent KEYCODE_POWER` again (wake), then screenshot. Album art + title + artist + transport visible. If not, audit whether the session is correctly marked as a foreground media-style session (it should be, since `MediaSessionService` does this for us via `setMediaNotificationProvider`).
+- [ ] **D.23.5 Tests + screenshots.** Robolectric / unit:
+  - `SystemMediaCommandsTest` — assert `SessionCallback.onConnect` returns `availablePlayerCommands` containing `COMMAND_SET_REPEAT_MODE`, `COMMAND_SET_SHUFFLE_MODE`, `COMMAND_PLAY_PAUSE`, `COMMAND_SEEK_TO_NEXT_MEDIA_ITEM`, `COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM`.
+  - `TonearmBitmapLoaderTest` — three branches: embedded picture loads, content-uri fallback loads, both-fail returns failed future. Use a fake `ContentResolver` that returns a known-bytes input stream for the album-art path.
+  - `PostNotificationsGateTest` — assert the gate fires `RequestPermission(POST_NOTIFICATIONS)` on API 33+ and skips on earlier API levels.
+  - `NotificationActionsIntegrationTest` (instrumented or via mobile-mcp): tap each Quick Settings button and assert the `MediaController.state` changes accordingly.
+  
+  Screenshots via mobile-mcp on the AVD:
+  - `docs/screenshots/phase-d/140-d23-quicksettings-media-card.png` — playing track with album art visible
+  - `141-d23-lock-screen-media.png` — locked device showing MediaStyle media surface
+  - `142-d23-notification-ribbon.png` — notification tray with full-width media notification
+  - `143-d23-repeat-cycled.png` — Quick Settings card after tapping repeat twice (REPEAT_MODE_ONE state, icon shows the "1" badge)
+  - `144-d23-shuffle-on.png` — Quick Settings with shuffle highlighted
+
+**Shipped:** _(not yet)_
+
+---
+
 ## Phase F — file deletion (the differentiator) — shipped in commit `ffef231`
 
 Goal: delete audio files from inside the player, with the system consent dialog and proper cache invalidation.
