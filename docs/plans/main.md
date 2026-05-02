@@ -414,7 +414,7 @@ User compared tonearm's currently-playing surfaces side-by-side with Auxio. Two 
 
 ---
 
-## Phase F — file deletion (the differentiator) — shipped in commit `<TBD>`
+## Phase F — file deletion (the differentiator) — shipped in commit `ffef231`
 
 Goal: delete audio files from inside the player, with the system consent dialog and proper cache invalidation.
 
