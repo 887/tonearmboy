@@ -608,14 +608,31 @@ Goal: Claude can drive the app end-to-end without an emulator. Local unit tests 
 
 ---
 
-## Phase H — extras (post-v1, prioritize after F + G land)
+## Phase H — extras (post-v1)
 
-- [ ] **H.1** Gapless playback (Media3 supports natively; verify with cross-faded tracks).
-- [ ] **H.2** ReplayGain (track + album modes, configurable preamp).
-- [ ] **H.3** Sleep timer.
-- [ ] **H.4** Equalizer — only via Android's system effects API. No custom DSP chain in v1.
-- [ ] **H.5** Backup / export of playlists.
-- [ ] **H.6** DI framework if the manual wiring hurts (Hilt or Koin).
+- [ ] **H.1** Gapless playback (Media3 supports natively; verify with cross-faded tracks). — Media3 ExoPlayer gaplessly transitions between consecutive items by default when they share output format; no custom code required. Verify on the AVD with two adjacent tracks of identical sample rate / channel count by listening for a click at the boundary, plus assert `Player.Listener.onPlaybackStateChanged` does not flip to `STATE_BUFFERING` at the boundary. Document the result in the phase header note.
+- [ ] **H.2** ReplayGain (track + album modes, configurable preamp). — Already shipped in D.9b.1 / D.9b.2 (`PlaybackUiController.applyReplayGainNow`, ReplayGain strategy picker, pre-amp dB picker, smart-album coverage helper). Tick retroactively.
+- [ ] **H.3** Sleep timer. — Build from scratch:
+  - New file `app/src/main/java/com/eight87/tonearm/playback/SleepTimer.kt`. Holds a `MutableStateFlow<SleepTimerState>` (`Idle` / `Running(remainingMs: Long, expiresAt: Long)`). `start(durationMs: Long)` schedules a coroutine on the application scope that delays + then pauses the active `MediaController`; `cancel()` no-ops if Idle.
+  - Settings catalog row in `Group.Audio` "Sleep timer" with `RowKind.OpenDialog`. Dialog shows preset buttons (15 / 30 / 45 / 60 / 90 minutes) + a "Custom…" button that opens a Material 3 number stepper. While running, the dialog instead shows the remaining time (live-updating) + a Cancel button.
+  - Optional follow-up: end-of-track mode (snooze until current track finishes). Add a checkbox on the dialog: "Wait for end of song". When set, the timer hooks `Player.Listener.onMediaItemTransition` after the deadline elapses and pauses on the next transition rather than mid-track.
+- [ ] **H.4** Equalizer — only via Android's system effects API. No custom DSP chain in v1. — Settings catalog row in `Group.Audio` "System equalizer" with `RowKind.Action`. Tap fires `Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)` with extras:
+  - `AudioEffect.EXTRA_AUDIO_SESSION` = the ExoPlayer's `audioSessionId`
+  - `AudioEffect.EXTRA_PACKAGE_NAME` = `context.packageName`
+  - `AudioEffect.EXTRA_CONTENT_TYPE` = `AudioEffect.CONTENT_TYPE_MUSIC`
+  
+  Surface a snackbar fallback if no app handles the intent (some stripped-down ROMs don't ship a system EQ). Plumb the audio session id through `PlayerHolder` → `PlaybackUiController.audioSessionId: StateFlow<Int>` so the row can grab it.
+- [ ] **H.5** Backup / export of playlists. — Two new Settings actions in `Group.Library`:
+  - "Export playlists" — opens SAF `ActivityResultContracts.CreateDocument("application/json")` with default name `tonearm-playlists-YYYY-MM-DD.json`. Writes a single JSON envelope: `{ "version": 1, "exportedAt": ISO8601, "playlists": [{"name": ..., "tracks": [{"title": ..., "artist": ..., "album": ..., "duration": ms}]}] }`. Tracks are identified by `(title, artist, album)` triples — not by Room id or MediaStore id, since those don't survive across devices / re-scans. Snackbar on success.
+  - "Import playlists" — `ActivityResultContracts.OpenDocument` for `application/json`. Reads the envelope, for each playlist creates a new playlist (or merges into an existing same-name playlist with an "Overwrite / Merge / Cancel" dialog if a name collision appears), and resolves track triples against the current library via fuzzy match (case-insensitive title + artist match, album as tiebreaker). Skipped tracks (unmatched) surface in the success snackbar count: "Imported 3 playlists, 5 tracks not found".
+- [~] **H.6** DI framework if the manual wiring hurts (Hilt or Koin). — *Skipped.* Per user's `Don't add features beyond what the task requires` rule and the original "if the manual wiring hurts" condition: it isn't hurting. `AppGraph` is one file with a handful of explicit constructors. Adding Hilt or Koin would be all overhead, no upside.
+
+### H.7 Tests + screenshots (one batch for H.3 + H.4 + H.5)
+
+- [ ] **H.7.1** `SleepTimerTest` — Robolectric / virtual time scheduler: `start(60_000)` then advance 60s, assert `MediaController.pause()` was called; `cancel()` mid-run prevents the pause; "wait for end of song" defers pause to the next `onMediaItemTransition`.
+- [ ] **H.7.2** `SystemEqIntentTest` — assert the Intent built in the EQ row carries the three required extras and the right action; assert the "no handler" snackbar fires when `resolveActivity` returns null.
+- [ ] **H.7.3** `PlaylistExportImportTest` — round-trip a fixture library: export → reset Room → import → assert all playlists + track counts restored. Plus a fuzzy-match test where the imported track has slightly different casing on the artist name (assert it still matches).
+- [ ] **H.7.4** Screenshots: `170-h-sleep-timer-presets.png`, `171-h-sleep-timer-running.png`, `172-h-system-eq-launched.png` (the system EQ panel itself), `173-h-export-playlists-success.png`, `174-h-import-playlists-merge-dialog.png`.
 
 **Shipped:** _(not yet)_
 
