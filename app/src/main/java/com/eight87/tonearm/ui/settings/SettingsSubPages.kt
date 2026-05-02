@@ -1,10 +1,16 @@
 package com.eight87.tonearm.ui.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -99,6 +105,22 @@ fun SettingsLookAndFeelScreen(
   val scope = rememberCoroutineScope()
   var themePicker by remember { mutableStateOf(false) }
   var baseThemePicker by remember { mutableStateOf(false) }
+  var colorPicker by remember { mutableStateOf(false) }
+
+  // D.25.1 — when Custom is the active base theme, render a coloured
+  // swatch trailing the row so the user sees what they picked at a
+  // glance. Uses the seed RGB straight, alpha 1.
+  val customSwatch: (@Composable () -> Unit)? = (snapshot.baseTheme as? BaseTheme.Custom)?.let { custom ->
+    {
+      Box(
+        modifier = Modifier
+          .size(24.dp)
+          .clip(CircleShape)
+          .background(Color(0xFF000000L or custom.seedRgb))
+          .semantics { testTag = "base_theme_custom_swatch" },
+      )
+    }
+  }
 
   val bindings = listOf(
     SettingsRowBinding.Picker(
@@ -106,22 +128,19 @@ fun SettingsLookAndFeelScreen(
       currentLabel = themeLabel(snapshot.theme),
       onClick = { themePicker = true },
     ),
-    // D.20.4 — base-theme picker (Default Android / Default colors /
-    // Pure black). Replaces the old ColorScheme + blackTheme pair.
+    // D.20.4 / D.25.1 — base-theme picker. Custom-color is a fourth
+    // option that opens a real colour picker; the trailing swatch
+    // surfaces the picked seed when Custom is active.
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_BASE_THEME,
       currentLabel = baseThemeLabel(snapshot.baseTheme),
       onClick = { baseThemePicker = true },
+      trailing = customSwatch,
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_ALBUM_ART_TINT,
       checked = snapshot.albumArtTintEnabled,
       onCheckedChange = { scope.launch { repository.setAlbumArtTintEnabled(it) } },
-    ),
-    SettingsRowBinding.Toggle(
-      id = SettingsCatalog.ID_ROUND_MODE,
-      checked = snapshot.roundMode,
-      onCheckedChange = { scope.launch { repository.setRoundMode(it) } },
     ),
   )
 
@@ -145,15 +164,56 @@ fun SettingsLookAndFeelScreen(
     )
   }
   if (baseThemePicker) {
+    // D.25.1 — the picker offers four options. Tapping Custom closes
+    // the radio dialog and opens the colour picker; the other three
+    // commit immediately like before.
     RadioPicker(
       title = "Base theme",
-      options = BaseTheme.entries,
+      options = BaseTheme.pickerOptions,
       label = ::baseThemeLabel,
-      current = snapshot.baseTheme,
-      onPick = { scope.launch { repository.setBaseTheme(it) }; baseThemePicker = false },
+      // Match by *kind* — the radio dialog's Custom sentinel carries
+      // a placeholder seed, but the snapshot's Custom carries the
+      // user's saved seed. We still want the bullet to land on Custom
+      // when the user has previously picked one.
+      current = baseThemeMatch(snapshot.baseTheme),
+      onPick = { picked ->
+        baseThemePicker = false
+        if (picked is BaseTheme.Custom) {
+          colorPicker = true
+        } else {
+          scope.launch { repository.setBaseTheme(picked) }
+        }
+      },
       onDismiss = { baseThemePicker = false },
     )
   }
+  if (colorPicker) {
+    // Re-open from the saved seed when the user already had Custom
+    // selected; otherwise fall back to the placeholder Material 3
+    // purple so the picker has a sensible starting point.
+    val initialSeed = (snapshot.baseTheme as? BaseTheme.Custom)?.seedRgb ?: 0x6750A4L
+    ColorPickerDialog(
+      initialRgb = initialSeed,
+      onConfirm = { rgb ->
+        scope.launch { repository.setBaseTheme(BaseTheme.Custom(rgb)) }
+        colorPicker = false
+      },
+      onDismiss = { colorPicker = false },
+    )
+  }
+}
+
+/**
+ * D.25.1 — collapse a stored [BaseTheme] onto one of the four picker
+ * options so the radio dialog can highlight the active row. Any
+ * `Custom(...)` value (whatever the seed) maps to the picker's
+ * `Custom` sentinel.
+ */
+private fun baseThemeMatch(stored: BaseTheme): BaseTheme = when (stored) {
+  is BaseTheme.DefaultAndroid -> BaseTheme.DefaultAndroid
+  is BaseTheme.DefaultColors -> BaseTheme.DefaultColors
+  is BaseTheme.PureBlack -> BaseTheme.PureBlack
+  is BaseTheme.Custom -> BaseTheme.pickerOptions.last()
 }
 
 private fun themeLabel(p: ThemePreference): String = when (p) {
@@ -163,9 +223,10 @@ private fun themeLabel(p: ThemePreference): String = when (p) {
 }
 
 internal fun baseThemeLabel(b: BaseTheme): String = when (b) {
-  BaseTheme.DefaultAndroid -> "Default Android (Material You)"
-  BaseTheme.DefaultColors -> "Default colors"
-  BaseTheme.PureBlack -> "Pure black"
+  is BaseTheme.DefaultAndroid -> "Default Android (Material You)"
+  is BaseTheme.DefaultColors -> "Default colors"
+  is BaseTheme.PureBlack -> "Pure black"
+  is BaseTheme.Custom -> "Custom color"
 }
 
 // =============================================================================

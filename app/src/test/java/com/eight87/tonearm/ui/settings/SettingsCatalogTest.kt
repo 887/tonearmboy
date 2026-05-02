@@ -52,7 +52,6 @@ class SettingsCatalogTest {
       // legacy ID_COLOR_SCHEME + ID_BLACK_THEME pair.
       SettingsCatalog.ID_BASE_THEME,
       SettingsCatalog.ID_ALBUM_ART_TINT,
-      SettingsCatalog.ID_ROUND_MODE,
       // Personalize.
       SettingsCatalog.ID_LIBRARY_TABS,
       SettingsCatalog.ID_CUSTOM_PLAYBACK_BAR_ACTION,
@@ -141,10 +140,11 @@ class SettingsCatalogTest {
 
   @Test
   fun search_matches_by_subtitle() {
-    val results = SettingsCatalog.search("rounded corners")
+    // "rounded rectangles" hits the Force-square-covers subtitle.
+    val results = SettingsCatalog.search("rounded rectangles")
     assertTrue(
-      "Round mode subtitle search should hit",
-      results.any { it.id == SettingsCatalog.ID_ROUND_MODE },
+      "Force-square-covers subtitle search should hit",
+      results.any { it.id == SettingsCatalog.ID_FORCE_SQUARE_COVERS },
     )
   }
 

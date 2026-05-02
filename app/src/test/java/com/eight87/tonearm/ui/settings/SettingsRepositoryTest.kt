@@ -33,7 +33,6 @@ class SettingsRepositoryTest {
     // tests independent of declaration order and JUnit's per-JVM
     // method-ordering quirks.
     repo.setBlackTheme(false)
-    repo.setRoundMode(true)
     repo.setRememberShuffle(false)
     repo.setIntelligentSorting(true)
     repo.setForceSquareCovers(false)

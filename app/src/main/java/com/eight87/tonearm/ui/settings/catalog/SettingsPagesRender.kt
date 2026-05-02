@@ -43,12 +43,15 @@ sealed class SettingsRowBinding {
 
   /**
    * Picker row: tapping opens a dialog. The currently-selected value's
-   * label is used as the row subtitle.
+   * label is used as the row subtitle. Optional [trailing] composable
+   * (e.g. a coloured swatch for the custom-base-theme picker) is shown
+   * to the right of the row.
    */
   data class Picker(
     override val id: String,
     val currentLabel: String,
     val onClick: () -> Unit,
+    val trailing: (@Composable () -> Unit)? = null,
   ) : SettingsRowBinding()
 }
 
@@ -118,6 +121,7 @@ private fun RowFromBinding(
       label = entry.label,
       subtitle = binding.currentLabel,
       onClick = binding.onClick,
+      trailing = binding.trailing,
     )
     is SettingsRowBinding.Action -> SettingsRow(
       id = entry.id,
@@ -148,7 +152,6 @@ fun groupTitleFor(group: Group): String = when (group) {
   Group.Library -> "Library"
   Group.About -> "About"
   Group.Theme -> "Theme"
-  Group.Layout -> "Layout"
   Group.Display -> "Display"
   Group.PersonalizeBehaviour -> "Behaviour"
   Group.Music -> "Music"

@@ -27,10 +27,12 @@ enum class ColorScheme {
 }
 
 /**
- * D.20.4 — three-way base theme picker that replaces the old
- * `ColorScheme` + `blackTheme` toggle pair as the source of truth for
- * the chrome's foundation. The album-art tint sits *on top* of this
- * (controlled by [SettingsSnapshot.albumArtTintEnabled]).
+ * D.20.4 / D.25.1 — base theme picker. Originally a three-way enum
+ * (`DefaultAndroid` / `DefaultColors` / `PureBlack`); D.25.1 promoted
+ * it to a sealed class so `Custom(seedRgb)` can carry a user-picked
+ * primary seed colour from which Material 3 derives the full
+ * `ColorScheme`. The album-art tint sits *on top* of this (controlled
+ * by [SettingsSnapshot.albumArtTintEnabled]).
  *
  *  - [DefaultAndroid] — Material You / dynamic colour on API 31+,
  *    falls back to the static palette below on older devices.
@@ -38,22 +40,65 @@ enum class ColorScheme {
  *  - [PureBlack] — true-black surface family for AMOLED screens. The
  *    primary / secondary / tertiary still come from the dynamic or
  *    brand palette underneath; only `surface` / `background` go black.
+ *  - [Custom] — user picked a seed colour via the in-app HSV picker;
+ *    `lightColorScheme` / `darkColorScheme` are derived from it.
  *
- * The legacy `ColorScheme` and `blackTheme` keys are still readable
- * via `SettingsSnapshot` for backward compatibility, but the
- * `Look and Feel` UI binds to [BaseTheme] from here on.
+ * Persisted as a string. The first three serialise as their class
+ * names ("DefaultAndroid" / "DefaultColors" / "PureBlack"); [Custom]
+ * serialises as `Custom:0xRRGGBB`. Unknown / malformed strings fall
+ * back to [Default].
  */
-enum class BaseTheme {
-  DefaultAndroid,
-  DefaultColors,
-  PureBlack,
-  ;
+sealed class BaseTheme {
+  data object DefaultAndroid : BaseTheme()
+  data object DefaultColors : BaseTheme()
+  data object PureBlack : BaseTheme()
+
+  /**
+   * D.25.1 — custom seed-colour theme. [seedRgb] is a 24-bit RGB value
+   * (alpha is implied 0xFF). Stored as a `Long` rather than `Int` so
+   * the high bit doesn't sign-extend round-tripping through DataStore.
+   */
+  data class Custom(val seedRgb: Long) : BaseTheme()
+
+  /** Storage form. Inverse of [fromStored]. */
+  fun toStored(): String = when (this) {
+    is DefaultAndroid -> "DefaultAndroid"
+    is DefaultColors -> "DefaultColors"
+    is PureBlack -> "PureBlack"
+    is Custom -> "Custom:0x${(seedRgb and 0xFFFFFFL).toString(16).padStart(6, '0').uppercase()}"
+  }
 
   companion object {
     val Default: BaseTheme = DefaultAndroid
 
-    fun fromStored(raw: String?): BaseTheme =
-      entries.firstOrNull { it.name == raw } ?: Default
+    fun fromStored(raw: String?): BaseTheme {
+      if (raw == null) return Default
+      if (raw.startsWith("Custom:")) {
+        val hex = raw.removePrefix("Custom:").removePrefix("0x").removePrefix("0X")
+        val parsed = runCatching { hex.toLong(16) }.getOrNull() ?: return Default
+        return Custom(parsed and 0xFFFFFFL)
+      }
+      return when (raw) {
+        "DefaultAndroid" -> DefaultAndroid
+        "DefaultColors" -> DefaultColors
+        "PureBlack" -> PureBlack
+        else -> Default
+      }
+    }
+
+    /**
+     * The four base-theme variants surfaced by the picker dialog. Used
+     * in place of the old `enum.entries` since a sealed class can't
+     * enumerate its leaves automatically. The [Custom] entry here is a
+     * sentinel — the dialog displays it, and tapping opens the colour
+     * picker; the actual stored value carries the user-picked seed.
+     */
+    val pickerOptions: List<BaseTheme> = listOf(
+      DefaultAndroid,
+      DefaultColors,
+      PureBlack,
+      Custom(seedRgb = 0xFF6750A4L and 0xFFFFFFL), // Material 3 default purple
+    )
   }
 }
 
@@ -295,7 +340,6 @@ data class SettingsSnapshot(
   val theme: ThemePreference,
   val colorScheme: ColorScheme,
   val blackTheme: Boolean,
-  val roundMode: Boolean,
   val rememberShuffle: Boolean,
   val libraryTabs: List<LibraryTab>,
   val intelligentSorting: Boolean,
@@ -356,7 +400,6 @@ data class SettingsSnapshot(
       theme = ThemePreference.Default,
       colorScheme = ColorScheme.Default,
       blackTheme = false,
-      roundMode = true,
       rememberShuffle = false,
       libraryTabs = LibraryTab.DefaultOrder,
       intelligentSorting = true,
@@ -411,10 +454,6 @@ class SettingsRepository(private val context: Context) {
 
   suspend fun setBlackTheme(value: Boolean) {
     store.edit { it[KEY_BLACK_THEME] = value }
-  }
-
-  suspend fun setRoundMode(value: Boolean) {
-    store.edit { it[KEY_ROUND_MODE] = value }
   }
 
   suspend fun setRememberShuffle(value: Boolean) {
@@ -589,7 +628,7 @@ class SettingsRepository(private val context: Context) {
   // --- D.20.4: base theme + album-art tint --------------------------------
 
   suspend fun setBaseTheme(value: BaseTheme) {
-    store.edit { it[KEY_BASE_THEME] = value.name }
+    store.edit { it[KEY_BASE_THEME] = value.toStored() }
   }
 
   suspend fun setAlbumArtTintEnabled(value: Boolean) {
@@ -627,7 +666,6 @@ class SettingsRepository(private val context: Context) {
     theme = ThemePreference.fromStored(this[ThemePreferenceStore.KEY_THEME_MODE]),
     colorScheme = ColorScheme.fromStored(this[KEY_COLOR_SCHEME]),
     blackTheme = this[KEY_BLACK_THEME] ?: SettingsSnapshot.Default.blackTheme,
-    roundMode = this[KEY_ROUND_MODE] ?: SettingsSnapshot.Default.roundMode,
     rememberShuffle = this[KEY_REMEMBER_SHUFFLE] ?: SettingsSnapshot.Default.rememberShuffle,
     libraryTabs = parseLibraryTabs(this[KEY_LIBRARY_TABS]),
     intelligentSorting = this[KEY_INTELLIGENT_SORTING] ?: SettingsSnapshot.Default.intelligentSorting,
@@ -657,7 +695,6 @@ class SettingsRepository(private val context: Context) {
   companion object {
     internal val KEY_COLOR_SCHEME = stringPreferencesKey("color_scheme")
     internal val KEY_BLACK_THEME = booleanPreferencesKey("black_theme")
-    internal val KEY_ROUND_MODE = booleanPreferencesKey("round_mode")
     internal val KEY_REMEMBER_SHUFFLE = booleanPreferencesKey("remember_shuffle")
     internal val KEY_LIBRARY_TABS = stringPreferencesKey("library_tabs")
     internal val KEY_INTELLIGENT_SORTING = booleanPreferencesKey("intelligent_sorting")

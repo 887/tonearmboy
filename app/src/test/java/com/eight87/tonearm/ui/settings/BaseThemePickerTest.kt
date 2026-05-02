@@ -57,7 +57,13 @@ class BaseThemePickerTest {
 
   @Test
   fun every_base_theme_round_trips() = runTest {
-    BaseTheme.entries.forEach { value ->
+    val values = listOf(
+      BaseTheme.DefaultAndroid,
+      BaseTheme.DefaultColors,
+      BaseTheme.PureBlack,
+      BaseTheme.Custom(0x6750A4L),
+    )
+    values.forEach { value ->
       repo.setBaseTheme(value)
       assertEquals(value, repo.snapshot.first().baseTheme)
     }

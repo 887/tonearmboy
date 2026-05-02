@@ -22,7 +22,6 @@ import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.RestartAlt
-import androidx.compose.material.icons.outlined.RoundedCorner
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SortByAlpha
 import androidx.compose.material.icons.outlined.Sync
@@ -59,7 +58,6 @@ enum class Group {
   About,
   // Look and Feel.
   Theme,
-  Layout,
   // Personalize.
   Display,
   PersonalizeBehaviour,
@@ -154,7 +152,6 @@ object SettingsCatalog {
   const val ID_THEME = "look_and_feel.theme"
   const val ID_COLOR_SCHEME = "look_and_feel.color_scheme"
   const val ID_BLACK_THEME = "look_and_feel.black_theme"
-  const val ID_ROUND_MODE = "look_and_feel.round_mode"
   const val ID_BASE_THEME = "look_and_feel.base_theme"
   const val ID_ALBUM_ART_TINT = "look_and_feel.album_art_tint"
 
@@ -340,18 +337,6 @@ object SettingsCatalog {
       kind = RowKind.Toggle,
       destination = SettingsLookAndFeel,
       breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Tint chrome by album art"),
-    ),
-    SettingsCatalogEntry(
-      id = ID_ROUND_MODE,
-      label = "Round mode",
-      subtitle = "Apply rounded corners to additional UI elements.",
-      keywords = listOf("rounded", "corners"),
-      icon = Icons.Outlined.RoundedCorner,
-      section = Section.LookAndFeel,
-      group = Group.Layout,
-      kind = RowKind.Toggle,
-      destination = SettingsLookAndFeel,
-      breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Layout", "Round mode"),
     ),
 
     // ---------------------------------------------------------------
