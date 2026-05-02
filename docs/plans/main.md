@@ -1,8 +1,8 @@
 # tonearm — main build plan
 
-## Status: ✅ DONE
+## Status: 🔄 In progress — Phase D.26 (mini-player full transport + queue-as-playlist + persistence)
 
-_Completed 2026-05-03 — all 9 phases shipped (Phase 0 prerequisites + Phases A–H build out)._
+_Phases 0 + A–H shipped 2026-05-03. Real-device feedback round 7 reopened the plan with Phase D.26._
 
 
 ## Stack (locked)
@@ -577,6 +577,64 @@ Three sub-steps:
   - `164-d25-now-playing-themed-by-custom.png` (NowPlaying surface tinted by the picked seed)
 
 **Shipped:** D.25.1–D.25.3 in a single commit. `BaseTheme` is now a sealed class with `Custom(seedRgb: Long)`; `ColorPickerDialog` is a hand-rolled HSV picker (saturation/value square + hue slider + preview swatch); `TonearmTheme.deriveCustomScheme` derives `lightColorScheme` / `darkColorScheme` from the seed via hue-shifted tonal anchors. Round mode toggle, snapshot field, setter, and DataStore key all gone — existing prefs with `round_mode = true` are silently ignored. Three Robolectric tests added (`BaseThemeCustomTest` 7 cases, `ColorPickerTest` 4 cases, `RoundModeRemovedTest` 4 cases). All 15 new tests + the full pre-existing suite pass.
+
+---
+
+## Phase D.26 — mini-player full transport + queue-as-playlist + state persistence
+
+Real-device feedback round 7 (the user is now using tonearm as their daily player; this round is daily-driver polish):
+
+1. **Mini-player has too much empty space + no draggable seek.** The library mini-player (D.24.1) renders prev / play-pause / next centered with empty room on left and right, plus a 2-dp progress strip flush at the bottom. User wants shuffle on the left, repeat on the right (filling the empty horizontal space), and a full Material 3 `Slider` they can drag to seek instead of the thin progress strip. Direct quote: *"we've got lots of room left and right, would be cool if we had that all in there. also put the full seekbar you can drag around in there too, just showing position and skipping is useless. full control please."*
+
+2. **Queue behaves wrong.** Currently the queue section excludes the currently-playing item (renders only `currentMediaItemIndex + 1..end`); the now-playing card at the top of NowPlaying is the only place the active track shows. Tapping a queue row calls `seekToQueueIndex` which advances Media3 to that index — but the visual effect is "the row vanished from the queue" (because it's now the active item, hidden from the up-next list). User reads this as the row being removed. They want a playlist-style timeline where the current track stays in the queue list, highlighted in place, and the user can scroll to past tracks to skip back two songs. Quote: *"this queue should behave more like a playlist where it goes song by song and the playing one gets highlighted. that way I can also go two songs back etc."*
+
+3. **Filter scroll-to-top.** When the filter narrows the queue to zero matches, the parent `LazyColumn` shrinks → scroll position resets to top → user has to scroll back down to clear the filter. Quote: *"using the filter scrolls me up to the top of the screen when there are no elements left. i would prefer the screen not changing. for that you probably have to make enough room for the elements in the queue for one screensize minimum unless there are more."*
+
+4. **Shuffle / repeat reset on app restart.** The toggles flip per-session but aren't persisted. Quote: *"i also want the options like repeating song etc stored across restarts etc."*
+
+Five sub-steps:
+
+- [ ] **D.26.1 Mini-player full transport + draggable seekbar.** Refactor `app/src/main/java/com/eight87/tonearm/ui/playing/MiniPlayer.kt`:
+  - Row 1 (existing): 48-dp art + title (`bodyLarge`) + "artist · album" (`bodySmall`) + close-X (right). Tap opens NowPlaying.
+  - Row 2: shuffle (left) — prev — play-pause — next — repeat (right), distributed across the surface width with `Arrangement.SpaceEvenly` or fixed weight columns. Same `IconToggleButton` pattern as the NowPlaying transport row for shuffle / repeat (cycle OFF → ALL → ONE → OFF; icon swap).
+  - Row 3: full Material 3 `Slider` driven by `state.positionMs / state.durationMs` with `onValueChangeFinished` calling `playback.seekTo(...)`. Below the slider, a thin row with `Text(state.positionMs.formatTime())` left and `Text(state.durationMs.formatTime())` right.
+  - Total mini-player height grows from ≤ 96 dp to ≤ 144 dp. That's still well under the NowPlaying full-screen surface; user explicitly asked for "full control" so the height trade-off is approved.
+  - Long-press on play-pause continues to fire `customBarAction`.
+
+- [ ] **D.26.2 Queue renders the full timeline with active row highlighted.** Refactor `app/src/main/java/com/eight87/tonearm/ui/playing/QueueSection.kt`:
+  - Render *all* queue items (indices `0..mediaItemCount - 1`), not just `currentIdx + 1..end`. The "Up next" header label changes to just "Queue".
+  - The currently-playing item gets a distinct background (`MaterialTheme.colorScheme.primaryContainer`), a leading "now playing" speaker icon (`Icons.Default.GraphicEq` or `Icons.Default.PlayArrow`), and a `bodyLarge` title weight (other rows stay `bodyMedium`).
+  - Tapping any queue row → `playback.seekToQueueIndex(actualIndex)`. The current row stays in place (no longer "removed" — it just gets re-highlighted from itself to itself, no visible change other than that index becoming the active one).
+  - Drag-drop reorder still excludes the currently-playing index (Media3's behaviour around moving the playing item is awkward; keep it pinned). Drag handle on the active row is `enabled=false` + dim alpha.
+  - Visual-to-controller index translation simplifies: the queue list now matches the controller indices 1:1 (no `currentIdx + 1` offset). Update `translateVisualToReal`. The pin-active-row constraint is enforced in the drag-drop callbacks — clamp `from` and `to` away from `currentIdx`.
+  - The hero card at the top of NowPlaying (album art + title + scrubber + transport) stays — it's the focal "now playing" surface. The queue list is the "timeline" view. Showing the active track in both places is fine: the hero is the spotlight, the queue row is the position-in-list indicator.
+
+- [ ] **D.26.3 Filter doesn't collapse the page.** When the filter narrows the queue to zero matches, the parent `LazyColumn` must NOT shrink and trigger a scroll-to-top. Two options (agent picks):
+  - (a) Add a final placeholder item to the queue list with `Modifier.fillParentMaxSize()` (or a computed `heightIn(min = parentViewportHeight - heroHeight)`) when the matched count is zero. The `LazyColumn` always has at least viewport-minus-hero of vertical content.
+  - (b) Re-architect NowPlaying: hero block stays in a non-scrolling Column at the top, queue list owns its own internal LazyColumn fillMaxSize. Filter changes only affect the inner scroll surface, so the parent never re-positions.
+  
+  Either way, regression test: scroll down so the queue is in view, type a no-match filter, assert the scroll position has not jumped to top.
+
+- [ ] **D.26.4 Persist shuffle + repeat across restarts.** Two new DataStore keys in `SettingsRepository` (or extend `QueuePersistence` since these are playback-session-scoped, not user preferences):
+  - `KEY_SHUFFLE_ENABLED: Boolean` (default `false`)
+  - `KEY_REPEAT_MODE: Int` (default `Player.REPEAT_MODE_OFF`, persisted as 0/1/2)
+  
+  In `PlaybackService.onCreate`, after `restorePersistedQueueIntoPlayer`, also restore `player.shuffleModeEnabled` + `player.repeatMode` from the persisted values. Hook a `Player.Listener` `onShuffleModeEnabledChanged` + `onRepeatModeChanged` that writes back to the store on every change. Read once + restore on cold start, write on every flip.
+
+- [ ] **D.26.5 Tests + screenshots.** Robolectric:
+  - `MiniPlayerFullTransportTest` — assert shuffle / repeat icons exist alongside prev / play / next; assert dragging the slider fires `seekTo`; assert long-press still routes to `customBarAction`.
+  - `QueueActiveRowHighlightTest` — assert the row at `currentIdx` has the highlighted background + leading icon + bodyLarge title; assert tapping a non-current row calls `seekToQueueIndex(thatIndex)`; assert tapping the current row is a no-op (or self-seek, no visual disruption).
+  - `QueueFilterNoCollapseTest` — set queue to 50 items, scroll the LazyColumn to position 30, set filter to "xyz" (no matches), assert the LazyListState's `firstVisibleItemIndex` did not reset to 0.
+  - `ShuffleRepeatPersistenceTest` — flip shuffle on, set repeat to ONE, reset the service, assert `player.shuffleModeEnabled == true` and `player.repeatMode == REPEAT_MODE_ONE` after `restorePersistedQueueIntoPlayer`.
+  - `QueueDragHandleClampTest` — assert the drag handle on the currently-playing row is disabled + dimmed; assert `moveMediaItem` callbacks clamp from / to away from `currentIdx`.
+  
+  Screenshots via mobile-mcp on the AVD:
+  - `docs/screenshots/phase-d/180-d26-mini-player-full-transport.png` — mini-player with shuffle / prev / play / next / repeat + draggable slider with time labels
+  - `181-d26-queue-active-highlighted.png` — queue list with the current track highlighted in place
+  - `182-d26-queue-filter-stays-put.png` — filter typed to "no-match", scroll position preserved (capture before + after as a side-by-side or two screenshots)
+  - `183-d26-shuffle-on-after-restart.png` — verify shuffle survives an app force-stop + relaunch
+
+**Shipped:** _(not yet)_
 
 ---
 
