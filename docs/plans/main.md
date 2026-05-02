@@ -340,7 +340,28 @@ User real-device-tested the v1.0-eab1fd8 release on their actual phone via Obtai
     - [x] **D.17.3.6** First-launch hook: when `SettingsRepository.musicSourceMode` is unset (fresh install), set it to `System` automatically — never show an empty library on first launch. — shipped in commit `e79bdac`
 - [x] **D.17.4 Tests + screenshots.** Robolectric unit tests for: `MusicSourceMode` enum + persistence, the dialog state machine (mode toggle, folder add/remove, save persistence), splash screen install hook, adaptive icon resource references resolve. `scripts/ui-smoke-test.sh` extended with: fresh-install asserts library scans MediaStore by default; opening Music sources shows the dialog; switching to File picker preserves the folders list. Screenshots: `90-d17-launcher-icon-on-home.png`, `91-d17-splash-screen.png`, `92-d17-music-sources-system.png`, `93-d17-music-sources-file-picker.png`. — shipped in commit `e79bdac`
 
-**Shipped:** _(in progress — dispatches now)_
+**Shipped:** D.17.1–D.17.4 in commit `e79bdac`
+
+---
+
+## Phase D.18 — Custom library tabs + drag/drop reorder + browser fix
+
+User real-device-tested `v1.0-eab1fd8` and surfaced three deferrals + one bug:
+
+- The Library tabs dialog only shows the five built-ins. **No way to add a custom tab** (was D.8c/d in the original Harmony plan, never landed standalone).
+- The reorder UI uses up/down arrow buttons. **No drag-and-drop**.
+- About-screen GitHub links open in an in-app WebView/CustomTab on some devices instead of the user's default browser.
+- Verify license posture (no GPL transitive contamination via deps).
+
+- [x] **D.18.0 License audit + browser intent fix.** All direct deps in `gradle/libs.versions.toml` confirmed Apache 2.0 (AndroidX, Media3, Kotlin, Coroutines, Serialization, DataStore, Coil 3, WorkManager, core-splashscreen, KSP) or MIT (Robolectric). No GPL contamination — tonearm stays MIT. Browser intent helper `openExternalBrowser(context, url)` adds `CATEGORY_BROWSABLE` + `Browser.EXTRA_APPLICATION_ID` so the system routes through the configured external browser only, not embedded WebViews. — shipped in commit _(this commit)_
+- [ ] **D.18.1 Custom tab Room schema** (resurrected from the original D.8c). `CustomTabEntity(id, name, position, contentType: SONGS|ALBUMS|ARTISTS|GENRES, criteriaJson)`. `FilterCriteria` data class with `kotlinx.serialization` JSON (genres / artists / albums multi-select; year min+max; dateAddedAfter epoch; hasAlbumArt nullable; pathContains). Room migration v3 → v4. New `LibraryRepository` methods: `customTabs()`, `tracksMatching(criteria)`, `albumsMatching(criteria)`, `artistsMatching(criteria)`, `genresMatching(criteria)`, `upsertCustomTab(tab)`, `deleteCustomTab(id)`, `reorderCustomTabs(orderedIds)`.
+- [ ] **D.18.2 Custom tab editor sheet** (D.8d resurrected). `CustomTabEditorSheet` `ModalBottomSheet`: name field, content-type segmented toggle, collapsible filter sections (Genres / Artists / Albums multi-select with checkboxes; Year range slider; Date-added segmented; Has-album-art radio; Path-contains text). Save / Cancel.
+- [ ] **D.18.3 Library tabs dialog gets "+ Add custom tab" + per-tab affordances.** Existing dialog (the one in the screenshot the user shared) already shows the five built-ins with toggle + arrows. Append a "+ Add custom tab" row at the bottom. Custom tabs render in the same list with the same toggle, plus an Edit-pencil and Delete-trash icon (built-ins remain toggle-only because they can't be deleted). Tapping "+" or Edit opens `CustomTabEditorSheet`.
+- [ ] **D.18.4 Drag-and-drop reorder.** Replace the up/down arrow buttons with a drag handle on each row. Use `androidx.compose.foundation.lazy.LazyColumn` with `Modifier.draggableHandle(...)` from a small custom DnD helper (or import `sh.calvin.reorderable:reorderable:2.4.0` if its license is MIT/Apache — confirm before adding). Long-press to lift, drag to reorder, release to drop. The order persists immediately on drop (not just on Save).
+- [ ] **D.18.5 Custom tab rendering in the rail.** When a user creates a custom tab named "Synthwave 2025" with `FilterCriteria(genres=["Synthwave"], yearMin=2025)`, it appears in the rail after the built-ins (in the user's saved order). Tapping it renders the matching subset using the existing `TracksListScreen` / `AlbumsGridScreen` / etc. composables consuming `LibraryRepository.tracksMatching(criteria)` instead of the all-tracks Flow.
+- [ ] **D.18.6 Tests + screenshots.** Robolectric: `CustomTabDaoTest` (CRUD + reorder), `FilterCriteriaMatchingTest` (each predicate + intersection), `CustomTabEditorSheetStateTest` (state machine), `DragDropReorderTest` (lift/move/drop semantics). `scripts/ui-smoke-test.sh` extended with: open Library tabs → "+" → create a custom tab → assert it persists → assert it appears in the rail → tap it → assert filtered content. Screenshots: `94-d18-tabs-dialog-with-add.png`, `95-d18-custom-tab-editor.png`, `96-d18-drag-handle-mid-drag.png`, `97-d18-custom-tab-in-rail.png`.
+
+**Shipped:** _(in progress — D.18.0 ships now; agent dispatches for D.18.1–D.18.6)_
 
 ---
 

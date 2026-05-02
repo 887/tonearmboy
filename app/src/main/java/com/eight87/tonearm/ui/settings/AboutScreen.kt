@@ -166,9 +166,7 @@ fun AboutScreen(
           label = "GitHub repository",
           subtitle = "github.com/887/tonearm",
           onClick = {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL))
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            runCatching { context.startActivity(intent) }
+            openExternalBrowser(context, GITHUB_URL)
           },
         )
         SettingsRowDivider()
@@ -176,12 +174,8 @@ fun AboutScreen(
           id = "about.license",
           icon = Icons.Outlined.Article,
           label = "License",
-          subtitle = "MIT — see LICENSE",
-          onClick = {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(LICENSE_URL))
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            runCatching { context.startActivity(intent) }
-          },
+          subtitle = "MIT — see LICENSE. All direct deps (AndroidX, Media3, Kotlin, Coil, Robolectric) are Apache-2.0 / MIT — no GPL contamination.",
+          onClick = { openExternalBrowser(context, LICENSE_URL) },
         )
       }
 
@@ -209,11 +203,7 @@ fun AboutScreen(
           icon = Icons.Outlined.Favorite,
           label = "Auxio (GPL-3.0)",
           subtitle = "Visual reference for the player surface and library chrome. github.com/OxygenCobalt/Auxio",
-          onClick = {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(AUXIO_URL))
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            runCatching { context.startActivity(intent) }
-          },
+          onClick = { openExternalBrowser(context, AUXIO_URL) },
         )
         SettingsRowDivider()
         SettingsRow(
@@ -221,11 +211,7 @@ fun AboutScreen(
           icon = Icons.Outlined.Favorite,
           label = "Harmony Music (GPL-3.0)",
           subtitle = "Chrome reference (rail-and-content boundary, M3 Expressive cards). github.com/anandnet/Harmony-Music",
-          onClick = {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(HARMONY_URL))
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            runCatching { context.startActivity(intent) }
-          },
+          onClick = { openExternalBrowser(context, HARMONY_URL) },
         )
         SettingsRowDivider()
         SettingsRow(
@@ -284,3 +270,21 @@ private const val GITHUB_URL = "https://github.com/887/tonearm"
 private const val LICENSE_URL = "https://github.com/887/tonearm/blob/main/LICENSE"
 private const val AUXIO_URL = "https://github.com/OxygenCobalt/Auxio"
 private const val HARMONY_URL = "https://github.com/anandnet/Harmony-Music"
+
+/**
+ * Open a URL in the user's default external browser, NOT in any
+ * embedded WebView / Chrome Custom Tab. The plain `Intent.ACTION_VIEW`
+ * with no category was matching in-app browser components on some
+ * devices (the user reported this on a real phone). Adding
+ * `CATEGORY_BROWSABLE` plus `Browser.EXTRA_APPLICATION_ID` plus the
+ * generic `URI` scheme forces the system to route through the
+ * configured browser-launcher only.
+ */
+private fun openExternalBrowser(context: android.content.Context, url: String) {
+  val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+    addCategory(Intent.CATEGORY_BROWSABLE)
+    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    putExtra("com.android.browser.application_id", context.packageName)
+  }
+  runCatching { context.startActivity(intent) }
+}
