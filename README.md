@@ -19,6 +19,59 @@ Phases 0 → E shipped. See [`docs/plans/main.md`](docs/plans/main.md) for the p
 - Lyrics fetching, last.fm scrobbling, advanced audio effects (maybe later, not in v1).
 - Tablet-specific layouts (works on phone, scales to tablet later).
 
+## Install on Android via Obtainium
+
+[Obtainium](https://github.com/ImranR98/Obtainium) is an open-source Android
+app store that pulls APKs directly from GitHub Releases. No Play Store, no
+sideload dance, auto-update on every new release. Works on de-Googled Androids
+(GrapheneOS / CalyxOS / LineageOS).
+
+### One-tap install (if Obtainium is already on your phone)
+
+Tap this link on your phone:
+
+[`obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearm`](obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearm)
+
+Obtainium opens, prefills the source, and shows **Add**.
+
+### Manual install
+
+1. Install Obtainium from [F-Droid](https://f-droid.org/en/packages/dev.imranr.obtainium.fdroid/) or [its GitHub releases](https://github.com/ImranR98/Obtainium/releases/latest).
+
+2. In Obtainium, tap **Add App** → paste this **Source URL**:
+
+   ```
+   https://github.com/887/tonearm
+   ```
+
+   (The code block above gives you a one-tap copy on GitHub web + most Markdown viewers.)
+
+3. The other fields auto-detect, but if you need to set them by hand:
+
+   | Field            | Value                  |
+   | ---------------- | ---------------------- |
+   | Source type      | GitHub                 |
+   | APK filter regex | `^tonearm-.*\.apk$`    |
+   | Update channel   | Releases               |
+
+4. Tap **Add**. Obtainium fetches `tonearm-<version>-<sha7>.apk` from the latest release and offers Install. Future releases trigger an auto-update notification.
+
+### Verifying a build
+
+Each release ships a "Verify build" table in its notes with the APK SHA-256.
+After installing, confirm what you got matches:
+
+```bash
+adb shell pm path com.eight87.tonearm           # find the installed APK on your device
+adb pull <path-from-above> /tmp/installed.apk   # pull it back
+sha256sum /tmp/installed.apk                    # compare to the release notes
+```
+
+---
+
+The rest of this README is for **developers** — building locally, running the
+AVD, running smoke tests, shipping a release. Skip if you just want the app.
+
 ## Prerequisites (one-time, Linux)
 
 ```bash
@@ -117,50 +170,6 @@ script switches to `assembleRelease`.
 
 The `release/` directory is gitignored. Each build also writes a
 `release/latest.apk` symlink for convenience.
-
-## Install via Obtainium
-
-[Obtainium](https://github.com/ImranR98/Obtainium) is an open-source Android
-app store that pulls APKs directly from GitHub Releases (and other sources).
-We use it instead of the Play Store because:
-
-- No Play Store review / signing-key custody for a personal-scale app.
-- Auto-update from `https://github.com/887/tonearm/releases/latest`.
-- Works on de-Googled Androids (GrapheneOS / CalyxOS / LineageOS).
-
-### Setup (one tap)
-
-If you already have Obtainium installed, tap this link on your phone:
-
-[`obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearm`](obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearm)
-
-Obtainium opens, prefills the source, and shows the "Add" button.
-
-### Setup (manual)
-
-In Obtainium, tap **Add App** and fill in:
-
-| Field            | Value                              |
-| ---------------- | ---------------------------------- |
-| Source URL       | `https://github.com/887/tonearm`   |
-| Source type      | GitHub                             |
-| APK filter regex | `^tonearm-.*\.apk$`                |
-| Update channel   | Releases                           |
-
-Tap **Add**. Obtainium fetches the latest release, picks the APK matching the
-filter, and offers Install. Subsequent releases trigger an auto-update
-notification.
-
-### Verifying a build
-
-Each release ships a "Verify build" table in its notes with the APK SHA-256.
-After installing, you can confirm what you got:
-
-```bash
-adb shell pm path com.eight87.tonearm           # find the installed APK
-adb pull <path-from-above> /tmp/installed.apk   # pull it back
-sha256sum /tmp/installed.apk                    # compare to the release notes
-```
 
 ## GitHub Actions fallback
 
