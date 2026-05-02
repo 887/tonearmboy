@@ -1,8 +1,8 @@
 # tonearm — main build plan
 
-## Status: 🔄 In progress — Phase D.27.8 (queue drag vs parent scroll) + D.28 (per-tab view-mode toggle) queued
+## Status: 🔄 In progress — Phase D.27.8 (queue drag vs parent scroll) is the only remaining sub-step
 
-_Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 (search bug, multi-select Add-to-Playlist, playlist detail empty state, single-song queue scroll, advanced filtering, playlist tile UX) shipped 2026-05-02. D.27.8 (queue drag-drop cancelled by parent LazyColumn scroll) and D.28 (per-tab list↔tile toggle) still queued._
+_Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 (search bug, multi-select Add-to-Playlist, playlist detail empty state, single-song queue scroll, advanced filtering, playlist tile UX) shipped 2026-05-02. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03. D.27.8 (queue drag-drop cancelled by parent LazyColumn scroll) is the only remaining sub-step._
 
 
 ## Stack (locked)
@@ -729,11 +729,11 @@ The combined goal: every library tab supports **both** view modes (list with sti
 
 **This phase MUST land after D.27.** D.27 is touching `LibraryScreen.kt` (multi-select bar, filter sheet, playlist tile UX) and a parallel agent on the same file would conflict. Dispatch only after D.27's commit lands on `origin/main`.
 
-- [ ] **D.28.1 Persisted per-tab view mode.** Extend `app/src/main/java/com/eight87/tonearm/ui/settings/SettingsRepository.kt` (or wherever DataStore preferences live) with a `Map<LibraryTab, ViewMode>` preference: `viewModeFor(tab: LibraryTab): ViewMode` + `setViewModeFor(tab: LibraryTab, mode: ViewMode)`. `enum class ViewMode { List, Tile }`. Default: Songs / Artists / Genres / Playlists → `List`; Albums → `Tile` (matches today's behaviour). Add a `viewModes: StateFlow<Map<LibraryTab, ViewMode>>` exposed from the settings VM.
+- [x] **D.28.1 Persisted per-tab view mode.** Extend `app/src/main/java/com/eight87/tonearm/ui/settings/SettingsRepository.kt` (or wherever DataStore preferences live) with a `Map<LibraryTab, ViewMode>` preference: `viewModeFor(tab: LibraryTab): ViewMode` + `setViewModeFor(tab: LibraryTab, mode: ViewMode)`. `enum class ViewMode { List, Tile }`. Default: Songs / Artists / Genres / Playlists → `List`; Albums → `Tile` (matches today's behaviour). Add a `viewModes: StateFlow<Map<LibraryTab, ViewMode>>` exposed from the settings VM.
 
-- [ ] **D.28.2 View-mode toggle in top app bar.** New `IconButton` in `LibraryScreen` top bar (alongside Search, Sort, Filter, Settings — order matters; place it between Sort and Filter so the row reads search → sort → view → filter → settings). Icon: `Icons.AutoMirrored.Filled.ViewList` when current tab is Tile (tap to switch to List), `Icons.Filled.GridView` when current tab is List (tap to switch to Tile). Tap calls `setViewModeFor(currentTab, currentMode.toggle())`. The toggle is **per-tab** — switching tabs reads that tab's saved mode.
+- [x] **D.28.2 View-mode toggle in top app bar.** New `IconButton` in `LibraryScreen` top bar (alongside Search, Sort, Filter, Settings — order matters; place it between Sort and Filter so the row reads search → sort → view → filter → settings). Icon: `Icons.AutoMirrored.Filled.ViewList` when current tab is Tile (tap to switch to List), `Icons.Filled.GridView` when current tab is List (tap to switch to Tile). Tap calls `setViewModeFor(currentTab, currentMode.toggle())`. The toggle is **per-tab** — switching tabs reads that tab's saved mode.
 
-- [ ] **D.28.3 Tile view for list-default tabs (Songs / Artists / Genres / Playlists).** Refactor each tab's render path so it dispatches on `viewMode`:
+- [x] **D.28.3 Tile view for list-default tabs (Songs / Artists / Genres / Playlists).** Refactor each tab's render path so it dispatches on `viewMode`:
   - `List` → existing sticky-letter-header LazyColumn (Songs already does this; extend to Artists / Genres / Playlists which currently render as plain lists).
   - `Tile` → `LazyVerticalGrid` of square tiles (2 columns on phone, 3 on tablet via `GridCells.Adaptive(minSize = 160.dp)`). Tile content per tab:
     - **Songs:** album art (Coil from `audioId` art uri) + title + artist.
@@ -743,14 +743,14 @@ The combined goal: every library tab supports **both** view modes (list with sti
   
   Extract a shared `LibraryTileGrid` composable in `ui/library/LibraryTileGrid.kt` that takes `items: List<TileItem>` (a small sealed/data class with `id, title, subtitle, artUri?`) so all four tabs share one tile renderer.
 
-- [ ] **D.28.4 List view for tile-default tab (Albums).** Add a list-view branch to the Albums tab with sticky letter headers exactly like Songs. Each list row: small leading album-art thumbnail (48 dp) + album title + artist. Reuse the same sticky-header + section-key logic that Songs uses. The existing tile branch stays as the default first-launch experience for Albums.
+- [x] **D.28.4 List view for tile-default tab (Albums).** Add a list-view branch to the Albums tab with sticky letter headers exactly like Songs. Each list row: small leading album-art thumbnail (48 dp) + album title + artist. Reuse the same sticky-header + section-key logic that Songs uses. The existing tile branch stays as the default first-launch experience for Albums.
 
-- [ ] **D.28.5 Alphabet rail on every tab × every view mode.** The existing `AlphabetScroller` (`LibraryScreen.kt:782`) is currently only mounted on Songs. Mount it on **all** library tabs (Songs, Albums, Artists, Genres, Playlists) and **both** view modes:
+- [x] **D.28.5 Alphabet rail on every tab × every view mode.** The existing `AlphabetScroller` (`LibraryScreen.kt:782`) is currently only mounted on Songs. Mount it on **all** library tabs (Songs, Albums, Artists, Genres, Playlists) and **both** view modes:
   - List view: rail tap → `LazyListState.scrollToItem(flatIndexFor(letter))` (same logic as today's `flatIndexFor`).
   - Tile view: rail tap → `LazyGridState.scrollToItem(tileIndexFor(letter))` — new `tileIndexFor` helper that computes the *tile* index of the first item whose section key matches `letter`. Note: tiles don't have sticky headers natively — for tile view, render the section header as a *full-row* item using `span = { GridItemSpan(maxLineSpan) }` so letter-grouping survives the grid layout.
   - Rail is hidden on tabs / sort orders where alphabetical grouping doesn't apply (e.g. Songs sorted by Date Added — fall back to no rail).
 
-- [ ] **D.28.6 Tests + screenshots.** Robolectric / unit:
+- [x] **D.28.6 Tests + screenshots.** Robolectric / unit:
   - `LibraryViewModeToggleTest` — toggling on Songs persists Songs=Tile but leaves Albums=Tile (no leak), then switching tabs reads each tab's saved mode.
   - `LibraryTileGridSongsTest` — Songs in Tile mode renders N tiles for N tracks with semantics tag `library_tile_grid` and child `library_tile_$mediaId`.
   - `LibraryAlbumsListViewTest` — Albums in List mode renders sticky letter headers with the same shape as Songs.
@@ -765,7 +765,7 @@ The combined goal: every library tab supports **both** view modes (list with sti
   - `205-d28-toggle-icon-list.png` and `206-d28-toggle-icon-tile.png` showing the top-bar icon swap.
   - `207-d28-alphabet-rail-on-tile.png` — Albums tile grid with the rail mounted on the right.
 
-**Shipped:** _(not yet — queued behind D.27)_
+**Shipped:** D.28.1–D.28.6 in commit `<pending>`. Per-tab view mode persisted via `SettingsRepository.setViewModeFor` / `viewModes: Flow<Map<LibraryTab, ViewMode>>`. `LibraryTileGrid.kt` ships the shared tile renderer (`GridCells.Adaptive(minSize = 160.dp)`, full-row span letter section headers) consumed by Songs / Albums / Artists / Genres tabs; Playlists keeps `PlaylistsTilesScreen` (D.27.6) for tile mode and gets a new sticky-header list mode. Top-bar icon between Sort and Filter swaps between `Icons.AutoMirrored.Filled.ViewList` and `Icons.Filled.GridView`. Alphabet rail mounted on every tab × both modes (rail-tap on a `LazyGridState` uses the new `tileIndexFor(sectionKeys, letter)` helper); rail hidden when sort isn't alphabetical. Four new unit-test classes (`LibraryViewModeToggleTest`, `LibraryTileGridSongsTest`, `LibraryAlbumsListViewTest`, `AlphabetScrollerTileTest`) raise the suite from 595 → 617 cases. Eight screenshots captured at `docs/screenshots/phase-d/200-d28-*.png` through `207-d28-*.png` on the headless `medium_phone` AVD.
 
 After D.28 lands, restore `## Status: ✅ DONE` at the top of the plan once D.27 + D.28 are both ticked.
 

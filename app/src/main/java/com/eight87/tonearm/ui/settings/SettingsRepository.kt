@@ -332,6 +332,37 @@ data class TabSort(val key: SortKey, val direction: SortDirection) {
 }
 
 /**
+ * D.28.1 — per-tab list-vs-tile view mode. The user toggles this from
+ * the top app bar; every library tab keeps its own preference so a
+ * tap on Songs doesn't flip Albums. Defaults match the pre-D.28
+ * shapes: Songs / Artists / Genres / Playlists rendered as lists,
+ * Albums rendered as a tile grid.
+ */
+enum class ViewMode {
+  List,
+  Tile,
+  ;
+
+  /** Flip List→Tile / Tile→List. Convenience for the toggle icon. */
+  fun toggle(): ViewMode = if (this == List) Tile else List
+
+  companion object {
+    fun fromStored(raw: String?): ViewMode? =
+      entries.firstOrNull { it.name == raw }
+
+    /**
+     * Pre-D.28 shape per tab. Used as the fallback when the per-tab
+     * preference key is absent (fresh install, never-toggled tab).
+     * Albums was already a tile grid; everything else was a list.
+     */
+    fun defaultFor(tab: LibraryTab): ViewMode = when (tab) {
+      LibraryTab.Albums -> Tile
+      else -> List
+    }
+  }
+}
+
+/**
  * Aggregated settings snapshot consumed by the UI. Kept as a value type
  * so a screen can render every section from one Flow without subscribing
  * to a dozen individual keys.
@@ -660,6 +691,28 @@ class SettingsRepository(private val context: Context) {
     }
   }
 
+  // --- D.28.1: per-tab view mode (list ↔ tile) -----------------------------
+
+  /**
+   * Hot Flow of every tab's resolved view mode. Tabs without a stored
+   * preference fall back to [ViewMode.defaultFor]. Emitted as a `Map`
+   * so subscribers can switch tabs without re-subscribing per-tab.
+   */
+  val viewModes: Flow<Map<LibraryTab, ViewMode>> = store.data.map { prefs ->
+    LibraryTab.entries.associateWith { tab ->
+      ViewMode.fromStored(prefs[viewModeKeyFor(tab)]) ?: ViewMode.defaultFor(tab)
+    }
+  }
+
+  /** Convenience reader for a single tab. */
+  fun viewModeFor(tab: LibraryTab): Flow<ViewMode> = store.data.map { prefs ->
+    ViewMode.fromStored(prefs[viewModeKeyFor(tab)]) ?: ViewMode.defaultFor(tab)
+  }
+
+  suspend fun setViewModeFor(tab: LibraryTab, mode: ViewMode) {
+    store.edit { it[viewModeKeyFor(tab)] = mode.name }
+  }
+
   // --- internals ------------------------------------------------------------
 
   private fun Preferences.toSnapshot(): SettingsSnapshot = SettingsSnapshot(
@@ -727,6 +780,7 @@ class SettingsRepository(private val context: Context) {
 
     internal fun sortKeyFor(tab: LibraryTab) = stringPreferencesKey("sort_key_${tab.name}")
     internal fun sortDirFor(tab: LibraryTab) = stringPreferencesKey("sort_dir_${tab.name}")
+    internal fun viewModeKeyFor(tab: LibraryTab) = stringPreferencesKey("view_mode_${tab.name}")
 
     /**
      * Parse the persisted library-tab order. Always returns a list that

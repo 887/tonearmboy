@@ -16,9 +16,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,10 +30,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
@@ -76,6 +81,7 @@ import com.eight87.tonearm.ui.settings.SettingsRepository
 import com.eight87.tonearm.ui.settings.SortDirection
 import com.eight87.tonearm.ui.settings.SortKey
 import com.eight87.tonearm.ui.settings.TabSort
+import com.eight87.tonearm.ui.settings.ViewMode
 import com.eight87.tonearm.ui.settings.catalog.SettingsDimens
 import kotlinx.coroutines.launch
 
@@ -191,6 +197,12 @@ fun LibraryScreen(
   val activeCustomTab = if (isCustomSelected) customTabs.getOrNull(selectedIndex - visibleTabs.size) else null
 
   val activeSort by settingsRepository.tabSort(activeTab).collectAsState(initial = TabSort.Default)
+  // D.28.1 — read every tab's persisted view mode in one Flow so the
+  // toggle is per-tab and switching tabs reads that tab's saved mode.
+  val viewModes by settingsRepository.viewModes.collectAsState(
+    initial = LibraryTab.entries.associateWith { ViewMode.defaultFor(it) },
+  )
+  val activeViewMode = viewModes[activeTab] ?: ViewMode.defaultFor(activeTab)
   val scope = rememberCoroutineScope()
 
   var showSortSheet by remember { mutableStateOf(false) }
@@ -225,6 +237,29 @@ fun LibraryScreen(
             onClick = { showSortSheet = true },
             modifier = Modifier.semantics { testTag = "topbar_sort" },
           ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort") }
+          // D.28.2 — view-mode toggle. Sits between sort and filter so
+          // the row reads search → sort → view → filter → settings. The
+          // icon shows the *target* mode (tap to switch), not the
+          // current one — same pattern as a play/pause button.
+          IconButton(
+            onClick = {
+              val next = activeViewMode.toggle()
+              scope.launch { settingsRepository.setViewModeFor(activeTab, next) }
+            },
+            modifier = Modifier.semantics { testTag = "topbar_view_mode" },
+          ) {
+            if (activeViewMode == ViewMode.Tile) {
+              Icon(
+                Icons.AutoMirrored.Filled.ViewList,
+                contentDescription = "Switch to list view",
+              )
+            } else {
+              Icon(
+                Icons.Filled.GridView,
+                contentDescription = "Switch to tile view",
+              )
+            }
+          }
           // D.27.5 — Filter icon. The badge ("filter active" dot) is
           // applied via `BadgedBox` when the filter has any non-null
           // field. Tapping opens the filter sheet.
@@ -305,6 +340,8 @@ fun LibraryScreen(
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
             filter = filter,
+            viewMode = activeViewMode,
+            albumCoversMode = snapshot.albumCoversMode,
             onTrackClick = onTrackClick,
             onAddToQueue = onAddToQueue,
             onAddToPlaylist = onAddToPlaylist,
@@ -314,29 +351,32 @@ fun LibraryScreen(
             onComingSoon = onComingSoon,
             onDeleteTracks = onDeleteTracks,
           )
-          LibraryTab.Albums -> AlbumsGridScreen(
+          LibraryTab.Albums -> AlbumsTabScreen(
             repository = repository,
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
             forceSquare = snapshot.forceSquareCovers,
             albumCoversMode = snapshot.albumCoversMode,
-            contentPadding = PaddingValues(8.dp),
+            viewMode = activeViewMode,
             onAlbumClick = { a -> onOpenAlbum(a.name, a.artist) },
           )
-          LibraryTab.Artists -> ArtistsListScreen(
+          LibraryTab.Artists -> ArtistsTabScreen(
             repository = repository,
             settingsRepository = settingsRepository,
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
+            viewMode = activeViewMode,
             onArtistClick = { a -> onOpenArtist(a.name) },
           )
-          LibraryTab.Genres -> GenresListScreen(
+          LibraryTab.Genres -> GenresTabScreen(
             repository = repository,
             sort = activeSort,
+            viewMode = activeViewMode,
             onGenreClick = { g -> onOpenGenre(g.name) },
           )
-          LibraryTab.Playlists -> PlaylistsListScreen(
+          LibraryTab.Playlists -> PlaylistsTabScreen(
             repository = repository,
+            viewMode = activeViewMode,
             onPlaylistClick = onPlaylistClick,
             onRenamePlaylist = onRenamePlaylist,
             onDeletePlaylist = onDeletePlaylist,
@@ -446,6 +486,174 @@ internal fun sortGenres(genres: List<Genre>, sort: TabSort): List<Genre> {
 
 // --- Albums ---------------------------------------------------------------
 
+/**
+ * D.28 — albums tab dispatcher. List mode → sticky-header list with
+ * a 48 dp leading thumbnail (D.28.4); Tile mode → existing grid (was
+ * the only mode pre-D.28). Both modes mount the alphabet rail when
+ * sort is alphabetical (D.28.5).
+ */
+@Composable
+fun AlbumsTabScreen(
+  repository: LibraryRepository,
+  sort: TabSort,
+  intelligentSorting: Boolean,
+  forceSquare: Boolean,
+  albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode,
+  viewMode: ViewMode,
+  onAlbumClick: (Album) -> Unit = {},
+) {
+  val albums by repository.observeAlbums().collectAsState(initial = emptyList())
+  if (albums.isEmpty()) {
+    EmptyState("No albums yet. Add audio files to your device, then tap Rescan music.")
+    return
+  }
+  AlbumsTabContent(
+    albums = albums,
+    sort = sort,
+    intelligentSorting = intelligentSorting,
+    albumCoversMode = albumCoversMode,
+    viewMode = viewMode,
+    onAlbumClick = onAlbumClick,
+  )
+}
+
+/**
+ * D.28.4 / D.28.6 — repository-free body of [AlbumsTabScreen] so the
+ * `LibraryAlbumsListViewTest` can render against a hand-built album
+ * list without spinning the scanner.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun AlbumsTabContent(
+  albums: List<Album>,
+  sort: TabSort,
+  intelligentSorting: Boolean,
+  albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode,
+  viewMode: ViewMode,
+  onAlbumClick: (Album) -> Unit = {},
+) {
+  val sorted = remember(albums, sort, intelligentSorting) { sortAlbums(albums, sort, intelligentSorting) }
+  val sectionKeys = remember(sorted, sort, intelligentSorting) {
+    if (sort.key == SortKey.Name) sorted.map { initialKey(sortNameKey(it.name, intelligentSorting)) }
+    else emptyList()
+  }
+  val orderedKeys = remember(sectionKeys) { sectionKeys.distinct() }
+  val listState = rememberLazyListState()
+  val gridState = rememberLazyGridState()
+  val scope = rememberCoroutineScope()
+
+  Row(modifier = Modifier.fillMaxSize().semantics { testTag = "albums_tab" }) {
+    if (viewMode == ViewMode.Tile) {
+      val tileItems = remember(sorted) {
+        sorted.map {
+          TileItem(
+            id = it.id,
+            title = it.name,
+            subtitle = it.artist ?: "Unknown artist",
+            artUri = null,
+            albumArtId = it.mediaStoreAlbumId,
+          )
+        }
+      }
+      LibraryTileGrid(
+        tiles = tileItems,
+        sectionKeys = sectionKeys,
+        state = gridState,
+        albumCoversMode = albumCoversMode,
+        onTileClick = { tile ->
+          val a = sorted.firstOrNull { it.id == tile.id } ?: return@LibraryTileGrid
+          onAlbumClick(a)
+        },
+        modifier = Modifier.weight(1f).padding(horizontal = SettingsDimens.PagePadding),
+      )
+    } else {
+      val grouped = remember(sorted, sectionKeys) {
+        if (sectionKeys.isEmpty()) emptyMap()
+        else sorted.zip(sectionKeys).groupBy({ it.second }, { it.first })
+      }
+      LazyColumn(
+        state = listState,
+        modifier = Modifier
+          .weight(1f)
+          .libraryListCard()
+          .semantics { testTag = "albums_list" },
+      ) {
+        if (grouped.isNotEmpty()) {
+          orderedKeys.forEach { key ->
+            stickyHeader { SectionHeader(key) }
+            items(grouped.getValue(key), key = { it.id }) { album ->
+              AlbumListRow(album, albumCoversMode, onClick = { onAlbumClick(album) })
+            }
+          }
+        } else {
+          items(sorted, key = { it.id }) { album ->
+            AlbumListRow(album, albumCoversMode, onClick = { onAlbumClick(album) })
+          }
+        }
+      }
+    }
+    if (orderedKeys.isNotEmpty()) {
+      AlphabetScroller(
+        keys = orderedKeys,
+        onLetter = { letter ->
+          if (viewMode == ViewMode.List) {
+            val flat = computeFlatIndexFromKeys(orderedKeys, sectionKeys, letter)
+            if (flat >= 0) scope.launch { listState.scrollToItem(flat) }
+          } else {
+            val tileIdx = tileIndexFor(sectionKeys, letter)
+            if (tileIdx >= 0) scope.launch { gridState.scrollToItem(tileIdx) }
+          }
+        },
+      )
+    }
+  }
+}
+
+/**
+ * D.28.4 — list-mode album row: 48 dp leading thumbnail + name + artist.
+ * Mirrors the size-and-shape contract of the Songs list rows so a tab
+ * switch into list mode reads as the same chrome.
+ */
+@Composable
+private fun AlbumListRow(
+  album: Album,
+  albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode,
+  onClick: () -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clickable(onClick = onClick)
+      .padding(horizontal = 16.dp, vertical = 8.dp)
+      .semantics { testTag = "album_list_row" },
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    CoverArt(
+      albumId = album.mediaStoreAlbumId,
+      size = 48.dp,
+      mode = albumCoversMode,
+      contentDescription = album.name,
+      modifier = Modifier
+        .size(48.dp)
+        .clip(RoundedCornerShape(6.dp)),
+    )
+    Column(modifier = Modifier.padding(start = 12.dp)) {
+      Text(album.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+      Text(
+        text = album.artist ?: "Unknown artist",
+        style = MaterialTheme.typography.bodySmall,
+        maxLines = 1,
+      )
+    }
+  }
+  HorizontalDivider()
+}
+
+/**
+ * Pre-D.28 entry point retained for the album-detail callers and the
+ * existing `AlbumsGridScreenTest`; delegates straight to the dispatcher
+ * in [ViewMode.Tile] to preserve behaviour.
+ */
 @Composable
 fun AlbumsGridScreen(
   repository: LibraryRepository,
@@ -456,92 +664,36 @@ fun AlbumsGridScreen(
   contentPadding: PaddingValues = PaddingValues(0.dp),
   onAlbumClick: (Album) -> Unit = {},
 ) {
-  val albums by repository.observeAlbums().collectAsState(initial = emptyList())
-  if (albums.isEmpty()) {
-    EmptyState("No albums yet. Add audio files to your device, then tap Rescan music.")
-    return
-  }
-  val sorted = remember(albums, sort, intelligentSorting) { sortAlbums(albums, sort, intelligentSorting) }
-  // D.16.1 — page-padded grid. Tiles still render with rounded corners,
-  // but the *grid section* sits inset from the rail / right edge so the
-  // chrome lines up with Settings cards.
-  LazyVerticalGrid(
-    columns = GridCells.Adaptive(minSize = 140.dp),
-    contentPadding = contentPadding,
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
-    modifier = Modifier
-      .fillMaxSize()
-      .padding(horizontal = SettingsDimens.PagePadding)
-      .semantics { testTag = "albums_grid" },
-  ) {
-    items(sorted, key = { it.id }) { album ->
-      AlbumCell(
-        album = album,
-        forceSquare = forceSquare,
-        albumCoversMode = albumCoversMode,
-        onClick = { onAlbumClick(album) },
-      )
-    }
-  }
-}
-
-@Composable
-private fun AlbumCell(
-  album: Album,
-  forceSquare: Boolean,
-  albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode,
-  onClick: () -> Unit,
-) {
-  Column(
-    modifier = Modifier
-      .padding(4.dp)
-      .clickable(onClick = onClick)
-      .semantics { testTag = "album_cell" },
-  ) {
-    val shape = if (forceSquare) RoundedCornerShape(0.dp) else RoundedCornerShape(8.dp)
-    CoverArt(
-      // The MediaStore album id (captured at scan time) is what the
-      // legacy `content://media/external/audio/albumart/<id>` provider
-      // is keyed by — distinct from `Album.id`, which is the Room
-      // rollup primary key.
-      albumId = album.mediaStoreAlbumId,
-      size = 48.dp,
-      mode = albumCoversMode,
-      contentDescription = album.name,
-      modifier = Modifier
-        .fillMaxWidth()
-        .aspectRatio(1f)
-        .clip(shape),
-    )
-    Text(
-      text = album.name,
-      style = MaterialTheme.typography.titleSmall,
-      fontWeight = FontWeight.Medium,
-      maxLines = 1,
-      modifier = Modifier.padding(top = 6.dp),
-    )
-    Text(
-      text = album.artist ?: "Unknown artist",
-      style = MaterialTheme.typography.bodySmall,
-      maxLines = 1,
-    )
-  }
+  AlbumsTabScreen(
+    repository = repository,
+    sort = sort,
+    intelligentSorting = intelligentSorting,
+    forceSquare = forceSquare,
+    albumCoversMode = albumCoversMode,
+    viewMode = ViewMode.Tile,
+    onAlbumClick = onAlbumClick,
+  )
 }
 
 // --- Artists --------------------------------------------------------------
 
+/**
+ * D.28 — Artists tab dispatcher. List = sticky-header rows (existing
+ * shape); Tile = LibraryTileGrid with a placeholder cover (we don't
+ * resolve a representative album per artist on this pass — the tile
+ * carries the letter avatar fallback so the grid is still
+ * meaningful).
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ArtistsListScreen(
+fun ArtistsTabScreen(
   repository: LibraryRepository,
   settingsRepository: SettingsRepository,
   sort: TabSort,
   intelligentSorting: Boolean,
+  viewMode: ViewMode,
   onArtistClick: (Artist) -> Unit = {},
 ) {
-  // D.9a.6 — `observeArtists(hideCollaboratorsFlow)` re-emits when the
-  // user flips the toggle without forcing a library rescan.
   val artists by repository
     .observeArtists(settingsRepository.hideCollaborators)
     .collectAsState(initial = emptyList())
@@ -550,23 +702,99 @@ fun ArtistsListScreen(
     return
   }
   val sorted = remember(artists, sort, intelligentSorting) { sortArtists(artists, sort, intelligentSorting) }
-  val grouped = remember(sorted) {
-    sorted.groupBy { initialKey(sortNameKey(it.name, intelligentSorting)) }.toSortedMap()
+  val sectionKeys = remember(sorted, sort, intelligentSorting) {
+    if (sort.key == SortKey.Name || sort.key == SortKey.Artist)
+      sorted.map { initialKey(sortNameKey(it.name, intelligentSorting)) }
+    else emptyList()
   }
-  // D.16.1 — wrap rows inside the grouped-card chrome. Sticky alphabet
-  // headers compose as full-width rows inside the card so they keep the
-  // page-padding inset.
-  LazyColumn(
-    modifier = Modifier
-      .fillMaxSize()
-      .libraryListCard()
-      .semantics { testTag = "artists_list" },
-  ) {
-    grouped.forEach { (initial, group) ->
-      stickyHeader { SectionHeader(initial) }
-      items(group, key = { it.id }) { artist -> ArtistRow(artist, onClick = { onArtistClick(artist) }) }
+  val orderedKeys = remember(sectionKeys) { sectionKeys.distinct() }
+  val listState = rememberLazyListState()
+  val gridState = rememberLazyGridState()
+  val scope = rememberCoroutineScope()
+
+  Row(modifier = Modifier.fillMaxSize().semantics { testTag = "artists_tab" }) {
+    if (viewMode == ViewMode.Tile) {
+      val tileItems = remember(sorted) {
+        sorted.map {
+          TileItem(
+            id = it.id,
+            title = it.name,
+            subtitle = "${it.albumCount} albums · ${it.trackCount} tracks",
+            artUri = null,
+            albumArtId = null,
+          )
+        }
+      }
+      LibraryTileGrid(
+        tiles = tileItems,
+        sectionKeys = sectionKeys,
+        state = gridState,
+        onTileClick = { tile ->
+          val a = sorted.firstOrNull { it.id == tile.id } ?: return@LibraryTileGrid
+          onArtistClick(a)
+        },
+        modifier = Modifier.weight(1f).padding(horizontal = SettingsDimens.PagePadding),
+      )
+    } else {
+      val grouped = remember(sorted, sectionKeys) {
+        if (sectionKeys.isEmpty()) emptyMap()
+        else sorted.zip(sectionKeys).groupBy({ it.second }, { it.first })
+      }
+      LazyColumn(
+        state = listState,
+        modifier = Modifier
+          .weight(1f)
+          .libraryListCard()
+          .semantics { testTag = "artists_list" },
+      ) {
+        if (grouped.isNotEmpty()) {
+          orderedKeys.forEach { key ->
+            stickyHeader { SectionHeader(key) }
+            items(grouped.getValue(key), key = { it.id }) { artist ->
+              ArtistRow(artist, onClick = { onArtistClick(artist) })
+            }
+          }
+        } else {
+          items(sorted, key = { it.id }) { artist ->
+            ArtistRow(artist, onClick = { onArtistClick(artist) })
+          }
+        }
+      }
+    }
+    if (orderedKeys.isNotEmpty()) {
+      AlphabetScroller(
+        keys = orderedKeys,
+        onLetter = { letter ->
+          if (viewMode == ViewMode.List) {
+            val flat = computeFlatIndexFromKeys(orderedKeys, sectionKeys, letter)
+            if (flat >= 0) scope.launch { listState.scrollToItem(flat) }
+          } else {
+            val tileIdx = tileIndexFor(sectionKeys, letter)
+            if (tileIdx >= 0) scope.launch { gridState.scrollToItem(tileIdx) }
+          }
+        },
+      )
     }
   }
+}
+
+/** Pre-D.28 wrapper retained so existing callers / tests still compile. */
+@Composable
+fun ArtistsListScreen(
+  repository: LibraryRepository,
+  settingsRepository: SettingsRepository,
+  sort: TabSort,
+  intelligentSorting: Boolean,
+  onArtistClick: (Artist) -> Unit = {},
+) {
+  ArtistsTabScreen(
+    repository = repository,
+    settingsRepository = settingsRepository,
+    sort = sort,
+    intelligentSorting = intelligentSorting,
+    viewMode = ViewMode.List,
+    onArtistClick = onArtistClick,
+  )
 }
 
 @Composable
@@ -588,6 +816,12 @@ fun TracksListScreen(
   intelligentSorting: Boolean,
   // D.27.5 — when non-empty, the underlying tracks Flow is filtered.
   filter: com.eight87.tonearm.data.FilterCriteria = com.eight87.tonearm.data.FilterCriteria(),
+  // D.28.3 — list vs tile dispatch. Defaults to `List` so the search
+  // screen and other repository-free callers still see the legacy
+  // shape without explicit wiring.
+  viewMode: ViewMode = ViewMode.List,
+  albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode =
+    com.eight87.tonearm.ui.settings.AlbumCoversMode.Balanced,
   onTrackClick: (List<Track>, Int) -> Unit,
   onComingSoon: (String) -> Unit,
   onAddToQueue: (Track) -> Unit = {},
@@ -608,6 +842,8 @@ fun TracksListScreen(
     tracks = tracks,
     sort = sort,
     intelligentSorting = intelligentSorting,
+    viewMode = viewMode,
+    albumCoversMode = albumCoversMode,
     onTrackClick = onTrackClick,
     onComingSoon = onComingSoon,
     onAddToQueue = onAddToQueue,
@@ -631,6 +867,9 @@ internal fun TracksListContent(
   tracks: List<Track>,
   sort: TabSort,
   intelligentSorting: Boolean,
+  viewMode: ViewMode = ViewMode.List,
+  albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode =
+    com.eight87.tonearm.ui.settings.AlbumCoversMode.Balanced,
   onTrackClick: (List<Track>, Int) -> Unit,
   onComingSoon: (String) -> Unit,
   onAddToQueue: (Track) -> Unit = {},
@@ -652,6 +891,7 @@ internal fun TracksListContent(
   }
   val orderedKeys = remember(grouped) { grouped.keys.toList() }
   val listState = rememberLazyListState()
+  val gridState = rememberLazyGridState()
   val scope = rememberCoroutineScope()
 
   // Phase F.3 — multi-select state. Long-press enters select mode and
@@ -686,50 +926,94 @@ internal fun TracksListContent(
       )
     }
     Row(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_list" }) {
-      // D.16.1 — tracks card. The alphabet scroller stays *outside* the
-      // card so it floats over the right margin, the way Settings'
-      // sub-page surfaces float their accent strip.
-      LazyColumn(state = listState, modifier = Modifier.weight(1f).libraryListCard()) {
-        val rowFor: @Composable (Track) -> Unit = { track ->
-          val itemIndex = sorted.indexOf(track)
-          val selected = track.id in selectedIds
-          TrackRow(
-            track = track,
-            selected = selected,
-            inSelectionMode = inSelectionMode,
-            onClick = {
-              if (inSelectionMode) {
-                selectedIds = selectedIds.toggle(track.id)
-              } else {
-                onTrackClick(sorted, itemIndex)
-              }
-            },
-            onLongClick = { selectedIds = selectedIds + track.id },
-            onAction = { action ->
-              if (action == TrackRowAction.Delete && onDeleteTracks != null) {
-                onDeleteTracks(listOf(track))
-              } else {
-                handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon)
-              }
-            },
-          )
-        }
-        if (orderedKeys.isNotEmpty()) {
-          orderedKeys.forEach { key ->
-            val group = grouped.getValue(key)
-            stickyHeader { SectionHeader(key) }
-            items(group, key = { it.id }) { track -> rowFor(track) }
+      if (viewMode == ViewMode.List) {
+        // D.16.1 — tracks card. The alphabet scroller stays *outside* the
+        // card so it floats over the right margin, the way Settings'
+        // sub-page surfaces float their accent strip.
+        LazyColumn(state = listState, modifier = Modifier.weight(1f).libraryListCard()) {
+          val rowFor: @Composable (Track) -> Unit = { track ->
+            val itemIndex = sorted.indexOf(track)
+            val selected = track.id in selectedIds
+            TrackRow(
+              track = track,
+              selected = selected,
+              inSelectionMode = inSelectionMode,
+              onClick = {
+                if (inSelectionMode) {
+                  selectedIds = selectedIds.toggle(track.id)
+                } else {
+                  onTrackClick(sorted, itemIndex)
+                }
+              },
+              onLongClick = { selectedIds = selectedIds + track.id },
+              onAction = { action ->
+                if (action == TrackRowAction.Delete && onDeleteTracks != null) {
+                  onDeleteTracks(listOf(track))
+                } else {
+                  handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon)
+                }
+              },
+            )
           }
-        } else {
-          items(sorted, key = { it.id }) { track -> rowFor(track) }
+          if (orderedKeys.isNotEmpty()) {
+            orderedKeys.forEach { key ->
+              val group = grouped.getValue(key)
+              stickyHeader { SectionHeader(key) }
+              items(group, key = { it.id }) { track -> rowFor(track) }
+            }
+          } else {
+            items(sorted, key = { it.id }) { track -> rowFor(track) }
+          }
         }
+      } else {
+        // D.28.3 — Songs in tile mode: each tile is the track's album art
+        // resolved through CoverArt. We still respect the section-key
+        // grouping when sorted by Name so the alphabet rail can scroll
+        // the grid by letter (D.28.5).
+        val tileItems = remember(sorted) {
+          sorted.map {
+            TileItem(
+              id = it.id,
+              title = it.title,
+              subtitle = it.artist?.takeIf(String::isNotBlank),
+              artUri = null,
+              albumArtId = it.mediaStoreAlbumId,
+            )
+          }
+        }
+        val sectionKeys = remember(sorted, sort, intelligentSorting) {
+          if (sort.key == SortKey.Name)
+            sorted.map { initialKey(sortNameKey(it.title, intelligentSorting)) }
+          else emptyList()
+        }
+        LibraryTileGrid(
+          tiles = tileItems,
+          sectionKeys = sectionKeys,
+          state = gridState,
+          albumCoversMode = albumCoversMode,
+          onTileClick = { tile ->
+            val idx = sorted.indexOfFirst { it.id == tile.id }
+            if (idx >= 0) {
+              if (inSelectionMode) selectedIds = selectedIds.toggle(tile.id)
+              else onTrackClick(sorted, idx)
+            }
+          },
+          onTileLongClick = { tile -> selectedIds = selectedIds + tile.id },
+          modifier = Modifier.weight(1f).padding(horizontal = SettingsDimens.PagePadding),
+        )
       }
       if (orderedKeys.isNotEmpty()) {
         AlphabetScroller(
           keys = orderedKeys,
           onLetter = { letter ->
-            val flatIndex = computeFlatIndex(orderedKeys, grouped, letter)
-            if (flatIndex >= 0) scope.launch { listState.scrollToItem(flatIndex) }
+            if (viewMode == ViewMode.List) {
+              val flatIndex = computeFlatIndex(orderedKeys, grouped, letter)
+              if (flatIndex >= 0) scope.launch { listState.scrollToItem(flatIndex) }
+            } else {
+              val sectionKeys = sorted.map { initialKey(sortNameKey(it.title, intelligentSorting)) }
+              val tileIdx = tileIndexFor(sectionKeys, letter)
+              if (tileIdx >= 0) scope.launch { gridState.scrollToItem(tileIdx) }
+            }
           },
         )
       }
@@ -774,6 +1058,28 @@ private fun computeFlatIndex(
     if (key == letter) return flat
     flat += 1 // header
     flat += grouped.getValue(key).size
+  }
+  return -1
+}
+
+/**
+ * D.28.5 — generic flat-index helper for tabs that group by an
+ * ordered list of section keys (one entry per item). Walks
+ * [orderedKeys] in order, advancing past one header + the count of
+ * matching items per section. Returns -1 when the letter is unknown.
+ *
+ * Visible for unit tests.
+ */
+internal fun computeFlatIndexFromKeys(
+  orderedKeys: List<String>,
+  perItemKeys: List<String>,
+  letter: String,
+): Int {
+  var flat = 0
+  for (key in orderedKeys) {
+    if (key == letter) return flat
+    flat += 1 // header
+    flat += perItemKeys.count { it == key }
   }
   return -1
 }
@@ -878,10 +1184,12 @@ private fun TrackRow(
 
 // --- Genres ---------------------------------------------------------------
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun GenresListScreen(
+fun GenresTabScreen(
   repository: LibraryRepository,
   sort: TabSort,
+  viewMode: ViewMode,
   onGenreClick: (Genre) -> Unit = {},
 ) {
   val genres by repository.observeGenres().collectAsState(initial = emptyList())
@@ -890,14 +1198,94 @@ fun GenresListScreen(
     return
   }
   val sorted = remember(genres, sort) { sortGenres(genres, sort) }
-  LazyColumn(
-    modifier = Modifier
-      .fillMaxSize()
-      .libraryListCard()
-      .semantics { testTag = "genres_list" },
-  ) {
-    items(sorted, key = { it.id }) { g -> GenreRow(g, onClick = { onGenreClick(g) }) }
+  // Genres always group by initial letter when sorted by Name (which is
+  // the default sort key); duration sort drops the rail.
+  val sectionKeys = remember(sorted, sort) {
+    if (sort.key != SortKey.Duration) sorted.map { initialKey(it.name.uppercase()) }
+    else emptyList()
   }
+  val orderedKeys = remember(sectionKeys) { sectionKeys.distinct() }
+  val listState = rememberLazyListState()
+  val gridState = rememberLazyGridState()
+  val scope = rememberCoroutineScope()
+
+  Row(modifier = Modifier.fillMaxSize().semantics { testTag = "genres_tab" }) {
+    if (viewMode == ViewMode.Tile) {
+      val tileItems = remember(sorted) {
+        sorted.map {
+          TileItem(
+            id = it.id,
+            title = it.name,
+            subtitle = "${it.trackCount} tracks",
+            artUri = null,
+            albumArtId = null,
+          )
+        }
+      }
+      LibraryTileGrid(
+        tiles = tileItems,
+        sectionKeys = sectionKeys,
+        state = gridState,
+        onTileClick = { tile ->
+          val g = sorted.firstOrNull { it.id == tile.id } ?: return@LibraryTileGrid
+          onGenreClick(g)
+        },
+        modifier = Modifier.weight(1f).padding(horizontal = SettingsDimens.PagePadding),
+      )
+    } else {
+      val grouped = remember(sorted, sectionKeys) {
+        if (sectionKeys.isEmpty()) emptyMap()
+        else sorted.zip(sectionKeys).groupBy({ it.second }, { it.first })
+      }
+      LazyColumn(
+        state = listState,
+        modifier = Modifier
+          .weight(1f)
+          .libraryListCard()
+          .semantics { testTag = "genres_list" },
+      ) {
+        if (grouped.isNotEmpty()) {
+          orderedKeys.forEach { key ->
+            stickyHeader { SectionHeader(key) }
+            items(grouped.getValue(key), key = { it.id }) { g ->
+              GenreRow(g, onClick = { onGenreClick(g) })
+            }
+          }
+        } else {
+          items(sorted, key = { it.id }) { g -> GenreRow(g, onClick = { onGenreClick(g) }) }
+        }
+      }
+    }
+    if (orderedKeys.isNotEmpty()) {
+      AlphabetScroller(
+        keys = orderedKeys,
+        onLetter = { letter ->
+          if (viewMode == ViewMode.List) {
+            val flat = computeFlatIndexFromKeys(orderedKeys, sectionKeys, letter)
+            if (flat >= 0) scope.launch { listState.scrollToItem(flat) }
+          } else {
+            val tileIdx = tileIndexFor(sectionKeys, letter)
+            if (tileIdx >= 0) scope.launch { gridState.scrollToItem(tileIdx) }
+          }
+        },
+      )
+    }
+  }
+}
+
+/** Pre-D.28 wrapper retained for callers / tests. */
+@Composable
+fun GenresListScreen(
+  repository: LibraryRepository,
+  sort: TabSort,
+  onGenreClick: (Genre) -> Unit = {},
+) {
+  GenresTabScreen(
+    repository = repository,
+    sort = sort,
+    viewMode = ViewMode.List,
+    onGenreClick = onGenreClick,
+  )
 }
 
 @Composable
@@ -907,16 +1295,84 @@ private fun GenreRow(genre: Genre, onClick: () -> Unit) {
 
 // --- Playlists ------------------------------------------------------------
 
+/**
+ * D.28 — Playlists tab dispatcher. Tile mode → the existing
+ * [PlaylistsTilesScreen] (D.27.6); List mode → sticky-header letter
+ * list with the alphabet rail mounted.
+ */
 @OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun PlaylistsTabScreen(
+  repository: LibraryRepository,
+  viewMode: ViewMode,
+  onPlaylistClick: (Long) -> Unit,
+  onRenamePlaylist: (Long, String) -> Unit = { _, _ -> },
+  onDeletePlaylist: (Long) -> Unit = {},
+  onSetPlaylistCover: (Long, String?) -> Unit = { _, _ -> },
+) {
+  if (viewMode == ViewMode.Tile) {
+    PlaylistsTilesScreen(
+      repository = repository,
+      onPlaylistClick = onPlaylistClick,
+      onRenamePlaylist = onRenamePlaylist,
+      onDeletePlaylist = onDeletePlaylist,
+      onSetPlaylistCover = onSetPlaylistCover,
+    )
+    return
+  }
+  val playlists by repository.observePlaylists().collectAsState(initial = emptyList())
+  if (playlists.isEmpty()) {
+    EmptyState("No playlists yet. Tap + to create one.")
+    return
+  }
+  val sectionKeys = remember(playlists) {
+    playlists.map { initialKey(it.name.uppercase()) }
+  }
+  val orderedKeys = remember(sectionKeys) { sectionKeys.distinct() }
+  val listState = rememberLazyListState()
+  val scope = rememberCoroutineScope()
+
+  Row(modifier = Modifier.fillMaxSize().semantics { testTag = "playlists_tab" }) {
+    val grouped = remember(playlists, sectionKeys) {
+      playlists.zip(sectionKeys).groupBy({ it.second }, { it.first })
+    }
+    LazyColumn(
+      state = listState,
+      modifier = Modifier
+        .weight(1f)
+        .libraryListCard()
+        .semantics { testTag = "playlists_list" },
+    ) {
+      orderedKeys.forEach { key ->
+        stickyHeader { SectionHeader(key) }
+        items(grouped.getValue(key), key = { it.id }) { p ->
+          TwoLineRow(
+            primary = p.name,
+            secondary = "${p.trackCount} tracks",
+            onClick = { onPlaylistClick(p.id) },
+          )
+        }
+      }
+    }
+    if (orderedKeys.isNotEmpty()) {
+      AlphabetScroller(
+        keys = orderedKeys,
+        onLetter = { letter ->
+          val flat = computeFlatIndexFromKeys(orderedKeys, sectionKeys, letter)
+          if (flat >= 0) scope.launch { listState.scrollToItem(flat) }
+        },
+      )
+    }
+  }
+}
+
+/** Pre-D.28 wrapper retained for the existing `PlaylistsListScreenTest` and callers. */
 @Composable
 fun PlaylistsListScreen(
   repository: LibraryRepository,
   onPlaylistClick: (Long) -> Unit,
   onRenamePlaylist: (Long, String) -> Unit = { _, _ -> },
   onDeletePlaylist: (Long) -> Unit = {},
-  // D.27.6 — write the playlist's cover URI through to Room. The chooser
-  // sheet lifts up the chosen URI (or null) via this lambda. Default
-  // no-op so existing tests / callers don't need to wire it.
   onSetPlaylistCover: (Long, String?) -> Unit = { _, _ -> },
 ) {
   PlaylistsTilesScreen(
