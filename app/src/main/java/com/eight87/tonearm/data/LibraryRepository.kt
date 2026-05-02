@@ -173,11 +173,19 @@ class LibraryRepository(
 
   fun observePlaylists(): Flow<List<Playlist>> =
     db.playlistDao().observePlaylistsWithCounts().map { rows ->
-      rows.map { Playlist(it.id, it.name, it.trackCount, it.createdAtSeconds) }
+      rows.map { Playlist(it.id, it.name, it.trackCount, it.createdAtSeconds, it.coverUri) }
     }
 
   fun observePlaylistTracks(playlistId: Long): Flow<List<Track>> =
     db.playlistDao().observeTracks(playlistId).map { rows -> rows.map { it.toDomain() } }
+
+  /**
+   * D.27.6 — observe the first-track album-art id for a playlist tile.
+   * Returns null when the playlist is empty or none of its tracks has
+   * album art. Used by the tile cover-resolution chain.
+   */
+  fun observePlaylistFirstAlbumArt(playlistId: Long): Flow<Long?> =
+    db.playlistDao().observeFirstTrackAlbumId(playlistId)
 
   /**
    * Full-text search over (title, artist, album). Uses Room FTS4 when
@@ -362,6 +370,16 @@ class LibraryRepository(
 
   suspend fun renamePlaylist(playlistId: Long, name: String) {
     db.playlistDao().rename(playlistId, name)
+  }
+
+  /**
+   * D.27.6 — store an optional cover URI for the playlist tile.
+   * Pass null to clear (fall back to album-art / letter chain). The
+   * caller is responsible for taking a persistable URI permission on
+   * SAF-picked images before passing the URI through here.
+   */
+  suspend fun setPlaylistCoverUri(playlistId: Long, uri: String?) {
+    db.playlistDao().setCoverUri(playlistId, uri)
   }
 
   suspend fun addTrackToPlaylist(playlistId: Long, trackId: Long) {

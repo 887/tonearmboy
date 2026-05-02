@@ -1,8 +1,8 @@
 # tonearm — main build plan
 
-## Status: 🔄 In progress — Phase D.27 (daily-driver gaps round 8)
+## Status: 🔄 In progress — Phase D.27.8 (queue drag vs parent scroll) + D.28 (per-tab view-mode toggle) queued
 
-_Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. Round 8 reopened the plan with D.27 covering search bug, multi-select Add-to-Playlist, playlist detail empty state, single-song queue scroll, advanced filtering, and playlist tile UX._
+_Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 (search bug, multi-select Add-to-Playlist, playlist detail empty state, single-song queue scroll, advanced filtering, playlist tile UX) shipped 2026-05-02. D.27.8 (queue drag-drop cancelled by parent LazyColumn scroll) and D.28 (per-tab list↔tile toggle) still queued._
 
 
 ## Stack (locked)
@@ -653,23 +653,23 @@ User quotes:
 
 Seven sub-steps:
 
-- [ ] **D.27.1 Fix search.** `app/src/main/java/com/eight87/tonearm/ui/search/SearchInputReducer.kt` — change `MIN_LENGTH = 2` to `MIN_LENGTH = 1` so single-char queries actually search. Also: when the user types something *under* MIN_LENGTH (after a future bump), render "Type at least N characters" instead of the misleading "No matches for 'X'." message. Update `SearchInputReducerTest`.
-- [ ] **D.27.2 Multi-select "Add to playlist" action.** `LibraryScreen.kt:1008 MultiSelectBar` — add an `IconButton` with `Icons.Filled.PlaylistAdd` between Close and Delete. New callback `onAddToPlaylist: ((List<Long>) -> Unit)?`. Tap opens the existing `PlaylistPickerSheet` (with create-and-add path) for the selected track ids. Wire through `LibraryScreen` callbacks and `TonearmApp`.
-- [ ] **D.27.3 Playlist detail empty state CTA.** `app/src/main/java/com/eight87/tonearm/ui/library/PlaylistDetailScreen.kt` — when the playlist has zero tracks, replace the bare "No tracks in this playlist yet." with:
+- [x] **D.27.1 Fix search.** `app/src/main/java/com/eight87/tonearm/ui/search/SearchInputReducer.kt` — change `MIN_LENGTH = 2` to `MIN_LENGTH = 1` so single-char queries actually search. Also: when the user types something *under* MIN_LENGTH (after a future bump), render "Type at least N characters" instead of the misleading "No matches for 'X'." message. Update `SearchInputReducerTest`.
+- [x] **D.27.2 Multi-select "Add to playlist" action.** `LibraryScreen.kt:1008 MultiSelectBar` — add an `IconButton` with `Icons.Filled.PlaylistAdd` between Close and Delete. New callback `onAddToPlaylist: ((List<Long>) -> Unit)?`. Tap opens the existing `PlaylistPickerSheet` (with create-and-add path) for the selected track ids. Wire through `LibraryScreen` callbacks and `TonearmApp`.
+- [x] **D.27.3 Playlist detail empty state CTA.** `app/src/main/java/com/eight87/tonearm/ui/library/PlaylistDetailScreen.kt` — when the playlist has zero tracks, replace the bare "No tracks in this playlist yet." with:
   - Centered illustration / icon + the message
   - A primary `Button("Add tracks")` that pushes a track-picker destination (a multi-select-only library Songs view that returns selected track ids on confirm).
   - A secondary text hint: "Or long-press a song in your library and choose 'Add to playlist'."
   
   Also: top app bar gets a `+` `IconButton` ("Add tracks") on every playlist detail (not just empty) for the same flow. Tracks-already-in-playlist are pre-selected and disabled in the picker so the user can also remove from there.
-- [ ] **D.27.4 Single-song queue scroll + IME handling.** `QueueSection.kt` — refactor the heightIn computation to `heightIn(min = max((allEntries.size * QUEUE_ROW_HEIGHT_DP).dp, parentViewportHeight))`. The placeholder branch already has `noMatchFillModifier = fillParentMaxHeight()` available — combine with the `heightIn` so even N=1 reserves ≥ one viewport. For the queue rows in a non-empty queue: also add `Modifier.imePadding()` on the parent `LazyColumn` (or the `QueueSection` outer column) so the keyboard doesn't cover the active row when the filter focuses. Verify on the AVD with a single-track queue: filter focused → keyboard up → active row stays visible.
-- [ ] **D.27.5 Library filter button + composite filters.** New `Filter` icon in `LibraryScreen` top app bar (alongside the existing Sort and Settings icons). Tap opens a `ModalBottomSheet` with:
+- [x] **D.27.4 Single-song queue scroll + IME handling.** `QueueSection.kt` — refactor the heightIn computation to `heightIn(min = max((allEntries.size * QUEUE_ROW_HEIGHT_DP).dp, parentViewportHeight))`. The placeholder branch already has `noMatchFillModifier = fillParentMaxHeight()` available — combine with the `heightIn` so even N=1 reserves ≥ one viewport. For the queue rows in a non-empty queue: also add `Modifier.imePadding()` on the parent `LazyColumn` (or the `QueueSection` outer column) so the keyboard doesn't cover the active row when the filter focuses. Verify on the AVD with a single-track queue: filter focused → keyboard up → active row stays visible.
+- [x] **D.27.5 Library filter button + composite filters.** New `Filter` icon in `LibraryScreen` top app bar (alongside the existing Sort and Settings icons). Tap opens a `ModalBottomSheet` with:
   - **Name** — substring match on title / artist / album. `OutlinedTextField`.
   - **Track year (metadata)** — range slider with two thumbs, min..max derived from the library's actual year span. Track entity already carries `year: Int?` — verify or add the column.
   - **Date added (filesystem)** — range picker via two `DatePicker`s (start / end). Reads `dateAdded` from MediaStore (already in the cursor pull-down — confirm the field is in the Track entity, add if missing).
   - **Apply** / **Reset** buttons. Filter state lives in a new `LibraryFilter` data class wired through `LibraryRepository.tracksMatching(criteria + filter)`. Combinator is AND across all non-null fields.
   - Indicator badge on the Filter icon when any filter is active.
   - Persist last-applied filter in DataStore so it survives app restart? *Optional* — default off, user can opt in via a "Remember filter" toggle. Default behaviour: filter clears on app close.
-- [ ] **D.27.6 Playlist tile UX overhaul.** `app/src/main/java/com/eight87/tonearm/ui/library/PlaylistsScreen.kt` (or wherever the Playlists tab renders) — switch from list rows to a `LazyVerticalGrid` of square tiles (2 columns on phone, 3 on tablet). Each tile:
+- [x] **D.27.6 Playlist tile UX overhaul.** `app/src/main/java/com/eight87/tonearm/ui/library/PlaylistsScreen.kt` (or wherever the Playlists tab renders) — switch from list rows to a `LazyVerticalGrid` of square tiles (2 columns on phone, 3 on tablet). Each tile:
   - Cover art if the playlist has a chosen cover URI (new column on the playlist entity)
   - Otherwise: first track's album art if any track in the playlist has one
   - Otherwise: letter avatar with the playlist's first letter (existing fallback)
@@ -685,7 +685,7 @@ Seven sub-steps:
   
   Replace the existing "Enter playlist name" `AlertDialog` with a Material 3 bottom sheet with: name `OutlinedTextField`, "Pick a cover" (optional, shows the same chooser), Create button. Preserves the existing playlist creation entry points (`+` in playlists tab, "Add to playlist" → "+ New playlist" path).
 
-- [ ] **D.27.7 Tests + screenshots.** Robolectric / unit:
+- [x] **D.27.7 Tests + screenshots.** Robolectric / unit:
   - `SearchInputReducerSingleCharTest` — assert `reduce("a") == "a"` after MIN_LENGTH change.
   - `MultiSelectAddToPlaylistTest` — assert MultiSelectBar exposes the playlist-add icon, callback fires with the selected ids.
   - `PlaylistDetailEmptyCtaTest` — assert empty playlist renders the "Add tracks" button + secondary hint, tapping pushes the track-picker destination.
@@ -712,6 +712,62 @@ Seven sub-steps:
 **Shipped:** _(not yet)_
 
 After all eight sub-steps land, restore `## Status: ✅ DONE` at the top of the plan with a fresh re-completion note.
+
+---
+
+## Phase D.28 — per-tab view mode (list ↔ tile) + alphabet rail on every tab
+
+User screenshots showed:
+- Library Artists tab: list view with sticky letter headers, **no** alphabet rail on the right.
+- Library Genres tab: list view, no rail (same shape as Artists).
+- Library Albums tab: tile grid (2 columns), no alphabet rail.
+- Library Songs tab: list view *with* alphabet rail (the only tab that has it today).
+
+User direct quote: *"I need the letter search also on albums on tiles but more importantly I need to be able to switch between tile view and list view with hesders on every tab here. that would be the real awesome feature. having the ability to switch in between both and have that saved for the tab. that combined with my custom tabs gives me the ultimate customizable music player of my dreams."*
+
+The combined goal: every library tab supports **both** view modes (list with sticky letter headers, tile grid with album-art-style tiles), the alphabet rail is present in **both** modes, and the current view-mode choice is persisted **per tab** so toggling on Songs doesn't flip Albums.
+
+**This phase MUST land after D.27.** D.27 is touching `LibraryScreen.kt` (multi-select bar, filter sheet, playlist tile UX) and a parallel agent on the same file would conflict. Dispatch only after D.27's commit lands on `origin/main`.
+
+- [ ] **D.28.1 Persisted per-tab view mode.** Extend `app/src/main/java/com/eight87/tonearm/ui/settings/SettingsRepository.kt` (or wherever DataStore preferences live) with a `Map<LibraryTab, ViewMode>` preference: `viewModeFor(tab: LibraryTab): ViewMode` + `setViewModeFor(tab: LibraryTab, mode: ViewMode)`. `enum class ViewMode { List, Tile }`. Default: Songs / Artists / Genres / Playlists → `List`; Albums → `Tile` (matches today's behaviour). Add a `viewModes: StateFlow<Map<LibraryTab, ViewMode>>` exposed from the settings VM.
+
+- [ ] **D.28.2 View-mode toggle in top app bar.** New `IconButton` in `LibraryScreen` top bar (alongside Search, Sort, Filter, Settings — order matters; place it between Sort and Filter so the row reads search → sort → view → filter → settings). Icon: `Icons.AutoMirrored.Filled.ViewList` when current tab is Tile (tap to switch to List), `Icons.Filled.GridView` when current tab is List (tap to switch to Tile). Tap calls `setViewModeFor(currentTab, currentMode.toggle())`. The toggle is **per-tab** — switching tabs reads that tab's saved mode.
+
+- [ ] **D.28.3 Tile view for list-default tabs (Songs / Artists / Genres / Playlists).** Refactor each tab's render path so it dispatches on `viewMode`:
+  - `List` → existing sticky-letter-header LazyColumn (Songs already does this; extend to Artists / Genres / Playlists which currently render as plain lists).
+  - `Tile` → `LazyVerticalGrid` of square tiles (2 columns on phone, 3 on tablet via `GridCells.Adaptive(minSize = 160.dp)`). Tile content per tab:
+    - **Songs:** album art (Coil from `audioId` art uri) + title + artist.
+    - **Artists:** placeholder icon (artist silhouette) or first-album art if available + artist name + "N albums · M tracks".
+    - **Genres:** placeholder icon + genre name + "N tracks".
+    - **Playlists:** D.27.6 already covers this — just make sure the toggle re-reads from the same data path so the per-tab toggle controls Playlists too.
+  
+  Extract a shared `LibraryTileGrid` composable in `ui/library/LibraryTileGrid.kt` that takes `items: List<TileItem>` (a small sealed/data class with `id, title, subtitle, artUri?`) so all four tabs share one tile renderer.
+
+- [ ] **D.28.4 List view for tile-default tab (Albums).** Add a list-view branch to the Albums tab with sticky letter headers exactly like Songs. Each list row: small leading album-art thumbnail (48 dp) + album title + artist. Reuse the same sticky-header + section-key logic that Songs uses. The existing tile branch stays as the default first-launch experience for Albums.
+
+- [ ] **D.28.5 Alphabet rail on every tab × every view mode.** The existing `AlphabetScroller` (`LibraryScreen.kt:782`) is currently only mounted on Songs. Mount it on **all** library tabs (Songs, Albums, Artists, Genres, Playlists) and **both** view modes:
+  - List view: rail tap → `LazyListState.scrollToItem(flatIndexFor(letter))` (same logic as today's `flatIndexFor`).
+  - Tile view: rail tap → `LazyGridState.scrollToItem(tileIndexFor(letter))` — new `tileIndexFor` helper that computes the *tile* index of the first item whose section key matches `letter`. Note: tiles don't have sticky headers natively — for tile view, render the section header as a *full-row* item using `span = { GridItemSpan(maxLineSpan) }` so letter-grouping survives the grid layout.
+  - Rail is hidden on tabs / sort orders where alphabetical grouping doesn't apply (e.g. Songs sorted by Date Added — fall back to no rail).
+
+- [ ] **D.28.6 Tests + screenshots.** Robolectric / unit:
+  - `LibraryViewModeToggleTest` — toggling on Songs persists Songs=Tile but leaves Albums=Tile (no leak), then switching tabs reads each tab's saved mode.
+  - `LibraryTileGridSongsTest` — Songs in Tile mode renders N tiles for N tracks with semantics tag `library_tile_grid` and child `library_tile_$mediaId`.
+  - `LibraryAlbumsListViewTest` — Albums in List mode renders sticky letter headers with the same shape as Songs.
+  - `AlphabetScrollerTileTest` — letter tap on a Tile-mode grid scrolls the LazyGridState to the tile index of the first matching section.
+  
+  Screenshots (push to `docs/screenshots/`):
+  - `200-d28-songs-tile-view.png`
+  - `201-d28-albums-list-view.png`
+  - `202-d28-artists-tile-view.png`
+  - `203-d28-genres-tile-view.png`
+  - `204-d28-playlists-tile-view.png` (already covered by D.27.6 if it shipped tiles)
+  - `205-d28-toggle-icon-list.png` and `206-d28-toggle-icon-tile.png` showing the top-bar icon swap.
+  - `207-d28-alphabet-rail-on-tile.png` — Albums tile grid with the rail mounted on the right.
+
+**Shipped:** _(not yet — queued behind D.27)_
+
+After D.28 lands, restore `## Status: ✅ DONE` at the top of the plan once D.27 + D.28 are both ticked.
 
 ---
 

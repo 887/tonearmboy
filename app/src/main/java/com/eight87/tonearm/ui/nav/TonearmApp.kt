@@ -145,6 +145,15 @@ fun TonearmApp(
   // D.15.6.2 — track currently being added to a playlist; non-null
   // shows the picker sheet on top of whichever destination triggered it.
   var addingToPlaylistTrack by remember { mutableStateOf<Track?>(null) }
+  // D.27.2 — bulk version: selected ids from the multi-select bar
+  // routed through the same picker sheet.
+  var addingToPlaylistTrackIds by remember { mutableStateOf<List<Long>?>(null) }
+  // D.27.5 — current library filter, owned at the app root so it
+  // survives tab switches. Cleared on app close (no DataStore
+  // persistence in v1, per the plan).
+  var libraryFilter by remember {
+    mutableStateOf(com.eight87.tonearm.data.FilterCriteria())
+  }
 
   // D.17.3 — Music sources dialog visibility. Lifted here so the
   // dialog can be opened from the Settings root row (OpenDialog
@@ -331,6 +340,7 @@ fun TonearmApp(
               }
             },
             onAddToPlaylist = { track -> addingToPlaylistTrack = track },
+            onAddTracksToPlaylist = { ids -> addingToPlaylistTrackIds = ids },
             onRenamePlaylist = { id, name ->
               graph.applicationScope.launch {
                 graph.libraryRepository.renamePlaylist(id, name)
@@ -343,6 +353,17 @@ fun TonearmApp(
                 snackbarHostState.showSnackbar("Playlist deleted")
               }
             },
+            onSetPlaylistCover = { id, uri ->
+              graph.applicationScope.launch {
+                graph.libraryRepository.setPlaylistCoverUri(id, uri)
+                snackbarHostState.showSnackbar(
+                  if (uri == null) "Playlist cover cleared" else "Playlist cover updated",
+                )
+              }
+            },
+            onOpenPlaylistDetail = { id -> backStack.push(PlaylistDetail(id)) },
+            filter = libraryFilter,
+            onFilterChange = { libraryFilter = it },
             onDeleteTracks = onDeleteTracks,
           )
         }
@@ -464,6 +485,37 @@ fun TonearmApp(
               backStack.push(NowPlaying)
             },
             onBack = { backStack.pop() },
+            onAddTracks = { id -> backStack.push(PlaylistTrackPicker(id)) },
+          )
+        }
+        entry<PlaylistTrackPicker> { key ->
+          LaunchedEffect(Unit) { sectionTitle.value = "Add tracks" }
+          com.eight87.tonearm.ui.library.TrackPickerScreen(
+            repository = graph.libraryRepository,
+            playlistId = key.playlistId,
+            onBack = { backStack.pop() },
+            onConfirm = { toAdd, toRemove ->
+              graph.applicationScope.launch {
+                toAdd.forEach { tid ->
+                  graph.libraryRepository.addTrackToPlaylist(key.playlistId, tid)
+                }
+                if (toRemove.isNotEmpty()) {
+                  // Remove by re-writing the playlist's join rows
+                  // without the unchecked ids; the repository helper
+                  // doesn't take an id-set directly so we use the same
+                  // pattern as the M3U importer.
+                  val current = graph.libraryRepository
+                    .observePlaylistTracks(key.playlistId).first()
+                    .map { it.id }
+                  val remaining = current.filter { it !in toRemove }
+                  graph.libraryRepository.reorderPlaylist(key.playlistId, remaining)
+                }
+                snackbarHostState.showSnackbar(
+                  "Updated playlist (added ${toAdd.size}, removed ${toRemove.size})",
+                )
+              }
+              backStack.pop()
+            },
           )
         }
         entry<SettingsRootDest> {
@@ -584,6 +636,32 @@ fun TonearmApp(
             val id = graph.libraryRepository.createPlaylist(name)
             graph.libraryRepository.addTrackToPlaylist(id, track.id)
             snackbarHostState.showSnackbar("Added \"${track.title}\" to $name")
+          }
+        },
+      )
+    }
+
+    // D.27.2 — bulk Add-to-playlist overlay. Same picker UI as the
+    // single-track flow above, but the pick target receives the whole
+    // selected-id list and applies them in one launch block. Snackbar
+    // copy reflects the count.
+    addingToPlaylistTrackIds?.let { ids ->
+      PlaylistPickerSheet(
+        playlists = playlists,
+        onDismiss = { addingToPlaylistTrackIds = null },
+        onPick = { p ->
+          addingToPlaylistTrackIds = null
+          graph.applicationScope.launch {
+            ids.forEach { tid -> graph.libraryRepository.addTrackToPlaylist(p.id, tid) }
+            snackbarHostState.showSnackbar("Added ${ids.size} tracks to ${p.name}")
+          }
+        },
+        onCreateAndPick = { name ->
+          addingToPlaylistTrackIds = null
+          graph.applicationScope.launch {
+            val id = graph.libraryRepository.createPlaylist(name)
+            ids.forEach { tid -> graph.libraryRepository.addTrackToPlaylist(id, tid) }
+            snackbarHostState.showSnackbar("Added ${ids.size} tracks to $name")
           }
         },
       )

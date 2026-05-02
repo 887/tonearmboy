@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
@@ -81,6 +82,16 @@ fun QueueSection(
    * the viewport, and force scroll position back to top.
    */
   noMatchFillModifier: Modifier = Modifier,
+  /**
+   * D.27.4 — parent LazyColumn's viewport height in Dp, supplied by
+   * the host's `BoxWithConstraints`. Used to compute the outer
+   * column's min-height so even N=1 queues reserve ≥ one viewport
+   * worth of scroll room (the user reported "*single-song queue can't
+   * scroll down one screenlength*"). Default 0.dp keeps existing
+   * tests / call sites working without a viewport hint, in which case
+   * the section just sizes itself to N × rowHeight.
+   */
+  parentViewportHeight: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
   var filter by remember { mutableStateOf("") }
   val filterActive = filter.isNotBlank()
@@ -104,9 +115,19 @@ fun QueueSection(
     }
   } else allEntries
 
+  // D.27.4 — `imePadding()` keeps the active row visible when the
+  // on-screen keyboard pops up for the filter field. The min-height
+  // is computed as `max(parentViewportHeight, N × rowHeight)` so even
+  // a single-track queue (N=1, ~56dp) reserves at least one viewport
+  // worth of scroll room without forcing a 100-track queue to clip
+  // back down to viewport.
+  val byRows = (allEntries.size * QUEUE_ROW_HEIGHT_DP).dp
+  val outerMin = if (parentViewportHeight > byRows) parentViewportHeight else byRows
   Column(
     modifier = modifier
       .fillMaxWidth()
+      .imePadding()
+      .heightIn(min = outerMin)
       .semantics { testTag = "queue_section" },
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {

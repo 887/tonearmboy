@@ -26,6 +26,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -145,8 +147,23 @@ fun LibraryScreen(
   onOpenGenre: (name: String) -> Unit,
   onAddToQueue: (Track) -> Unit,
   onAddToPlaylist: (Track) -> Unit,
+  /**
+   * D.27.2 — bulk Add-to-playlist from the multi-select contextual bar.
+   * Receives the selected track ids; the app-root resolves them against
+   * the current library and opens [PlaylistPickerSheet] for the batch.
+   */
+  onAddTracksToPlaylist: (List<Long>) -> Unit,
   onRenamePlaylist: (Long, String) -> Unit,
   onDeletePlaylist: (Long) -> Unit,
+  // D.27.6 — set the playlist's cover URI (or clear it).
+  onSetPlaylistCover: (Long, String?) -> Unit,
+  // D.27.6 — open the track-picker for the playlist (used from the
+  // playlist tile context menu).
+  onOpenPlaylistDetail: (Long) -> Unit = {},
+  // D.27.5 — current library filter + setter, owned by the app root so
+  // the badge / sheet survive across tab changes.
+  filter: com.eight87.tonearm.data.FilterCriteria,
+  onFilterChange: (com.eight87.tonearm.data.FilterCriteria) -> Unit,
   // Phase F.2 / F.3 — file-deletion entry. Passed list lets the same
   // callback serve the single-track menu item and the multi-select bar.
   onDeleteTracks: (List<Track>) -> Unit,
@@ -177,6 +194,9 @@ fun LibraryScreen(
   val scope = rememberCoroutineScope()
 
   var showSortSheet by remember { mutableStateOf(false) }
+  // D.27.5 — filter sheet visibility. The filter state itself is owned
+  // by the app root so it survives tab changes and screen pushes.
+  var showFilterSheet by remember { mutableStateOf(false) }
 
   // Drive the dynamic top-bar title for the active tab.
   val sectionTitle = LocalSectionTitle.current
@@ -205,6 +225,28 @@ fun LibraryScreen(
             onClick = { showSortSheet = true },
             modifier = Modifier.semantics { testTag = "topbar_sort" },
           ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort") }
+          // D.27.5 — Filter icon. The badge ("filter active" dot) is
+          // applied via `BadgedBox` when the filter has any non-null
+          // field. Tapping opens the filter sheet.
+          val filterActive = !filter.isEmpty()
+          IconButton(
+            onClick = { showFilterSheet = true },
+            modifier = Modifier.semantics { testTag = "topbar_filter" },
+          ) {
+            if (filterActive) {
+              androidx.compose.material3.BadgedBox(
+                badge = {
+                  androidx.compose.material3.Badge(
+                    modifier = Modifier.semantics { testTag = "topbar_filter_badge" },
+                  )
+                },
+              ) {
+                Icon(Icons.Filled.FilterList, contentDescription = "Filter (active)")
+              }
+            } else {
+              Icon(Icons.Filled.FilterList, contentDescription = "Filter")
+            }
+          }
           // D.16.3 — direct Settings entry. The kebab dropdown is gone;
           // Refresh / Rescan now live exclusively under Settings → Library
           // (where the catalog already advertises them) so the top-bar
@@ -262,9 +304,11 @@ fun LibraryScreen(
             repository = repository,
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
+            filter = filter,
             onTrackClick = onTrackClick,
             onAddToQueue = onAddToQueue,
             onAddToPlaylist = onAddToPlaylist,
+            onAddTracksToPlaylist = onAddTracksToPlaylist,
             onGoToAlbum = { t -> onOpenAlbum(t.album ?: return@TracksListScreen, t.albumArtist ?: t.artist) },
             onGoToArtist = { t -> onOpenArtist((t.albumArtist?.takeIf { it.isNotBlank() } ?: t.artist) ?: return@TracksListScreen) },
             onComingSoon = onComingSoon,
@@ -296,6 +340,7 @@ fun LibraryScreen(
             onPlaylistClick = onPlaylistClick,
             onRenamePlaylist = onRenamePlaylist,
             onDeletePlaylist = onDeletePlaylist,
+            onSetPlaylistCover = onSetPlaylistCover,
           )
         }
       }
@@ -310,6 +355,23 @@ fun LibraryScreen(
       onConfirm = { newSort ->
         scope.launch { settingsRepository.setTabSort(activeTab, newSort) }
         showSortSheet = false
+      },
+    )
+  }
+
+  if (showFilterSheet) {
+    val tracksForRange by repository.observeTracks().collectAsState(initial = emptyList())
+    LibraryFilterSheet(
+      current = filter,
+      tracks = tracksForRange,
+      onDismiss = { showFilterSheet = false },
+      onApply = {
+        onFilterChange(it)
+        showFilterSheet = false
+      },
+      onReset = {
+        onFilterChange(com.eight87.tonearm.data.FilterCriteria())
+        showFilterSheet = false
       },
     )
   }
@@ -524,10 +586,14 @@ fun TracksListScreen(
   repository: LibraryRepository,
   sort: TabSort,
   intelligentSorting: Boolean,
+  // D.27.5 — when non-empty, the underlying tracks Flow is filtered.
+  filter: com.eight87.tonearm.data.FilterCriteria = com.eight87.tonearm.data.FilterCriteria(),
   onTrackClick: (List<Track>, Int) -> Unit,
   onComingSoon: (String) -> Unit,
   onAddToQueue: (Track) -> Unit = {},
   onAddToPlaylist: (Track) -> Unit = {},
+  // D.27.2 — multi-select bulk Add to playlist; null disables the icon.
+  onAddTracksToPlaylist: ((List<Long>) -> Unit)? = null,
   onGoToAlbum: (Track) -> Unit = {},
   onGoToArtist: (Track) -> Unit = {},
   // Phase F.2 / F.3 — single-track delete + bulk delete from the
@@ -535,7 +601,9 @@ fun TracksListScreen(
   // routes through `onComingSoon` instead.
   onDeleteTracks: ((List<Track>) -> Unit)? = null,
 ) {
-  val tracks by repository.observeTracks().collectAsState(initial = emptyList())
+  val tracks by remember(filter) {
+    if (filter.isEmpty()) repository.observeTracks() else repository.tracksMatching(filter)
+  }.collectAsState(initial = emptyList())
   TracksListContent(
     tracks = tracks,
     sort = sort,
@@ -544,6 +612,7 @@ fun TracksListScreen(
     onComingSoon = onComingSoon,
     onAddToQueue = onAddToQueue,
     onAddToPlaylist = onAddToPlaylist,
+    onAddTracksToPlaylist = onAddTracksToPlaylist,
     onGoToAlbum = onGoToAlbum,
     onGoToArtist = onGoToArtist,
     onDeleteTracks = onDeleteTracks,
@@ -566,6 +635,7 @@ internal fun TracksListContent(
   onComingSoon: (String) -> Unit,
   onAddToQueue: (Track) -> Unit = {},
   onAddToPlaylist: (Track) -> Unit = {},
+  onAddTracksToPlaylist: ((List<Long>) -> Unit)? = null,
   onGoToAlbum: (Track) -> Unit = {},
   onGoToArtist: (Track) -> Unit = {},
   onDeleteTracks: ((List<Track>) -> Unit)? = null,
@@ -596,6 +666,16 @@ internal fun TracksListContent(
       MultiSelectBar(
         count = selectedIds.size,
         onClose = { selectedIds = emptySet() },
+        onAddToPlaylist = onAddTracksToPlaylist?.let { addMany ->
+          {
+            // D.27.2 — capture the snapshot ids before clearing the
+            // selection so the picker sheet sees the right batch even
+            // if the user dismisses without picking and re-enters.
+            val ids = selectedIds.toList()
+            selectedIds = emptySet()
+            addMany(ids)
+          }
+        },
         onDelete = onDeleteTracks?.let { delete ->
           {
             val selectedTracks = sorted.filter { it.id in selectedIds }
@@ -834,137 +914,18 @@ fun PlaylistsListScreen(
   onPlaylistClick: (Long) -> Unit,
   onRenamePlaylist: (Long, String) -> Unit = { _, _ -> },
   onDeletePlaylist: (Long) -> Unit = {},
+  // D.27.6 — write the playlist's cover URI through to Room. The chooser
+  // sheet lifts up the chosen URI (or null) via this lambda. Default
+  // no-op so existing tests / callers don't need to wire it.
+  onSetPlaylistCover: (Long, String?) -> Unit = { _, _ -> },
 ) {
-  val playlists by repository.observePlaylists().collectAsState(initial = emptyList())
-  var showCreate by remember { mutableStateOf(false) }
-  var contextMenuFor by remember { mutableStateOf<com.eight87.tonearm.data.model.Playlist?>(null) }
-  var renameFor by remember { mutableStateOf<com.eight87.tonearm.data.model.Playlist?>(null) }
-  var deleteFor by remember { mutableStateOf<com.eight87.tonearm.data.model.Playlist?>(null) }
-  val scope = rememberCoroutineScope()
-
-  Box(modifier = Modifier.fillMaxSize().semantics { testTag = "playlists_screen" }) {
-    if (playlists.isEmpty()) {
-      EmptyState("No playlists yet. Tap + to create one.")
-    } else {
-      LazyColumn(
-        modifier = Modifier
-          .fillMaxSize()
-          .libraryListCard()
-          .semantics { testTag = "playlists_list" },
-      ) {
-        items(playlists, key = { it.id }) { p ->
-          Box {
-            Column(
-              modifier = Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                  onClick = { onPlaylistClick(p.id) },
-                  onLongClick = { contextMenuFor = p },
-                )
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .semantics { testTag = "playlist_row" },
-            ) {
-              Text(p.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-              Text("${p.trackCount} tracks", style = MaterialTheme.typography.bodySmall, maxLines = 1)
-            }
-            HorizontalDivider(modifier = Modifier.align(Alignment.BottomCenter))
-            DropdownMenu(
-              expanded = contextMenuFor?.id == p.id,
-              onDismissRequest = { contextMenuFor = null },
-              modifier = Modifier.semantics { testTag = "playlist_context_menu" },
-            ) {
-              DropdownMenuItem(
-                text = { Text("Rename") },
-                onClick = { contextMenuFor = null; renameFor = p },
-                modifier = Modifier.semantics { testTag = "playlist_context_rename" },
-              )
-              DropdownMenuItem(
-                text = { Text("Delete") },
-                onClick = { contextMenuFor = null; deleteFor = p },
-                modifier = Modifier.semantics { testTag = "playlist_context_delete" },
-              )
-            }
-          }
-        }
-      }
-    }
-    ExtendedFloatingActionButton(
-      onClick = { showCreate = true },
-      icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-      text = { Text("New playlist") },
-      modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).semantics { testTag = "new_playlist_fab" },
-    )
-  }
-
-  if (showCreate) {
-    var name by remember { mutableStateOf("") }
-    AlertDialog(
-      onDismissRequest = { showCreate = false },
-      title = { Text("New playlist") },
-      text = {
-        OutlinedTextField(
-          value = name,
-          onValueChange = { name = it },
-          label = { Text("Name") },
-          singleLine = true,
-        )
-      },
-      confirmButton = {
-        TextButton(
-          onClick = {
-            val trimmed = name.trim()
-            if (trimmed.isNotEmpty()) {
-              scope.launch { repository.createPlaylist(trimmed) }
-            }
-            showCreate = false
-          },
-          modifier = Modifier.semantics { testTag = "new_playlist_confirm" },
-        ) { Text("Create") }
-      },
-      dismissButton = { TextButton(onClick = { showCreate = false }) { Text("Cancel") } },
-    )
-  }
-
-  renameFor?.let { target ->
-    var name by remember(target.id) { mutableStateOf(target.name) }
-    AlertDialog(
-      onDismissRequest = { renameFor = null },
-      title = { Text("Rename playlist") },
-      text = {
-        OutlinedTextField(
-          value = name,
-          onValueChange = { name = it },
-          label = { Text("Name") },
-          singleLine = true,
-        )
-      },
-      confirmButton = {
-        TextButton(onClick = {
-          val trimmed = name.trim()
-          if (trimmed.isNotEmpty() && trimmed != target.name) {
-            onRenamePlaylist(target.id, trimmed)
-          }
-          renameFor = null
-        }) { Text("Rename") }
-      },
-      dismissButton = { TextButton(onClick = { renameFor = null }) { Text("Cancel") } },
-    )
-  }
-
-  deleteFor?.let { target ->
-    AlertDialog(
-      onDismissRequest = { deleteFor = null },
-      title = { Text("Delete playlist") },
-      text = { Text("Delete \"${target.name}\"? This removes the playlist but not the tracks themselves.") },
-      confirmButton = {
-        TextButton(onClick = {
-          onDeletePlaylist(target.id)
-          deleteFor = null
-        }) { Text("Delete") }
-      },
-      dismissButton = { TextButton(onClick = { deleteFor = null }) { Text("Cancel") } },
-    )
-  }
+  PlaylistsTilesScreen(
+    repository = repository,
+    onPlaylistClick = onPlaylistClick,
+    onRenamePlaylist = onRenamePlaylist,
+    onDeletePlaylist = onDeletePlaylist,
+    onSetPlaylistCover = onSetPlaylistCover,
+  )
 }
 
 // --- Shared row helpers ---------------------------------------------------
@@ -1001,13 +962,15 @@ private fun SectionHeader(letter: String) {
 
 /**
  * Phase F.3 — contextual top bar for multi-select on the Songs tab.
- * Renders the selected count, a close-X to exit, and a delete icon
- * whose enabled-state mirrors whether the host wired a delete handler.
+ * Renders the selected count, a close-X to exit, an Add-to-playlist icon
+ * (D.27.2), and a delete icon whose enabled-state mirrors whether the
+ * host wired a delete handler.
  */
 @Composable
 private fun MultiSelectBar(
   count: Int,
   onClose: () -> Unit,
+  onAddToPlaylist: (() -> Unit)?,
   onDelete: (() -> Unit)?,
 ) {
   Row(
@@ -1030,6 +993,17 @@ private fun MultiSelectBar(
         .padding(start = 4.dp)
         .semantics { testTag = "multi_select_count" },
     )
+    val playlistLabel = "Add $count tracks to playlist"
+    IconButton(
+      onClick = { onAddToPlaylist?.invoke() },
+      enabled = onAddToPlaylist != null,
+      modifier = Modifier.semantics { testTag = "multi_select_add_to_playlist" },
+    ) {
+      Icon(
+        imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+        contentDescription = playlistLabel,
+      )
+    }
     val deleteLabel = "Delete $count tracks"
     IconButton(
       onClick = { onDelete?.invoke() },

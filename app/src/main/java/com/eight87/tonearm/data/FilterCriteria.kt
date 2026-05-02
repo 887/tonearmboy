@@ -30,8 +30,21 @@ data class FilterCriteria(
   val yearMin: Int? = null,
   val yearMax: Int? = null,
   val dateAddedAfter: Long? = null,
+  /**
+   * D.27.5 — upper bound (exclusive of the comparator semantics: a track
+   * matches if `dateAddedSeconds <= dateAddedBefore`). Combined with
+   * [dateAddedAfter] this gives the user a "between two dates" range.
+   */
+  val dateAddedBefore: Long? = null,
   val hasAlbumArt: Boolean? = null,
   val pathContains: String? = null,
+  /**
+   * D.27.5 — case-insensitive substring match over the track title,
+   * artist, album, and album-artist fields (whichever is non-blank).
+   * Supplied by the Library filter sheet's "Name" field. A blank string
+   * is treated identically to `null`.
+   */
+  val nameSubstring: String? = null,
 ) {
 
   fun isEmpty(): Boolean =
@@ -41,8 +54,10 @@ data class FilterCriteria(
       yearMin == null &&
       yearMax == null &&
       dateAddedAfter == null &&
+      dateAddedBefore == null &&
       hasAlbumArt == null &&
-      pathContains.isNullOrBlank()
+      pathContains.isNullOrBlank() &&
+      nameSubstring.isNullOrBlank()
 
   fun matchesTrack(track: Track): Boolean {
     if (genres.isNotEmpty()) {
@@ -72,6 +87,19 @@ data class FilterCriteria(
     }
     if (dateAddedAfter != null) {
       if (track.dateAddedSeconds < dateAddedAfter) return false
+    }
+    if (dateAddedBefore != null) {
+      if (track.dateAddedSeconds > dateAddedBefore) return false
+    }
+    if (!nameSubstring.isNullOrBlank()) {
+      val needle = nameSubstring
+      val candidates = listOfNotNull(
+        track.title,
+        track.artist,
+        track.album,
+        track.albumArtist,
+      )
+      if (candidates.none { it.contains(needle, ignoreCase = true) }) return false
     }
     if (hasAlbumArt != null) {
       val has = track.mediaStoreAlbumId != null

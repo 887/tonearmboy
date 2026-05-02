@@ -198,9 +198,17 @@ internal fun NowPlayingMergedSurface(
   onMoveQueueItem: (Int, Int) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  // D.27.4 — measure the surrounding LazyColumn viewport so the queue
+  // section can size itself to ≥ one viewport even when the queue has
+  // a single item (the user's "can't scroll down one screen length"
+  // bug). `BoxWithConstraints` here is bounded by the parent
+  // (`Modifier.fillMaxSize()` from the caller) so `maxHeight` is the
+  // actual viewport height, not Constraints.Infinity.
+  androidx.compose.foundation.layout.BoxWithConstraints(modifier = modifier) {
+    val viewport = maxHeight
   LazyColumn(
     state = listState,
-    modifier = modifier,
+    modifier = Modifier.fillMaxSize(),
     verticalArrangement = Arrangement.spacedBy(16.dp),
     contentPadding = androidx.compose.foundation.layout.PaddingValues(
       horizontal = 24.dp,
@@ -313,8 +321,10 @@ internal fun NowPlayingMergedSurface(
         onRemove = onRemoveQueueItem,
         onMove = onMoveQueueItem,
         noMatchFillModifier = Modifier.fillParentMaxHeight(),
+        parentViewportHeight = viewport,
       )
     }
+  }
   }
 }
 

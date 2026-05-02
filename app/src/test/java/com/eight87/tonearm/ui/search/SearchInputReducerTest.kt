@@ -14,9 +14,18 @@ class SearchInputReducerTest {
   }
 
   @Test fun reduce_belowMinLength_returnsEmpty() {
-    // MIN_LENGTH = 2; single character is too short.
-    assertEquals("", reducer.reduce("a"))
-    assertEquals("", reducer.reduce(" b "))
+    // D.27.1 — MIN_LENGTH dropped to 1. Only the truly-empty input is
+    // rejected; single characters now flow through to the FTS index.
+    assertEquals("", reducer.reduce(""))
+    assertEquals("", reducer.reduce(" "))
+  }
+
+  @Test fun reduce_singleCharacter_returnsCharacter() {
+    // D.27.1 (regression guard): a single-character query — the user
+    // typing one letter — must reach the search backend untouched.
+    assertEquals("a", reducer.reduce("a"))
+    assertEquals("b", reducer.reduce(" b "))
+    assertEquals("z", reducer.reduce("z"))
   }
 
   @Test fun reduce_atOrAboveMinLength_returnsTrimmedQuery() {

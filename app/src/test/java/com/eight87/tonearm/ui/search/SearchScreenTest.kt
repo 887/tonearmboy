@@ -27,9 +27,12 @@ class SearchScreenTest {
   // --- reducer / debounce surrogate ---------------------------------------
 
   @Test
-  fun reducer_drops_one_character_inputs_to_empty() {
+  fun reducer_passes_one_character_inputs_through() {
+    // D.27.1 — single-character queries are no longer dropped. They
+    // flow into the FTS index via the `<token>*` prefix syntax, which
+    // SQLite handles natively.
     val reducer = SearchInputReducer()
-    assertEquals("", reducer.reduce("c"))
+    assertEquals("c", reducer.reduce("c"))
   }
 
   @Test

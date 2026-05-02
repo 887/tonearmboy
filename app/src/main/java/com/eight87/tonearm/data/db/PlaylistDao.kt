@@ -28,6 +28,7 @@ interface PlaylistDao {
   @Query(
     """
     SELECT p.id AS id, p.name AS name, p.createdAtSeconds AS createdAtSeconds,
+           p.coverUri AS coverUri,
            COUNT(pt.trackId) AS trackCount
     FROM playlists p
     LEFT JOIN playlist_tracks pt ON pt.playlistId = p.id
@@ -41,8 +42,31 @@ interface PlaylistDao {
     val id: Long,
     val name: String,
     val createdAtSeconds: Long,
+    val coverUri: String?,
     val trackCount: Int,
   )
+
+  /**
+   * D.27.6 — set or clear the playlist's cover image URI.
+   */
+  @Query("UPDATE playlists SET coverUri = :uri WHERE id = :id")
+  suspend fun setCoverUri(id: Long, uri: String?)
+
+  /**
+   * D.27.6 — first track's MediaStore album id for the given playlist,
+   * or null when the playlist is empty / no track has album art. Used
+   * by the tile renderer's "fall back to first track's album art" path.
+   */
+  @Query(
+    """
+    SELECT t.mediaStoreAlbumId FROM tracks t
+    JOIN playlist_tracks pt ON pt.trackId = t.id
+    WHERE pt.playlistId = :playlistId AND t.mediaStoreAlbumId IS NOT NULL
+    ORDER BY pt.position ASC
+    LIMIT 1
+    """
+  )
+  fun observeFirstTrackAlbumId(playlistId: Long): Flow<Long?>
 
   @Query("SELECT MAX(position) FROM playlist_tracks WHERE playlistId = :playlistId")
   suspend fun maxPosition(playlistId: Long): Int?

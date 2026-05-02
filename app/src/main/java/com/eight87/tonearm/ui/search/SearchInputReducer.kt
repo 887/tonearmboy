@@ -21,7 +21,16 @@ class SearchInputReducer {
   }
 
   companion object {
-    const val MIN_LENGTH = 2
+    /**
+     * D.27.1 — single-character searches are now allowed. Previously
+     * `MIN_LENGTH = 2` silently dropped one-char queries to the empty
+     * string, which the UI then rendered as "No matches for 'a'." while
+     * the FTS index was never even consulted. The user had no way to
+     * tell why a one-character query never returned anything. SQLite
+     * FTS4's prefix syntax (`a*`) handles single-character queries
+     * just fine, so we no longer need a client-side floor.
+     */
+    const val MIN_LENGTH = 1
     private val WHITESPACE_RUN = "\\s+".toRegex()
   }
 }

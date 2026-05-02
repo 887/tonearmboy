@@ -18,7 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     PlaylistTrackEntity::class,
     CustomTabEntity::class,
   ],
-  version = 3,
+  version = 4,
   exportSchema = true,
 )
 abstract class LibraryDatabase : RoomDatabase() {
@@ -77,6 +77,20 @@ abstract class LibraryDatabase : RoomDatabase() {
       }
     }
 
+    /**
+     * v3 -> v4: add `playlists.coverUri` (Phase D.27.6).
+     *
+     * Optional opaque URI string for the playlist tile cover image.
+     * Existing rows get NULL — the UI falls back to first-track album
+     * art > letter avatar. Adding a nullable column on a top-level
+     * table is a one-line ALTER.
+     */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE playlists ADD COLUMN coverUri TEXT")
+      }
+    }
+
     @Volatile private var instance: LibraryDatabase? = null
 
     /**
@@ -97,7 +111,7 @@ abstract class LibraryDatabase : RoomDatabase() {
         )
           // No fallbackToDestructiveMigration: schema is exported, so
           // we'll write proper migrations as the schema evolves.
-          .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+          .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
           .build()
         instance = created
         return created

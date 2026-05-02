@@ -1,15 +1,20 @@
 package com.eight87.tonearm.ui.library
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -24,6 +29,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import com.eight87.tonearm.data.LibraryRepository
 import com.eight87.tonearm.data.model.Track
@@ -36,6 +43,11 @@ fun PlaylistDetailScreen(
   playlistId: Long,
   onTrackClick: (List<Track>, Int) -> Unit,
   onBack: () -> Unit,
+  /**
+   * D.27.3 — open the multi-select track picker for the playlist. The
+   * empty-state primary CTA and the top-bar `+` icon both invoke this.
+   */
+  onAddTracks: (Long) -> Unit = {},
 ) {
   val tracks by repository.observePlaylistTracks(playlistId).collectAsState(initial = emptyList())
   val playlists by repository.observePlaylists().collectAsState(initial = emptyList())
@@ -54,12 +66,62 @@ fun PlaylistDetailScreen(
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
           }
         },
+        actions = {
+          // D.27.3 — `+` on every playlist detail (empty *and* non-empty)
+          // so the user can add tracks without long-pressing songs in
+          // the library first. Tap → `TrackPicker` destination.
+          IconButton(
+            onClick = { onAddTracks(playlistId) },
+            modifier = Modifier.semantics { testTag = "playlist_detail_add" },
+          ) { Icon(Icons.Filled.Add, contentDescription = "Add tracks") }
+        },
       )
     },
   ) { innerPadding ->
     if (tracks.isEmpty()) {
-      Box(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(32.dp), contentAlignment = Alignment.Center) {
-        Text("No tracks in this playlist yet.", style = MaterialTheme.typography.bodyMedium)
+      // D.27.3 — empty-state CTA. Three pieces of chrome the user
+      // wanted: a centered illustration / icon, a primary "Add tracks"
+      // button, and a secondary text hint about the long-press flow.
+      Column(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(innerPadding)
+          .padding(32.dp)
+          .semantics { testTag = "playlist_detail_empty" },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+      ) {
+        Icon(
+          imageVector = Icons.Filled.LibraryMusic,
+          contentDescription = null,
+          modifier = Modifier.size(72.dp),
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+          text = "No tracks yet",
+          style = MaterialTheme.typography.titleMedium,
+          modifier = Modifier.padding(top = 16.dp),
+        )
+        Button(
+          onClick = { onAddTracks(playlistId) },
+          modifier = Modifier
+            .padding(top = 16.dp)
+            .semantics { testTag = "playlist_detail_empty_add" },
+        ) {
+          Icon(Icons.Filled.Add, contentDescription = null)
+          Text(
+            "Add tracks",
+            modifier = Modifier.padding(start = 8.dp),
+          )
+        }
+        Text(
+          text = "Or long-press a song in your library and choose 'Add to playlist'.",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier
+            .padding(top = 16.dp)
+            .semantics { testTag = "playlist_detail_empty_hint" },
+        )
       }
     } else {
       // D.16.1 — playlist tracks inside the M3 Expressive card chrome.
