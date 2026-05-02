@@ -291,6 +291,31 @@ User-found via real-device testing of the `v1.0-503517f` release. Each is a "tap
 
 ---
 
+## Phase D.16 — M3 Expressive everywhere + chrome dedup + About + easter egg
+
+User real-device-tested `v1.0-e036bcd`. Surfaced clash between the cards-with-padding settings and the edge-to-edge library lists, plus duplicated Settings entry points, plus the missing About sub-page. Plus a fun easter egg request (3-tap-build-version → fullscreen fox).
+
+- [ ] **D.16.1 Library lists / grids / detail screens adopt M3 Expressive grouped cards.** Same look as Settings (`16 dp` horizontal page padding, rows wrapped in `Card { RoundedCornerShape(16.dp) }`, subtle dividers between rows inside a card). Applies to: `TracksListScreen`, `AlbumsGridScreen`, `ArtistsListScreen`, `GenresListScreen`, `PlaylistsListScreen`, `AlbumDetailScreen`, `ArtistDetailScreen`, `GenreDetailScreen`, `PlaylistDetailScreen`, `SearchScreen`. The existing per-row composables (`TrackRow`, `AlbumTile`, etc.) get a `containerStyle: SettingsCard | EdgeToEdge` parameter so the chrome can be reused without forking — default to `SettingsCard`.
+- [ ] **D.16.2 Bottom-left rail gear → tab customization shortcut.** Currently it routes to the Settings root (which then has a Personalize → Library tabs entry). Repurpose the gear: tap it, navigate **directly** to the Library-tabs configuration screen. Icon stays the same (gear is the user's accepted intent for "tab customization"). Document the change in CLAUDE.md so future sessions don't re-route it.
+- [ ] **D.16.3 Top-right settings wheel — direct, no kebab dropdown.** Currently the top-right is a kebab `MoreVert` opening a menu with Settings / Refresh music / Rescan music. Replace with a single `Settings` `IconButton` that goes straight to the Settings root. **Drop Refresh / Rescan from the top bar entirely** — they live in Settings → Library, used rarely enough that surfacing them on every screen is noise.
+- [ ] **D.16.4 New About sub-page in Settings under Library category.** Entries:
+    - **D.16.4.1** App name + version + build (`tonearm 1.0 (e036bcd)` — pull `versionName` and the short SHA from BuildConfig).
+    - **D.16.4.2** Build date (from `BuildConfig.BUILD_DATE` injected at compile time).
+    - **D.16.4.3** GitHub source link (`https://github.com/887/tonearm`) — opens browser.
+    - **D.16.4.4** MIT license note + link to `LICENSE`.
+    - **D.16.4.5** Credits — Auxio (visual reference), Harmony Music (chrome reference), Media3 + Compose + Room.
+- [ ] **D.16.5 Easter egg — 3-tap build version triggers the stay-pawsitive fox.** Tap counter on the build-version row.
+    - **D.16.5.1** First tap: bottom snackbar **"Click 2 more times for a treat"**. Resets after 5 seconds of no further taps.
+    - **D.16.5.2** Second tap (within window): snackbar **"1 more time"**.
+    - **D.16.5.3** Third tap: full-screen modal `Dialog` showing `R.drawable.easter_egg_fox` (already saved in `app/src/main/res/drawable-nodpi/`). Tap outside or back-button dismisses. The dialog's background is a 70% black scrim so the fox pops.
+    - **D.16.5.4** Counter resets after each successful reveal so the user can do it again.
+- [ ] **D.16.6 M3 Expressive border / chrome research + polish.** Use `android-skills` MCP and `android docs search material 3 expressive` to find the current canonical patterns for: rail-and-content boundary on detail screens (rail vs back-button trade-offs), card insets on small screens, the M3 Expressive `2025` updates if any. Apply to the rail edge so the boundary between rail and content reads consistently across library / detail / settings — no half-edge dividers, no orphan edges. Document the chosen approach in CLAUDE.md so D.17+ work doesn't drift.
+- [ ] **D.16.7 Tests + screenshots.** Robolectric unit tests for: `BuildConfig` exposure, easter-egg counter state machine (3-tap window, reset on timeout), tab-customization shortcut routing, top-bar Settings shortcut routing. Extend `scripts/ui-smoke-test.sh` with: edge-padding pixel sanity (no row going edge-to-edge), 3-tap easter-egg flow, About sub-page reachable, kebab dropdown removed (assert no kebab on top-bar). Screenshots: `80-d16-tracks-cards.png`, `81-d16-albums-cards.png`, `82-d16-artist-detail-cards.png`, `83-d16-rail-gear-tabs-shortcut.png`, `84-d16-top-right-settings.png`, `85-d16-settings-about.png`, `86-d16-easter-egg-snackbar.png`, `87-d16-easter-egg-fox.png`.
+
+**Shipped:** _(in progress — dispatches now)_
+
+---
+
 ## Phase F — file deletion (the differentiator)
 
 Goal: delete audio files from inside the player, with the system consent dialog and proper cache invalidation.
