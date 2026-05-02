@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +25,12 @@ import kotlinx.coroutines.launch
 @UnstableApi
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
+    // D.17.2 — install the SplashScreen-API hand-off BEFORE
+    // super.onCreate. The 1.x compat library wires the Theme.SplashScreen
+    // parent → postSplashScreenTheme transition; calling it any later
+    // produces a brief white flash on Android 12+ as the activity
+    // window swaps backgrounds.
+    installSplashScreen()
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
 
@@ -37,6 +44,13 @@ class MainActivity : ComponentActivity() {
     graph.applicationScope.launch {
       val on = graph.settingsRepository.automaticReloading.first()
       if (on) LibraryWatcherService.start(applicationContext)
+    }
+
+    // D.17.3.6 — write the default music-source mode on a fresh
+    // install so the first launch scans MediaStore (and therefore
+    // populates the library) without the user opening a settings page.
+    graph.applicationScope.launch {
+      graph.settingsRepository.firstLaunchInitialise()
     }
 
     setContent {

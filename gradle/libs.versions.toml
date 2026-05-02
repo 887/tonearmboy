@@ -23,6 +23,7 @@ kotlinxCoroutinesGuava = "1.10.2"
 kotlinxSerializationJson = "1.7.3"
 coil3 = "3.1.0"
 work = "2.10.0"
+coreSplashscreen = "1.0.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -65,6 +66,10 @@ coil3-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", versio
 # WorkManager — D.9d.2 Library rescan worker (debounced foreground watcher).
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
+# D.17.2 — SplashScreen 1.x compatibility shim. Required so the
+# Theme.SplashScreen parent + windowSplashScreenAnimatedIcon attrs
+# resolve, and so installSplashScreen() is callable from MainActivity.
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

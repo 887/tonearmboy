@@ -299,28 +299,42 @@ forbid 'Coming in v1.1' 'Content: no "Coming in v1.1" stubs left after D.9d'
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 
-# --- D.9d.1: Music sources sub-page renders --------------------------
-# Re-enter Settings; the Music sources row is at the Library card.
-# Tapping it pushes a sub-page with header "Sources" + "Add source"
-# button. Empty-state copy mentions /sdcard/Music — we assert that.
+# --- D.17.3 / D.9d.1: Music sources Auxio-pattern dialog --------------
+# As of D.17, tapping Music sources opens a modal Dialog instead of
+# pushing a sub-page. The dialog has the "Load From" segmented row,
+# the Folders / System body, the More settings expandable, and
+# Cancel / Save buttons. Default mode is System (D.17.3.6 first-launch
+# normalisation), so the Internal-shared-storage implicit row is
+# present on a fresh install.
 "${ADB[@]}" shell input tap 1006 211; sleep 1
 dump
 tap_row_label 'Settings' || "${ADB[@]}" shell input keyevent KEYCODE_BACK
 sleep 1; dump
 tap_row_label 'Music sources'; sleep 2
 dump
-require '^text="Music sources"$'                 'D.9d.1: Music sources sub-page title'
-require '^text="Add source"$'                    'D.9d.1: Add source button'
-# Either the empty-state copy OR an existing source row is acceptable.
-if have_text '/sdcard/Music'; then
-  echo "[PASS] D.9d.1: empty-state copy mentions /sdcard/Music"
-elif have_text 'externalstorage.documents'; then
-  echo "[PASS] D.9d.1: existing source row visible"
-else
-  echo "[FAIL] D.9d.1: neither empty-state copy nor source row found" >&2
-  exit 1
+require '^text="Load From"$'                      'D.17.3.2: dialog Load From section header'
+require '^text="File picker"$'                    'D.17.3.2: dialog File picker segment'
+require '^text="System"$'                         'D.17.3.2: dialog System segment'
+require '^text="Internal shared storage"$'        'D.17.3.3: System mode shows implicit Internal shared storage row'
+require '^text="More settings"$'                  'D.17.3.4: dialog has expandable More settings'
+require '^text="Cancel"$'                         'D.17.3.5: dialog has Cancel'
+require '^text="Save"$'                           'D.17.3.5: dialog has Save'
+forbid '^text="Add source"$'                      'D.17.3: legacy "Add source" sub-page button is gone'
+# Toggle to File picker; the Folders to Load section + add button must
+# replace the implicit System row, and toggling does NOT lose any
+# folders persisted from a prior session.
+fp_b=$(grep -oE 'text="File picker"[^>]*bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' "$UIDUMP_LOCAL" 2>/dev/null | head -1 || true)
+if [[ "$fp_b" =~ bounds=\"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]\" ]]; then
+  cx=$(( (${BASH_REMATCH[1]} + ${BASH_REMATCH[3]}) / 2 ))
+  cy=$(( (${BASH_REMATCH[2]} + ${BASH_REMATCH[4]}) / 2 ))
+  "${ADB[@]}" shell input tap "$cx" "$cy"; sleep 1
+  dump
+  require '^text="Folders to Load"$'              'D.17.3.3: File picker mode shows Folders to Load section'
+  forbid '^text="Internal shared storage"$'       'D.17.3.3: implicit System row is hidden in File picker mode'
 fi
-"${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
+# Cancel out so persisted state is unchanged for the rest of the suite.
+tap_row_label 'Cancel' || "${ADB[@]}" shell input keyevent KEYCODE_BACK
+sleep 1; dump
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 "${ADB[@]}" shell input keyevent KEYCODE_BACK; sleep 1; dump
 

@@ -33,7 +33,7 @@ import com.eight87.tonearm.ui.settings.SettingsAudioScreen
 import com.eight87.tonearm.ui.settings.SettingsContentScreen
 import com.eight87.tonearm.ui.settings.AboutScreen
 import com.eight87.tonearm.ui.settings.SettingsLookAndFeelScreen
-import com.eight87.tonearm.ui.settings.SettingsMusicSourcesScreen
+import com.eight87.tonearm.ui.settings.MusicSourcesDialog
 import com.eight87.tonearm.ui.settings.SettingsPersonalizeScreen
 import com.eight87.tonearm.ui.settings.SettingsScreen
 import com.eight87.tonearm.ui.settings.catalog.LocalHighlightedSettingId
@@ -105,6 +105,11 @@ fun TonearmApp(graph: AppGraph) {
   // D.15.6.2 — track currently being added to a playlist; non-null
   // shows the picker sheet on top of whichever destination triggered it.
   var addingToPlaylistTrack by remember { mutableStateOf<Track?>(null) }
+
+  // D.17.3 — Music sources dialog visibility. Lifted here so the
+  // dialog can be opened from the Settings root row (OpenDialog
+  // catalog kind) without pushing a new destination onto the stack.
+  var showMusicSourcesDialog by remember { mutableStateOf(false) }
   val playlists by graph.libraryRepository.observePlaylists()
     .collectAsStateWithLifecycle(initialValue = emptyList())
   val onRefreshMusic: () -> Unit = {
@@ -324,7 +329,11 @@ fun TonearmApp(graph: AppGraph) {
             onPersonalize = { backStack.push(SettingsPersonalize) },
             onContent = { backStack.push(SettingsContent) },
             onAudio = { backStack.push(SettingsAudio) },
-            onMusicSources = { backStack.push(SettingsMusicSources) },
+            // D.17.3 — open the modal Music sources dialog instead of
+            // pushing a sub-page. The dialog state lives at the app
+            // level so search results landing on Settings root can
+            // surface it the same way.
+            onMusicSources = { showMusicSourcesDialog = true },
             onRefreshMusic = onRefreshMusic,
             onRescanMusic = onRescanMusic,
             onAbout = { backStack.push(SettingsAbout) },
@@ -382,13 +391,17 @@ fun TonearmApp(graph: AppGraph) {
             snackbarHostState = snackbarHostState,
           )
         }
+        // D.17.3 — SettingsMusicSources is no longer a navigable
+        // destination; the row opens the MusicSourcesDialog at the
+        // app-root level instead. The NavKey is kept (and registered
+        // with a no-op entry) so back-stack save state and search
+        // routes that still reference it stay valid; landing on this
+        // entry simply pops to Settings root and surfaces the dialog.
         entry<SettingsMusicSources> {
-          LaunchedEffect(Unit) { sectionTitle.value = "Music sources" }
-          SettingsMusicSourcesScreen(
-            repository = graph.settingsRepository,
-            onBack = { backStack.pop() },
-            snackbarHostState = snackbarHostState,
-          )
+          LaunchedEffect(Unit) {
+            backStack.pop()
+            showMusicSourcesDialog = true
+          }
         }
         entry<SettingsAudio> {
           LaunchedEffect(Unit) { sectionTitle.value = "Audio" }
@@ -424,6 +437,17 @@ fun TonearmApp(graph: AppGraph) {
             snackbarHostState.showSnackbar("Added \"${track.title}\" to $name")
           }
         },
+      )
+    }
+
+    // D.17.3 — Auxio-pattern Music sources dialog. Toggled from the
+    // Settings root row (RowKind.OpenDialog) and from search results
+    // routed to the SettingsMusicSources NavKey.
+    if (showMusicSourcesDialog) {
+      MusicSourcesDialog(
+        settings = graph.settingsRepository,
+        library = graph.libraryRepository,
+        onDismiss = { showMusicSourcesDialog = false },
       )
     }
   }

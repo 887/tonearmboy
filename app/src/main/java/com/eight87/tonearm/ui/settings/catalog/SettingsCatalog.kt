@@ -88,6 +88,13 @@ enum class RowKind {
   Picker,
   /** Leaf action with a confirmation or immediate effect. */
   Action,
+  /**
+   * D.17.3 — tapping opens a modal `Dialog` rendered above the current
+   * page; no navigation push. Used for Music sources so the user
+   * can adjust the source set + mode without leaving the Settings
+   * root surface.
+   */
+  OpenDialog,
   /** Not yet wired — taps trigger a "Coming in v1.1" snackbar. */
   Stub,
 }
@@ -230,16 +237,21 @@ object SettingsCatalog {
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_SETTINGS, SECTION_AUDIO),
     ),
+    // D.17.3 — Music sources opens a modal dialog (Auxio pattern)
+    // instead of a sub-page. Keep the [SettingsMusicSources] NavKey
+    // around as the destination for search results so a search hit
+    // routes back to the Settings root, where the OpenDialog binding
+    // surfaces the dialog.
     SettingsCatalogEntry(
       id = ID_LIBRARY_MUSIC_SOURCES,
       label = "Music sources",
-      subtitle = "Manage where music is loaded from.",
-      keywords = listOf("folder", "directory", "saf", "storage"),
+      subtitle = "Choose how the library finds your music.",
+      keywords = listOf("folder", "directory", "saf", "storage", "system", "file picker"),
       icon = Icons.Outlined.Folder,
       section = Section.Root,
       group = Group.Library,
-      kind = RowKind.Navigate,
-      destination = SettingsMusicSources,
+      kind = RowKind.OpenDialog,
+      destination = com.eight87.tonearm.ui.nav.SettingsRootDest,
       breadcrumb = listOf(SECTION_SETTINGS, "Library", "Music sources"),
     ),
     SettingsCatalogEntry(

@@ -243,7 +243,10 @@ class SettingsCatalogTest {
   fun phase_d9d_library_management_settings_are_wired_not_stubbed() {
     val musicSources = SettingsCatalog.byId(SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES)
     val autoReload = SettingsCatalog.byId(SettingsCatalog.ID_AUTOMATIC_RELOADING)
-    assertEquals(RowKind.Navigate, musicSources.kind)
+    // D.17.3 — Music sources moved from a Navigate sub-page to an
+    // OpenDialog modal so first-install users see the configuration
+    // surface without leaving Settings root.
+    assertEquals(RowKind.OpenDialog, musicSources.kind)
     assertEquals(RowKind.Toggle, autoReload.kind)
   }
 

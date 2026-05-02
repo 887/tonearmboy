@@ -142,6 +142,12 @@ dependencies {
   // automatic-reload content observer.
   implementation(libs.androidx.work.runtime.ktx)
 
+  // D.17.2 — SplashScreen 1.x backport. Provides Theme.SplashScreen +
+  // installSplashScreen() so the cold-boot frame stays on the dark
+  // launcher background instead of flashing white before Compose
+  // mounts.
+  implementation(libs.androidx.core.splashscreen)
+
   // DocumentFile — D.9d.1 SAF tree walker for music-source URIs.
   implementation("androidx.documentfile:documentfile:1.0.1")
 

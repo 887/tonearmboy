@@ -263,15 +263,20 @@ class LibraryRepository(
     val separators: Set<String> =
       settingsRepository.multiValueSeparators.first().map { it.token }.toSet()
 
-    // D.9d.1 — when the user has configured one or more music sources,
-    // restrict the scan to MediaStore rows whose `DATA` path lives
-    // under one of the source trees. Empty set keeps the legacy
-    // "scan everything MediaStore knows about" behaviour, including
-    // the original `/sdcard/Music` default for users on a fresh install.
-    val sourceUris: Set<String> = settingsRepository.musicSourceUris.first()
-    val scopePrefixes: Set<String> = sourceUris
-      .mapNotNull { raw -> SafScopeMapping.treeUriToPathPrefix(Uri.parse(raw)) }
-      .toSet()
+    // D.9d.1 / D.17.3 — when the user has configured one or more music
+    // sources AND the mode is FilePicker, restrict the scan to
+    // MediaStore rows whose `DATA` path lives under one of the source
+    // trees. In System mode we deliberately ignore any persisted SAF
+    // tree URIs so toggling System wipes the scope without losing the
+    // user's saved folder list.
+    val mode = settingsRepository.musicSourceMode.first()
+    val scopePrefixes: Set<String> = when (mode) {
+      com.eight87.tonearm.ui.settings.MusicSourceMode.FilePicker ->
+        settingsRepository.musicSourceUris.first()
+          .mapNotNull { raw -> SafScopeMapping.treeUriToPathPrefix(Uri.parse(raw)) }
+          .toSet()
+      com.eight87.tonearm.ui.settings.MusicSourceMode.System -> emptySet()
+    }
 
     // Snapshot the domain Track list so we keep the per-track album
     // ReplayGain values around long enough to fold them into the

@@ -1,5 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Tonearm" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+        D.17.2 — Tonearm runs the SplashScreen API as the launch theme.
+        Activity body draws under Compose; the splash theme exists so
+        the cold-boot frame the system shows before onCreate hands off
+        cleanly to Compose without a white flash.
+
+        - windowSplashScreenBackground: same dark grey as the adaptive
+          icon background, so the splash and launcher icon read as one
+          continuous surface during the launch animation.
+        - windowSplashScreenAnimatedIcon: the launcher foreground (fox
+          + vinyl + tonearm). The system clamps to a circle by default;
+          the foreground is square so the fox stays inside the safe
+          zone.
+        - windowSplashScreenIconBackgroundColor: transparent so the
+          dark splash background shows through.
+        - postSplashScreenTheme: the regular Tonearm theme that
+          MainActivity continues to render under once Compose mounts.
+    -->
+    <style name="Theme.Tonearm" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="postSplashScreenTheme">@style/Theme.Tonearm.Main</item>
+    </style>
+
+    <style name="Theme.Tonearm.Main" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/launcher_background</item>
+    </style>
+
 </resources>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        D.17.2 — same launcher_background / fox foreground as the
+        light variant. The colour resource is identical for light and
+        dark right now (cold-boot intentionally always reads dark, to
+        avoid a white flash when the system theme is light); kept
+        separate so the post-splash theme can diverge later.
+    -->
+    <style name="Theme.Tonearm" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="postSplashScreenTheme">@style/Theme.Tonearm.Main</item>
+    </style>
+
+    <style name="Theme.Tonearm.Main" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/launcher_background</item>
+    </style>
+
+</resources>

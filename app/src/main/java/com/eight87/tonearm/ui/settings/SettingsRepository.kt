@@ -179,6 +179,31 @@ enum class MultiValueSeparator(val token: String) {
   }
 }
 
+/**
+ * D.17.3.1 — top-level music-source strategy. The user toggles between
+ * "let MediaStore decide" (the Android-native default — fastest, picks
+ * up everything the system index already knows about) and "I will pick
+ * folders explicitly" (slower SAF-tree walk, but correct for SD-card
+ * music outside the MediaStore default scope).
+ *
+ * Persisted as the enum name. Default is [System] so a fresh install
+ * shows music immediately without UI configuration; the
+ * [SettingsRepository.firstLaunchInitialise] hook fixes that on disk
+ * on first start.
+ */
+enum class MusicSourceMode {
+  System,
+  FilePicker,
+  ;
+
+  companion object {
+    val Default: MusicSourceMode = System
+
+    fun fromStored(raw: String?): MusicSourceMode =
+      entries.firstOrNull { it.name == raw } ?: Default
+  }
+}
+
 /** Library tabs in canonical order. */
 enum class LibraryTab {
   Songs,
@@ -265,6 +290,15 @@ data class SettingsSnapshot(
    */
   val musicSourceUris: Set<String>,
   /**
+   * D.17.3.1 — chosen music-source strategy. [MusicSourceMode.System]
+   * means the scanner queries MediaStore directly with no folder
+   * scoping; [MusicSourceMode.FilePicker] means walk the persisted
+   * SAF tree URIs in [musicSourceUris]. The two are kept independent
+   * — the URI set is preserved when toggling to System so flipping
+   * back doesn't lose the user's folder choices.
+   */
+  val musicSourceMode: MusicSourceMode,
+  /**
    * D.9d.2 — when true the [LibraryWatcherService] is running with a
    * sticky low-priority notification, observing MediaStore and each
    * configured source URI for changes and enqueuing a debounced
@@ -298,6 +332,7 @@ data class SettingsSnapshot(
       albumCoversMode = AlbumCoversMode.Default,
       multiValueSeparators = MultiValueSeparator.Default,
       musicSourceUris = emptySet(),
+      musicSourceMode = MusicSourceMode.Default,
       automaticReloading = false,
     )
   }
@@ -463,6 +498,38 @@ class SettingsRepository(private val context: Context) {
     store.edit { it[KEY_MUSIC_SOURCE_URIS] = value }
   }
 
+  // --- D.17.3.1: music-source mode (System vs FilePicker) ------------------
+
+  /**
+   * Hot Flow of the persisted [MusicSourceMode]. A missing key returns
+   * [MusicSourceMode.Default] — the [firstLaunchInitialise] hook
+   * normally writes the default on first start so this fallback only
+   * matters for tests / repos that bypass the activity.
+   */
+  val musicSourceMode: Flow<MusicSourceMode> = store.data.map {
+    MusicSourceMode.fromStored(it[KEY_MUSIC_SOURCE_MODE])
+  }
+
+  suspend fun setMusicSourceMode(value: MusicSourceMode) {
+    store.edit { it[KEY_MUSIC_SOURCE_MODE] = value.name }
+  }
+
+  /**
+   * D.17.3.6 — first-launch normalisation. Runs once per process
+   * start (cheap; idempotent because we only write when the key is
+   * absent). The user-facing intent: never show an empty library on a
+   * fresh install. By writing [MusicSourceMode.System] explicitly we
+   * also avoid the subtle bug where a future code change to the enum
+   * default would silently shift existing users.
+   */
+  suspend fun firstLaunchInitialise() {
+    store.edit { prefs ->
+      if (prefs[KEY_MUSIC_SOURCE_MODE] == null) {
+        prefs[KEY_MUSIC_SOURCE_MODE] = MusicSourceMode.Default.name
+      }
+    }
+  }
+
   // --- D.9d.2: automatic reloading toggle ----------------------------------
 
   val automaticReloading: Flow<Boolean> = store.data.map {
@@ -525,6 +592,7 @@ class SettingsRepository(private val context: Context) {
     albumCoversMode = AlbumCoversMode.fromStored(this[KEY_ALBUM_COVERS_MODE]),
     multiValueSeparators = MultiValueSeparator.fromStored(this[KEY_MULTI_VALUE_SEPARATORS]),
     musicSourceUris = this[KEY_MUSIC_SOURCE_URIS] ?: emptySet(),
+    musicSourceMode = MusicSourceMode.fromStored(this[KEY_MUSIC_SOURCE_MODE]),
     automaticReloading = this[KEY_AUTOMATIC_RELOADING] ?: SettingsSnapshot.Default.automaticReloading,
   )
 
@@ -551,6 +619,7 @@ class SettingsRepository(private val context: Context) {
     internal val KEY_ALBUM_COVERS_MODE = stringPreferencesKey("album_covers_mode")
     internal val KEY_MULTI_VALUE_SEPARATORS = stringPreferencesKey("multi_value_separators")
     internal val KEY_MUSIC_SOURCE_URIS = stringSetPreferencesKey("music_source_uris")
+    internal val KEY_MUSIC_SOURCE_MODE = stringPreferencesKey("music_source_mode")
     internal val KEY_AUTOMATIC_RELOADING = booleanPreferencesKey("automatic_reloading")
 
     /** D.9b.2 — pre-amp slider bounds, fixed at [-15, +15] dB. */

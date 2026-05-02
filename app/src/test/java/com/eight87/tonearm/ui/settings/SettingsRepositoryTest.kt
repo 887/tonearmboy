@@ -53,6 +53,7 @@ class SettingsRepositoryTest {
     repo.setColorScheme(ColorScheme.Default)
     repo.setMultiValueSeparators(MultiValueSeparator.Default)
     repo.setMusicSourceUris(emptySet())
+    repo.setMusicSourceMode(MusicSourceMode.Default)
     repo.setAutomaticReloading(false)
   }
 

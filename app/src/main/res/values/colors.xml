@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        D.17 — neutral very-dark grey used by both the adaptive icon
+        background layer and the Android 12+ splash screen background,
+        so the cold-boot animation reads as a continuous dark surface
+        from launcher tap to first frame of Compose content.
+    -->
+    <color name="launcher_background">#1A1717</color>
+</resources>
