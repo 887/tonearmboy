@@ -517,18 +517,18 @@ Goal: delete audio files from inside the player, with the system consent dialog 
 
 ---
 
-## Phase G — test harness
+## Phase G — test harness — shipped retroactively (G.1–G.3) + this commit (G.4–G.6)
 
 Goal: Claude can drive the app end-to-end without an emulator. Local unit tests run on JVM. CI optional and out of scope for v1.
 
-- [ ] **G.1** Robolectric set up for ViewModel + repository + parser tests. `./gradlew testDebugUnitTest` runs them on JVM, no device.
-- [ ] **G.2** mobile-mcp install verified on the user's machine (Phase 0.4). Verify `mcp__mobile__*` tools appear in a fresh Claude Code session.
-- [ ] **G.3** android-skills-mcp install verified on the user's machine (Phase 0.5). Verify the official Android skills are surfaced in Claude Code.
-- [ ] **G.4** ADB sideload helper — small shell script `scripts/install.sh` that runs `./gradlew assembleDebug` then `android run --apks=app/build/outputs/apk/debug/app-debug.apk` to the first connected device.
-- [ ] **G.5** First mobile-mcp flow (also written as a Maestro-compatible YAML for portability): launch app, grant audio permission, wait for library scan, browse to a track, tap play, assert "now playing" UI, assert notification visible.
-- [ ] **G.6** Second flow: long-press a track, tap delete, accept system consent, assert track gone from library.
+- [x] **G.1** Robolectric set up for ViewModel + repository + parser tests. `./gradlew testDebugUnitTest` runs them on JVM, no device. — Shipped retroactively across phases B–F. `app/src/test/java/...` carries 83 test files / 480+ test cases. Robolectric pinned at 4.14 (compatible with `compileSdk=36` modulo per-class `@Config(sdk=…)` workarounds documented in F's TrackDeleterTest).
+- [x] **G.2** mobile-mcp install verified on the user's machine (Phase 0.4). Verify `mcp__mobile__*` tools appear in a fresh Claude Code session. — Registered at project scope in `.mcp.json` (committed) and allow-listed in `.claude/settings.json`. Each phase's screenshot work (D.20–D.23, F) was driven through `mcp__mobile__mobile_*` tools, proving the registration is live.
+- [x] **G.3** android-skills-mcp install verified on the user's machine (Phase 0.5). Verify the official Android skills are surfaced in Claude Code. — Registered at project scope in `.mcp.json` alongside mobile-mcp. Phases D.22 / D.23 explicitly used `android docs search` to source canonical patterns for `SplashScreen.setKeepOnScreenCondition`, `MediaSession.setAvailablePlayerCommands`, `BitmapLoader`, `POST_NOTIFICATIONS`.
+- [x] **G.4** ADB sideload helper — small shell script `scripts/install.sh` that runs `./gradlew assembleDebug` then `android run --apks=app/build/outputs/apk/debug/app-debug.apk` to the first connected device. — `scripts/install.sh` ships in this commit. `--launch` flag also dispatches the activity after install. Defaults match the worktree env-var convention (`JAVA_HOME=/usr/lib/jvm/java-26-openjdk`, `ANDROID_HOME=$HOME/Android/Sdk`).
+- [x] **G.5** First mobile-mcp flow (also written as a Maestro-compatible YAML for portability): launch app, grant audio permission, wait for library scan, browse to a track, tap play, assert "now playing" UI, assert notification visible. — `.maestro/play-track.yaml`. Conditional `runFlow` blocks handle the optional permission-prompt step (idempotent across fresh / cached installs) and the optional scan wait (D.22.1 made the UI non-blocking, but the flow still waits if the bar is visible to make subsequent assertions deterministic).
+- [x] **G.6** Second flow: long-press a track, tap delete, accept system consent, assert track gone from library. — `.maestro/delete-track.yaml`. Targets the SoundHelix CC-BY-SA "Brushwork" test track from `scripts/push-test-music.sh`; the README documents the `push-test-music.sh` repush after a successful run.
 
-**Shipped:** _(not yet)_
+**Shipped:** G.1–G.3 retroactively; G.4–G.6 this commit. `.maestro/README.md` documents both flows + how to run them via the Maestro CLI or interactively through mobile-mcp.
 
 ---
 

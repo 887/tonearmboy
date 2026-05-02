@@ -1,0 +1,37 @@
+# G.6 — second end-to-end flow.
+#
+# Long-press a track in the Songs tab, choose "Delete file…", confirm
+# the dialog, accept the system consent, and assert the row is gone.
+# This is the differentiator that justifies tonearm existing as an
+# Auxio replacement (Phase F).
+#
+# Pre-requisite: the device has test music pushed
+# (scripts/push-test-music.sh). The flow deletes one of the SoundHelix
+# CC-BY-SA tracks; re-run scripts/push-test-music.sh afterward to repush.
+#
+# Run with the Maestro CLI:
+#   maestro test .maestro/delete-track.yaml
+appId: com.eight87.tonearm
+---
+- launchApp:
+    clearState: false
+- assertVisible: "Songs"
+- runFlow:
+    when:
+      visible: "Scanning"
+    commands:
+      - extendedWaitUntil:
+          notVisible: "Scanning"
+          timeout: 120000
+- longPressOn:
+    text: "Brushwork"
+- assertVisible: "Delete file…"
+- tapOn: "Delete file…"
+- assertVisible: "Delete Brushwork?"
+- tapOn:
+    text: "Delete"
+    index: 1
+- tapOn:
+    text: "Allow"
+    optional: true
+- assertNotVisible: "Brushwork"

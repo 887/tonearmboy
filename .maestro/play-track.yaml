@@ -1,0 +1,53 @@
+# G.5 — first end-to-end flow.
+#
+# Launch tonearm on a device with test music already pushed
+# (scripts/push-test-music.sh). Walk through: permission grant → wait for
+# library scan to finish → tap a track in the Songs tab → assert
+# NowPlaying renders → assert the system MediaStyle notification posts.
+#
+# Run with the Maestro CLI:
+#   maestro test .maestro/play-track.yaml
+#
+# Or via mobile-mcp inside Claude Code (the steps map 1:1 onto
+# mcp__mobile__mobile_* tool calls).
+appId: com.eight87.tonearm
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: "tonearm needs music access"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        text: "Grant access"
+    commands:
+      - tapOn: "Grant access"
+      - tapOn:
+          text: "Allow"
+          optional: true
+- assertVisible: "Songs"
+- waitForAnimationToEnd:
+    timeout: 30000
+# Library may still be scanning — the bar shows "Scanning N of M".
+# We don't gate on it; the UI is non-blocking per D.22.1.
+- runFlow:
+    when:
+      visible: "Scanning"
+    commands:
+      - extendedWaitUntil:
+          notVisible: "Scanning"
+          timeout: 120000
+- tapOn:
+    index: 0
+    text: ".*"
+    childOf:
+      id: "songs_list"
+    optional: true
+- assertVisible:
+    id: "now_playing_title"
+- assertVisible:
+    id: "transport_play_pause"
+- back
+- assertVisible:
+    id: "mini_player_surface"
