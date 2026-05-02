@@ -72,6 +72,15 @@ class SettingsRepositoryTest {
   }
 
   @Test
+  fun autoDiscoverAlbumArt_defaultsOff_andRoundTrips() = runTest {
+    val before = repo.snapshot.first()
+    assertEquals(false, before.autoDiscoverAlbumArt)
+    repo.setAutoDiscoverAlbumArt(true)
+    val after = repo.snapshot.first()
+    assertEquals(true, after.autoDiscoverAlbumArt)
+  }
+
+  @Test
   fun libraryTabsParser_handlesUnknownToken() {
     val parsed = SettingsRepository.parseLibraryTabs("Albums,Garbage,Songs")
     assertEquals(LibraryTab.Albums, parsed[0])

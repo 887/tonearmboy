@@ -92,6 +92,7 @@ data class SettingsSnapshot(
   val headsetAutoplay: Boolean,
   val rewindBeforeSkipBack: Boolean,
   val rememberPause: Boolean,
+  val autoDiscoverAlbumArt: Boolean,
 ) {
   companion object {
     val Default: SettingsSnapshot = SettingsSnapshot(
@@ -106,6 +107,7 @@ data class SettingsSnapshot(
       headsetAutoplay = false,
       rewindBeforeSkipBack = true,
       rememberPause = false,
+      autoDiscoverAlbumArt = false,
     )
   }
 }
@@ -171,6 +173,10 @@ class SettingsRepository(private val context: Context) {
     store.edit { it[KEY_REMEMBER_PAUSE] = value }
   }
 
+  suspend fun setAutoDiscoverAlbumArt(value: Boolean) {
+    store.edit { it[KEY_AUTO_DISCOVER_ALBUM_ART] = value }
+  }
+
   // --- per-tab sort ---------------------------------------------------------
 
   fun tabSort(tab: LibraryTab): Flow<TabSort> = store.data.map { prefs ->
@@ -201,6 +207,7 @@ class SettingsRepository(private val context: Context) {
     headsetAutoplay = this[KEY_HEADSET_AUTOPLAY] ?: SettingsSnapshot.Default.headsetAutoplay,
     rewindBeforeSkipBack = this[KEY_REWIND_BEFORE_SKIP] ?: SettingsSnapshot.Default.rewindBeforeSkipBack,
     rememberPause = this[KEY_REMEMBER_PAUSE] ?: SettingsSnapshot.Default.rememberPause,
+    autoDiscoverAlbumArt = this[KEY_AUTO_DISCOVER_ALBUM_ART] ?: SettingsSnapshot.Default.autoDiscoverAlbumArt,
   )
 
   companion object {
@@ -214,6 +221,7 @@ class SettingsRepository(private val context: Context) {
     internal val KEY_HEADSET_AUTOPLAY = booleanPreferencesKey("headset_autoplay")
     internal val KEY_REWIND_BEFORE_SKIP = booleanPreferencesKey("rewind_before_skip")
     internal val KEY_REMEMBER_PAUSE = booleanPreferencesKey("remember_pause")
+    internal val KEY_AUTO_DISCOVER_ALBUM_ART = booleanPreferencesKey("auto_discover_album_art")
 
     internal fun sortKeyFor(tab: LibraryTab) = stringPreferencesKey("sort_key_${tab.name}")
     internal fun sortDirFor(tab: LibraryTab) = stringPreferencesKey("sort_dir_${tab.name}")

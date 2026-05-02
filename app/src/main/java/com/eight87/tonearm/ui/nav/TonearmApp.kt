@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -45,6 +47,9 @@ fun TonearmApp(graph: AppGraph) {
   val playbackState by playback.state.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
 
+  // Single shared title cell driven by per-screen LaunchedEffects.
+  val sectionTitle = remember { mutableStateOf("tonearm") }
+
   // Keep the MediaController bound for the lifetime of the activity.
   // The full-screen NowPlaying re-uses this same connection.
   LaunchedEffect(Unit) { playback.connect() }
@@ -69,6 +74,7 @@ fun TonearmApp(graph: AppGraph) {
     }
   }
 
+  CompositionLocalProvider(LocalSectionTitle provides sectionTitle) {
   Scaffold(
     bottomBar = {
       if (showMiniPlayer) {
@@ -104,6 +110,7 @@ fun TonearmApp(graph: AppGraph) {
           )
         }
         entry<Search> {
+          LaunchedEffect(Unit) { sectionTitle.value = "Search" }
           SearchScreen(
             repository = graph.libraryRepository,
             onTrackClick = { track ->
@@ -114,6 +121,7 @@ fun TonearmApp(graph: AppGraph) {
           )
         }
         entry<NowPlaying> {
+          LaunchedEffect(Unit) { sectionTitle.value = "Now Playing" }
           NowPlayingScreen(
             playback = playback,
             onBack = { backStack.pop() },
@@ -131,6 +139,7 @@ fun TonearmApp(graph: AppGraph) {
           )
         }
         entry<SettingsRootDest> {
+          LaunchedEffect(Unit) { sectionTitle.value = "Settings" }
           SettingsScreen(
             onBack = { backStack.pop() },
             onLookAndFeel = { backStack.push(SettingsLookAndFeel) },
@@ -144,6 +153,7 @@ fun TonearmApp(graph: AppGraph) {
           )
         }
         entry<SettingsLookAndFeel> {
+          LaunchedEffect(Unit) { sectionTitle.value = "Look and Feel" }
           SettingsLookAndFeelScreen(
             repository = graph.settingsRepository,
             onBack = { backStack.pop() },
@@ -152,6 +162,7 @@ fun TonearmApp(graph: AppGraph) {
           )
         }
         entry<SettingsPersonalize> {
+          LaunchedEffect(Unit) { sectionTitle.value = "Personalize" }
           SettingsPersonalizeScreen(
             repository = graph.settingsRepository,
             onBack = { backStack.pop() },
@@ -160,6 +171,7 @@ fun TonearmApp(graph: AppGraph) {
           )
         }
         entry<SettingsContent> {
+          LaunchedEffect(Unit) { sectionTitle.value = "Content" }
           SettingsContentScreen(
             repository = graph.settingsRepository,
             onBack = { backStack.pop() },
@@ -168,6 +180,7 @@ fun TonearmApp(graph: AppGraph) {
           )
         }
         entry<SettingsAudio> {
+          LaunchedEffect(Unit) { sectionTitle.value = "Audio" }
           SettingsAudioScreen(
             repository = graph.settingsRepository,
             onBack = { backStack.pop() },
@@ -177,5 +190,6 @@ fun TonearmApp(graph: AppGraph) {
         }
       },
     )
+  }
   }
 }

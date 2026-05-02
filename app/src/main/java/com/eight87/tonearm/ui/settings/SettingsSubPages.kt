@@ -379,6 +379,24 @@ fun SettingsContentScreen(
         onCheckedChange = { scope.launch { repository.setForceSquareCovers(it) } },
       )
     }
+    item {
+      // D.8e: persists the user's intent for the Phase H.7 fetch flow.
+      // Toggling it on (or tapping the row) shows an informational
+      // snackbar — the actual cover-art fetch lands in Phase H.
+      SettingsToggleRow(
+        title = "Auto-discover missing album art",
+        subtitle = "Fetch covers from MusicBrainz Cover Art Archive for albums missing local art (Phase H).",
+        checked = snapshot.autoDiscoverAlbumArt,
+        onCheckedChange = { value ->
+          scope.launch { repository.setAutoDiscoverAlbumArt(value) }
+          scope.launch {
+            snackbarHostState.showSnackbar(
+              "Coming in v1.1 — for now, manual cover-art import only.",
+            )
+          }
+        },
+      )
+    }
   }
 }
 

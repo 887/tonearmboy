@@ -38,15 +38,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.eight87.tonearm.ui.nav.LocalSectionTitle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -116,88 +116,98 @@ fun LibraryScreen(
   var showSortSheet by remember { mutableStateOf(false) }
   var showOverflow by remember { mutableStateOf(false) }
 
+  // Drive the dynamic top-bar title for the active tab.
+  val sectionTitle = LocalSectionTitle.current
+  LaunchedEffect(activeTab) {
+    sectionTitle.value = "Library ${tabLabel(activeTab)}"
+  }
+
   Scaffold(
     topBar = {
-      Column {
-        TopAppBar(
-          title = { Text("tonearm", modifier = Modifier.semantics { testTag = "library_title" }) },
-          actions = {
-            IconButton(onClick = onOpenSearch, modifier = Modifier.semantics { testTag = "topbar_search" }) {
-              Icon(Icons.Filled.Search, contentDescription = "Search")
-            }
-            IconButton(
-              onClick = { showSortSheet = true },
-              modifier = Modifier.semantics { testTag = "topbar_sort" },
-            ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort") }
-            Box {
-              IconButton(
-                onClick = { showOverflow = true },
-                modifier = Modifier.semantics { testTag = "topbar_overflow" },
-              ) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
-              DropdownMenu(expanded = showOverflow, onDismissRequest = { showOverflow = false }) {
-                DropdownMenuItem(
-                  text = { Text("Settings") },
-                  leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                  onClick = { showOverflow = false; onOpenSettings() },
-                  modifier = Modifier.semantics { testTag = "menu_settings" },
-                )
-                DropdownMenuItem(
-                  text = { Text("Refresh music") },
-                  onClick = { showOverflow = false; onRefreshMusic() },
-                  modifier = Modifier.semantics { testTag = "menu_refresh" },
-                )
-                DropdownMenuItem(
-                  text = { Text("Rescan music") },
-                  onClick = { showOverflow = false; onRescanMusic() },
-                  modifier = Modifier.semantics { testTag = "menu_rescan" },
-                )
-              }
-            }
-          },
-        )
-        PrimaryTabRow(selectedTabIndex = selectedIndex) {
-          visibleTabs.forEachIndexed { i, tab ->
-            Tab(
-              selected = selectedIndex == i,
-              onClick = { selectedIndex = i },
-              text = { Text(tabLabel(tab)) },
-              modifier = Modifier.semantics { testTag = "library_tab_${tab.name}" },
-            )
+      TopAppBar(
+        title = {
+          Text(
+            text = sectionTitle.value,
+            modifier = Modifier.semantics { testTag = "library_title" },
+          )
+        },
+        actions = {
+          IconButton(onClick = onOpenSearch, modifier = Modifier.semantics { testTag = "topbar_search" }) {
+            Icon(Icons.Filled.Search, contentDescription = "Search")
           }
-        }
-      }
+          IconButton(
+            onClick = { showSortSheet = true },
+            modifier = Modifier.semantics { testTag = "topbar_sort" },
+          ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort") }
+          Box {
+            IconButton(
+              onClick = { showOverflow = true },
+              modifier = Modifier.semantics { testTag = "topbar_overflow" },
+            ) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
+            DropdownMenu(expanded = showOverflow, onDismissRequest = { showOverflow = false }) {
+              DropdownMenuItem(
+                text = { Text("Settings") },
+                leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                onClick = { showOverflow = false; onOpenSettings() },
+                modifier = Modifier.semantics { testTag = "menu_settings" },
+              )
+              DropdownMenuItem(
+                text = { Text("Refresh music") },
+                onClick = { showOverflow = false; onRefreshMusic() },
+                modifier = Modifier.semantics { testTag = "menu_refresh" },
+              )
+              DropdownMenuItem(
+                text = { Text("Rescan music") },
+                onClick = { showOverflow = false; onRescanMusic() },
+                modifier = Modifier.semantics { testTag = "menu_rescan" },
+              )
+            }
+          }
+        },
+      )
     },
     snackbarHost = { SnackbarHost(snackbarHostState) },
   ) { innerPadding ->
-    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-      when (activeTab) {
-        LibraryTab.Songs -> TracksListScreen(
-          repository = repository,
-          sort = activeSort,
-          intelligentSorting = snapshot.intelligentSorting,
-          onTrackClick = onTrackClick,
-          onComingSoon = onComingSoon,
-        )
-        LibraryTab.Albums -> AlbumsGridScreen(
-          repository = repository,
-          sort = activeSort,
-          intelligentSorting = snapshot.intelligentSorting,
-          forceSquare = snapshot.forceSquareCovers,
-          contentPadding = PaddingValues(8.dp),
-        )
-        LibraryTab.Artists -> ArtistsListScreen(
-          repository = repository,
-          sort = activeSort,
-          intelligentSorting = snapshot.intelligentSorting,
-        )
-        LibraryTab.Genres -> GenresListScreen(
-          repository = repository,
-          sort = activeSort,
-        )
-        LibraryTab.Playlists -> PlaylistsListScreen(
-          repository = repository,
-          onPlaylistClick = onPlaylistClick,
-        )
+    // Vertical-rail layout: rail on the left, content on the right.
+    // The rail extends the full content height (Scaffold-padded so we
+    // sit under the top app bar and over the mini-player).
+    Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+      LibraryRail(
+        tabs = visibleTabs,
+        selectedIndex = selectedIndex,
+        onSelect = { selectedIndex = it },
+        onOpenSettings = onOpenSettings,
+      )
+      Box(modifier = Modifier.fillMaxSize()) {
+        when (activeTab) {
+          LibraryTab.Songs -> TracksListScreen(
+            repository = repository,
+            sort = activeSort,
+            intelligentSorting = snapshot.intelligentSorting,
+            onTrackClick = onTrackClick,
+            onComingSoon = onComingSoon,
+          )
+          LibraryTab.Albums -> AlbumsGridScreen(
+            repository = repository,
+            sort = activeSort,
+            intelligentSorting = snapshot.intelligentSorting,
+            forceSquare = snapshot.forceSquareCovers,
+            contentPadding = PaddingValues(8.dp),
+          )
+          LibraryTab.Artists -> ArtistsListScreen(
+            repository = repository,
+            sort = activeSort,
+            intelligentSorting = snapshot.intelligentSorting,
+          )
+          LibraryTab.Genres -> GenresListScreen(
+            repository = repository,
+            sort = activeSort,
+          )
+          LibraryTab.Playlists -> PlaylistsListScreen(
+            repository = repository,
+            onPlaylistClick = onPlaylistClick,
+          )
+        }
       }
     }
   }
