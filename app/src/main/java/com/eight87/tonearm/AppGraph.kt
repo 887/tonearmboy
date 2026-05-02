@@ -25,6 +25,15 @@ class AppGraph(private val applicationContext: Context) {
 
   val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+  /**
+   * Phase F — UI surfaces that build a [com.eight87.tonearm.data.delete.TrackDeleter]
+   * need the long-lived application context (the only context safe to
+   * keep across launcher rebinds). Other places in the codebase still
+   * pass concrete services into constructor params; this one accessor
+   * keeps the pattern minimal.
+   */
+  val applicationContextForUi: Context get() = applicationContext
+
   val libraryRepository: LibraryRepository by lazy {
     LibraryRepository(applicationContext, externalScope = applicationScope)
   }

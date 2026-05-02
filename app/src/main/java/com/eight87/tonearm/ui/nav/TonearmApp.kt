@@ -89,6 +89,17 @@ fun TonearmApp(
     .collectAsStateWithLifecycle(initialValue = SettingsSnapshot.Default)
   val snackbarHostState = remember { SnackbarHostState() }
 
+  // Phase F — file-deletion entry. Hosting the launcher at the app
+  // root means the consent dialog can return after a screen pop.
+  val trackDeleter = remember { com.eight87.tonearm.data.delete.TrackDeleter(graph.applicationContextForUi) }
+  val onDeleteTracks = com.eight87.tonearm.ui.library.rememberDeleteFlow(
+    repository = graph.libraryRepository,
+    playback = playback,
+    snackbarHostState = snackbarHostState,
+    applicationScope = graph.applicationScope,
+    trackDeleter = trackDeleter,
+  )
+
   // Single shared title cell driven by per-screen LaunchedEffects.
   val sectionTitle = remember { mutableStateOf("tonearm") }
 
@@ -231,6 +242,7 @@ fun TonearmApp(
                 snackbarHostState.showSnackbar("Playlist deleted")
               }
             },
+            onDeleteTracks = onDeleteTracks,
           )
         }
         entry<AlbumDetail> { key ->
@@ -256,6 +268,7 @@ fun TonearmApp(
                 snackbarHostState = snackbarHostState,
                 applicationScope = graph.applicationScope,
                 onAddToPlaylist = { addingToPlaylistTrack = it },
+                onDeleteTracks = onDeleteTracks,
               )
             },
             onBack = { backStack.pop() },
@@ -283,6 +296,7 @@ fun TonearmApp(
                 snackbarHostState = snackbarHostState,
                 applicationScope = graph.applicationScope,
                 onAddToPlaylist = { addingToPlaylistTrack = it },
+                onDeleteTracks = onDeleteTracks,
               )
             },
             onAlbumClick = { album -> backStack.push(AlbumDetail(album.name, album.artist)) },
@@ -310,6 +324,7 @@ fun TonearmApp(
                 snackbarHostState = snackbarHostState,
                 applicationScope = graph.applicationScope,
                 onAddToPlaylist = { addingToPlaylistTrack = it },
+                onDeleteTracks = onDeleteTracks,
               )
             },
             onBack = { backStack.pop() },
@@ -493,6 +508,7 @@ private fun handleDetailTrackAction(
   snackbarHostState: SnackbarHostState,
   applicationScope: kotlinx.coroutines.CoroutineScope,
   onAddToPlaylist: (Track) -> Unit,
+  onDeleteTracks: (List<Track>) -> Unit,
 ) {
   when (action) {
     AlbumDetailTrackAction.Play -> playback.playTrack(track)
@@ -511,5 +527,7 @@ private fun handleDetailTrackAction(
       val name = track.albumArtist?.takeIf { it.isNotBlank() } ?: track.artist ?: return
       backStack.push(ArtistDetail(name))
     }
+    // Phase F.2 — single-track delete from album/artist/genre detail.
+    AlbumDetailTrackAction.Delete -> onDeleteTracks(listOf(track))
   }
 }

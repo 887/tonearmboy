@@ -414,17 +414,19 @@ User compared tonearm's currently-playing surfaces side-by-side with Auxio. Two 
 
 ---
 
-## Phase F — file deletion (the differentiator)
+## Phase F — file deletion (the differentiator) — shipped in commit `<TBD>`
 
 Goal: delete audio files from inside the player, with the system consent dialog and proper cache invalidation.
 
-- [ ] **F.1** Single-track delete via `MediaStore.createDeleteRequest` (Android 11+). Our `minSdk` is 26, but `createDeleteRequest` is API 30+ — implement the pre-30 fallback (DELETE intent + manual SAF prompt).
-- [ ] **F.2** Long-press track row → context menu with "Delete file…" entry → confirm dialog → system consent → deletion.
-- [ ] **F.3** Multi-select mode → bulk delete via `createDeleteRequest` (it accepts a list of URIs).
-- [ ] **F.4** Library cache invalidation: remove deleted tracks from Room in the same transaction as the deletion result. Update the now-playing queue if a deleted track was queued or playing.
-- [ ] **F.5** Error states: permission denied, file in use, file already missing — non-scary toast / snackbar.
+- [x] **F.1** Single-track delete via `MediaStore.createDeleteRequest` (Android 11+). Our `minSdk` is 26, but `createDeleteRequest` is API 30+ — implement the pre-30 fallback (DELETE intent + manual SAF prompt). — `data/delete/TrackDeleter.kt` ships the three-branch SDK split: API 30+ → `MediaStore.createDeleteRequest` returning a `PendingIntent`; API 29 → `RecoverableSecurityException` userAction intent; API 26-28 → direct `contentResolver.delete`. Result is a `DeleteRequest` sealed class (`Immediate` / `Consent` / `Failure`) so the UI doesn't have to special-case the API split.
+- [x] **F.2** Long-press track row → context menu with "Delete file…" entry → confirm dialog → system consent → deletion. — Wired via `ui/library/DeleteFlow.kt` (`rememberDeleteFlow` composable hosts the confirm `AlertDialog` + the `StartIntentSenderForResult` launcher at the app root). Single-track delete entry points: Songs tab `TrackRow` overflow, AlbumDetail / ArtistDetail / GenreDetail `DetailTrackRow` overflow.
+- [x] **F.3** Multi-select mode → bulk delete via `createDeleteRequest` (it accepts a list of URIs). — Long-press a row in `TracksListContent` enters select mode; subsequent taps toggle row selection. A contextual top bar replaces the row chrome with `Exit selection mode` X, "N selected" count, and a delete icon. `createDeleteRequest` accepts the list natively so the consent dialog appears once for the whole batch on R+; on Q the `RecoverableSecurityException` flow loops per-track.
+- [x] **F.4** Library cache invalidation: remove deleted tracks from Room in the same transaction as the deletion result. Update the now-playing queue if a deleted track was queued or playing. — `LibraryRepository.onTracksDeleted(uris)` strips the trailing id from each URI and runs `trackDao().deleteByIds(...)`. The existing `playlist_tracks` foreign-key cascade cleans the join rows. A debounced rescan request fires so albums/artists/genres rollups reconcile without blocking the UI thread. `PlaybackUiController.removeQueueItemsByMediaIds(deleted)` walks the queue end-to-front (`queueIndicesToRemove` pure helper) so removals don't shift subsequent indices; if the queue ends up empty, the controller `stop()`s.
+- [x] **F.5** Error states: permission denied, file in use, file already missing — non-scary toast / snackbar. — Snackbar copy in `DeleteFlow.kt` covers: consent denied → "Deletion cancelled."; `IntentSender.SendIntentException` on launcher → "Couldn't delete: <reason>"; `DeleteRequest.Failure` → "Couldn't delete: <reason>"; `Immediate` empty (file already gone) → caller sees no-op. Plain language, no exclamation, KYIS-aligned.
 
-**Shipped:** _(not yet)_
+**Shipped:** F.1–F.5 in a single commit; screenshots at `docs/screenshots/phase-f/120…124-f-*.png`.
+
+**Verified end-to-end on the headless AVD `medium_phone` (Android 16 / API 36):** long-press → "Delete file…" → confirm dialog → system "Allow tonearm to delete this audio file?" consent → tapping Allow removed `Brushwork.mp3` from the library list (verified via accessibility tree before/after). Multi-select mode showed "3 selected" / "Delete 3 tracks" in the contextual bar.
 
 ---
 

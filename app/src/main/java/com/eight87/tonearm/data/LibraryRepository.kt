@@ -204,6 +204,41 @@ class LibraryRepository(
   }
 
   /**
+   * Phase F.4 — invalidate the cache after the system has deleted the
+   * underlying audio files. The caller (the Compose layer that owns
+   * the consent-launcher result) hands us the list of MediaStore
+   * content URIs the user agreed to delete; we strip the trailing id
+   * from each one and run a single Room transaction that:
+   *
+   * 1. removes those rows from the `tracks` table,
+   * 2. relies on the `playlist_tracks` cascade to clean up join rows,
+   * 3. queues a debounced rescan so the rollup tables (albums /
+   *    artists / genres) reconcile against the new track set without
+   *    blocking the UI thread.
+   *
+   * Idempotent — invoking with an empty / already-dropped id list is a
+   * no-op.
+   */
+  suspend fun onTracksDeleted(uris: List<Uri>) {
+    if (uris.isEmpty()) return
+    val ids = uris.mapNotNull { it.lastPathSegment?.toLongOrNull() }
+    if (ids.isEmpty()) {
+      // Still trigger a rescan — the URIs may not have been MediaStore
+      // ids (caller passed file URIs, etc.) so the safest fallback is
+      // to let MediaStore tell us what is actually gone.
+      rescanRequests.tryEmit(Unit)
+      return
+    }
+    db.trackDao().deleteByIds(ids)
+    // Don't rebuild the rollups here synchronously — the
+    // ContentObserver's MediaStore callback fires on file removal and
+    // the debounced rescan picks them up. Emit one anyway in case the
+    // observer hasn't run yet (e.g. the user denied the consent dialog
+    // for one file in a batch but accepted others).
+    rescanRequests.tryEmit(Unit)
+  }
+
+  /**
    * D.9b.1 — look up the album-level ReplayGain dB / peak for the
    * given (album name, album artist) pair. Returns
    * `(null, null)` when the album row has no album-level tags or no

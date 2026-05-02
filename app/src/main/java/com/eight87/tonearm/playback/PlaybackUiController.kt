@@ -372,6 +372,40 @@ class PlaybackUiController(private val applicationContext: Context) {
   }
 
   /**
+   * Phase F.4 — remove every queue entry whose `mediaId` matches one of
+   * [deletedMediaIds] (the string form of [Track.id]). Used after the
+   * file-deletion flow lands so a track the user just blew away does
+   * not stay queued / advance into a now-missing source.
+   *
+   * Behaviour:
+   * - matching items are removed, lowest index first;
+   * - if the *currently playing* item is among them, Media3 will
+   *   advance to the next remaining queue entry (its built-in
+   *   behaviour after `removeMediaItem(currentIndex)`);
+   * - if the queue ends up empty, we stop the player so the user
+   *   isn't left with a dead mini-player surface.
+   *
+   * Returns the number of queue entries actually removed (used by
+   * tests).
+   */
+  fun removeQueueItemsByMediaIds(deletedMediaIds: Set<String>): Int {
+    val ctl = controller ?: return 0
+    if (deletedMediaIds.isEmpty()) return 0
+    val queueIds = (0 until ctl.mediaItemCount).map { i -> ctl.getMediaItemAt(i).mediaId }
+    val toRemove = queueIndicesToRemove(queueIds, deletedMediaIds)
+    if (toRemove.isEmpty()) return 0
+    // Indices already arrive in descending order so each removeMediaItem
+    // call doesn't shift the indices we still need to act on.
+    for (idx in toRemove) ctl.removeMediaItem(idx)
+    if (ctl.mediaItemCount == 0) {
+      ctl.stop()
+      ctl.clearMediaItems()
+    }
+    pushState()
+    return toRemove.size
+  }
+
+  /**
    * D.21.4 — toggle shuffle on the underlying [MediaController]. Mirrors
    * `CustomBarAction.ShuffleToggle` but bound to the explicit toggle
    * buttons in the queue header + NowPlaying transport row.
@@ -644,6 +678,30 @@ data class QueueSnapshot(
  */
 internal fun shouldPauseOnRepeatBoundary(reason: Int, pauseOnRepeat: Boolean): Boolean =
   pauseOnRepeat && reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
+
+/**
+ * Phase F.4 — pure helper exposing the list-walking logic for
+ * `removeQueueItemsByMediaIds`. Returns the queue indices, in
+ * descending order, that should be passed to
+ * `MediaController.removeMediaItem` (descending so the caller can
+ * remove sequentially without bookkeeping the index shift).
+ *
+ * Visible for tests so the matrix (currently-playing track removed,
+ * tail item removed, all items removed, no items match) can be locked
+ * down without spinning a real `MediaController` — that needs a live
+ * `MediaSession`, which Robolectric does not give us cheaply.
+ */
+internal fun queueIndicesToRemove(
+  queueMediaIds: List<String>,
+  deletedMediaIds: Set<String>,
+): List<Int> {
+  if (deletedMediaIds.isEmpty() || queueMediaIds.isEmpty()) return emptyList()
+  val out = ArrayList<Int>(queueMediaIds.size)
+  for (i in queueMediaIds.indices.reversed()) {
+    if (queueMediaIds[i] in deletedMediaIds) out += i
+  }
+  return out
+}
 
 /**
  * Pure helper exposing the queue-building logic for D.9a.4. Splitting

@@ -24,6 +24,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -145,6 +147,9 @@ fun LibraryScreen(
   onAddToPlaylist: (Track) -> Unit,
   onRenamePlaylist: (Long, String) -> Unit,
   onDeletePlaylist: (Long) -> Unit,
+  // Phase F.2 / F.3 — file-deletion entry. Passed list lets the same
+  // callback serve the single-track menu item and the multi-select bar.
+  onDeleteTracks: (List<Track>) -> Unit,
 ) {
   val snapshot by settingsRepository.snapshot.collectAsState(
     initial = com.eight87.tonearm.ui.settings.SettingsSnapshot.Default,
@@ -263,6 +268,7 @@ fun LibraryScreen(
             onGoToAlbum = { t -> onOpenAlbum(t.album ?: return@TracksListScreen, t.albumArtist ?: t.artist) },
             onGoToArtist = { t -> onOpenArtist((t.albumArtist?.takeIf { it.isNotBlank() } ?: t.artist) ?: return@TracksListScreen) },
             onComingSoon = onComingSoon,
+            onDeleteTracks = onDeleteTracks,
           )
           LibraryTab.Albums -> AlbumsGridScreen(
             repository = repository,
@@ -524,8 +530,46 @@ fun TracksListScreen(
   onAddToPlaylist: (Track) -> Unit = {},
   onGoToAlbum: (Track) -> Unit = {},
   onGoToArtist: (Track) -> Unit = {},
+  // Phase F.2 / F.3 — single-track delete + bulk delete from the
+  // multi-select bar. When null (e.g. the search screen), Delete
+  // routes through `onComingSoon` instead.
+  onDeleteTracks: ((List<Track>) -> Unit)? = null,
 ) {
   val tracks by repository.observeTracks().collectAsState(initial = emptyList())
+  TracksListContent(
+    tracks = tracks,
+    sort = sort,
+    intelligentSorting = intelligentSorting,
+    onTrackClick = onTrackClick,
+    onComingSoon = onComingSoon,
+    onAddToQueue = onAddToQueue,
+    onAddToPlaylist = onAddToPlaylist,
+    onGoToAlbum = onGoToAlbum,
+    onGoToArtist = onGoToArtist,
+    onDeleteTracks = onDeleteTracks,
+  )
+}
+
+/**
+ * Phase F.2 / F.3 — pure, repository-free body of [TracksListScreen].
+ * Pulled out so Compose UI tests can render against a hand-supplied
+ * track list without needing to bypass [LibraryRepository]'s on-first-
+ * subscription scanner trigger (which wipes a seeded in-memory DB).
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun TracksListContent(
+  tracks: List<Track>,
+  sort: TabSort,
+  intelligentSorting: Boolean,
+  onTrackClick: (List<Track>, Int) -> Unit,
+  onComingSoon: (String) -> Unit,
+  onAddToQueue: (Track) -> Unit = {},
+  onAddToPlaylist: (Track) -> Unit = {},
+  onGoToAlbum: (Track) -> Unit = {},
+  onGoToArtist: (Track) -> Unit = {},
+  onDeleteTracks: ((List<Track>) -> Unit)? = null,
+) {
   if (tracks.isEmpty()) {
     EmptyState("No tracks yet.")
     return
@@ -539,46 +583,82 @@ fun TracksListScreen(
   val orderedKeys = remember(grouped) { grouped.keys.toList() }
   val listState = rememberLazyListState()
   val scope = rememberCoroutineScope()
-  Row(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_list" }) {
-    // D.16.1 — tracks card. The alphabet scroller stays *outside* the
-    // card so it floats over the right margin, the way Settings'
-    // sub-page surfaces float their accent strip.
-    LazyColumn(state = listState, modifier = Modifier.weight(1f).libraryListCard()) {
-      if (orderedKeys.isNotEmpty()) {
-        orderedKeys.forEach { key ->
-          val group = grouped.getValue(key)
-          stickyHeader { SectionHeader(key) }
-          items(group, key = { it.id }) { track ->
-            val itemIndex = sorted.indexOf(track)
-            TrackRow(
-              track = track,
-              onClick = { onTrackClick(sorted, itemIndex) },
-              onAction = { action -> handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon) },
-            )
+
+  // Phase F.3 — multi-select state. Long-press enters select mode and
+  // toggles the long-pressed track's id; subsequent taps then toggle
+  // selection rather than start playback. Tapping the close icon in
+  // the contextual bar exits.
+  var selectedIds by remember { mutableStateOf(emptySet<Long>()) }
+  val inSelectionMode = selectedIds.isNotEmpty()
+
+  Column(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_screen" }) {
+    if (inSelectionMode) {
+      MultiSelectBar(
+        count = selectedIds.size,
+        onClose = { selectedIds = emptySet() },
+        onDelete = onDeleteTracks?.let { delete ->
+          {
+            val selectedTracks = sorted.filter { it.id in selectedIds }
+            selectedIds = emptySet()
+            delete(selectedTracks)
           }
-        }
-      } else {
-        items(sorted, key = { it.id }) { track ->
-          val itemIndex = sorted.indexOf(track)
-          TrackRow(
-            track = track,
-            onClick = { onTrackClick(sorted, itemIndex) },
-            onAction = { action -> handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon) },
-          )
-        }
-      }
-    }
-    if (orderedKeys.isNotEmpty()) {
-      AlphabetScroller(
-        keys = orderedKeys,
-        onLetter = { letter ->
-          val flatIndex = computeFlatIndex(orderedKeys, grouped, letter)
-          if (flatIndex >= 0) scope.launch { listState.scrollToItem(flatIndex) }
         },
       )
     }
+    Row(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_list" }) {
+      // D.16.1 — tracks card. The alphabet scroller stays *outside* the
+      // card so it floats over the right margin, the way Settings'
+      // sub-page surfaces float their accent strip.
+      LazyColumn(state = listState, modifier = Modifier.weight(1f).libraryListCard()) {
+        val rowFor: @Composable (Track) -> Unit = { track ->
+          val itemIndex = sorted.indexOf(track)
+          val selected = track.id in selectedIds
+          TrackRow(
+            track = track,
+            selected = selected,
+            inSelectionMode = inSelectionMode,
+            onClick = {
+              if (inSelectionMode) {
+                selectedIds = selectedIds.toggle(track.id)
+              } else {
+                onTrackClick(sorted, itemIndex)
+              }
+            },
+            onLongClick = { selectedIds = selectedIds + track.id },
+            onAction = { action ->
+              if (action == TrackRowAction.Delete && onDeleteTracks != null) {
+                onDeleteTracks(listOf(track))
+              } else {
+                handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon)
+              }
+            },
+          )
+        }
+        if (orderedKeys.isNotEmpty()) {
+          orderedKeys.forEach { key ->
+            val group = grouped.getValue(key)
+            stickyHeader { SectionHeader(key) }
+            items(group, key = { it.id }) { track -> rowFor(track) }
+          }
+        } else {
+          items(sorted, key = { it.id }) { track -> rowFor(track) }
+        }
+      }
+      if (orderedKeys.isNotEmpty()) {
+        AlphabetScroller(
+          keys = orderedKeys,
+          onLetter = { letter ->
+            val flatIndex = computeFlatIndex(orderedKeys, grouped, letter)
+            if (flatIndex >= 0) scope.launch { listState.scrollToItem(flatIndex) }
+          },
+        )
+      }
+    }
   }
 }
+
+private fun <T> Set<T>.toggle(value: T): Set<T> =
+  if (value in this) this - value else this + value
 
 private fun handleTrackAction(
   track: Track,
@@ -644,19 +724,28 @@ private fun AlphabetScroller(
 
 internal enum class TrackRowAction { Play, AddToQueue, AddToPlaylist, GoToAlbum, GoToArtist, Delete }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TrackRow(
   track: Track,
   onClick: () -> Unit,
   onAction: (TrackRowAction) -> Unit,
+  selected: Boolean = false,
+  inSelectionMode: Boolean = false,
+  onLongClick: () -> Unit = {},
 ) {
   var menuOpen by remember { mutableStateOf(false) }
+  val rowBackground = if (selected) MaterialTheme.colorScheme.secondaryContainer
+  else androidx.compose.ui.graphics.Color.Transparent
   Row(
     modifier = Modifier
       .fillMaxWidth()
-      .clickable(onClick = onClick)
+      .background(rowBackground)
+      .combinedClickable(onClick = onClick, onLongClick = onLongClick)
       .padding(horizontal = 16.dp, vertical = 10.dp)
-      .semantics { testTag = "track_row" },
+      .semantics {
+        testTag = if (selected) "track_row_selected" else "track_row"
+      },
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Column(modifier = Modifier.weight(1f)) {
@@ -669,7 +758,7 @@ private fun TrackRow(
         maxLines = 1,
       )
     }
-    Box {
+    if (!inSelectionMode) Box {
       IconButton(
         onClick = { menuOpen = true },
         modifier = Modifier.semantics { testTag = "track_row_overflow" },
@@ -699,7 +788,7 @@ private fun TrackRow(
         DropdownMenuItem(
           text = { Text("Delete file…") },
           onClick = { menuOpen = false; onAction(TrackRowAction.Delete) },
-          enabled = false,
+          modifier = Modifier.semantics { testTag = "track_context_delete" },
         )
       }
     }
@@ -907,6 +996,46 @@ private fun SectionHeader(letter: String) {
       .padding(horizontal = 16.dp, vertical = 6.dp),
   ) {
     Text(text = letter, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+  }
+}
+
+/**
+ * Phase F.3 — contextual top bar for multi-select on the Songs tab.
+ * Renders the selected count, a close-X to exit, and a delete icon
+ * whose enabled-state mirrors whether the host wired a delete handler.
+ */
+@Composable
+private fun MultiSelectBar(
+  count: Int,
+  onClose: () -> Unit,
+  onDelete: (() -> Unit)?,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .background(MaterialTheme.colorScheme.secondaryContainer)
+      .padding(horizontal = 8.dp, vertical = 4.dp)
+      .semantics { testTag = "multi_select_bar" },
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    IconButton(
+      onClick = onClose,
+      modifier = Modifier.semantics { testTag = "multi_select_close" },
+    ) { Icon(Icons.Filled.Close, contentDescription = "Exit selection mode") }
+    Text(
+      text = "$count selected",
+      style = MaterialTheme.typography.titleSmall,
+      modifier = Modifier
+        .weight(1f)
+        .padding(start = 4.dp)
+        .semantics { testTag = "multi_select_count" },
+    )
+    val deleteLabel = "Delete $count tracks"
+    IconButton(
+      onClick = { onDelete?.invoke() },
+      enabled = onDelete != null,
+      modifier = Modifier.semantics { testTag = "multi_select_delete" },
+    ) { Icon(Icons.Filled.Delete, contentDescription = deleteLabel) }
   }
 }
 

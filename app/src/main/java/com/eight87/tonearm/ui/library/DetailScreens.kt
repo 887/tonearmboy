@@ -361,7 +361,7 @@ fun GenreDetailScreen(
 
 // --- Track row + actions used across detail surfaces -------------------
 
-enum class AlbumDetailTrackAction { Play, AddToQueue, AddToPlaylist, GoToAlbum, GoToArtist }
+enum class AlbumDetailTrackAction { Play, AddToQueue, AddToPlaylist, GoToAlbum, GoToArtist, Delete }
 
 @Composable
 private fun DetailTrackRow(
@@ -398,6 +398,11 @@ private fun DetailTrackRow(
         DropdownMenuItem(text = { Text("Add to playlist…") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.AddToPlaylist) })
         DropdownMenuItem(text = { Text("Go to album") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.GoToAlbum) })
         DropdownMenuItem(text = { Text("Go to artist") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.GoToArtist) })
+        DropdownMenuItem(
+          text = { Text("Delete file…") },
+          onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.Delete) },
+          modifier = Modifier.semantics { testTag = "detail_track_context_delete" },
+        )
       }
     }
   }
