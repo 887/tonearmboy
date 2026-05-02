@@ -172,6 +172,7 @@ private fun colorSchemeLabel(s: ColorScheme): String = when (s) {
 @Composable
 fun SettingsPersonalizeScreen(
   repository: SettingsRepository,
+  libraryRepository: com.eight87.tonearm.data.LibraryRepository,
   onBack: () -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
@@ -227,14 +228,83 @@ fun SettingsPersonalizeScreen(
   }
 
   if (showLibraryTabs) {
-    LibraryTabsEditor(
-      current = snapshot.libraryTabs,
+    val customTabs by libraryRepository.customTabs().collectAsState(initial = emptyList())
+    val genres by libraryRepository.observeGenres().collectAsState(initial = emptyList())
+    val artists by libraryRepository.observeArtists().collectAsState(initial = emptyList())
+    val albums by libraryRepository.observeAlbums().collectAsState(initial = emptyList())
+    val tracks by libraryRepository.observeTracks().collectAsState(initial = emptyList())
+    var editorTarget by remember {
+      mutableStateOf<com.eight87.tonearm.data.db.CustomTabEntity?>(null)
+    }
+    var showEditor by remember { mutableStateOf(false) }
+    LibraryTabsDialog(
+      model = LibraryTabsDialogModel(
+        builtIns = LibraryTab.entries.toList(),
+        visibleSet = snapshot.libraryTabs.toSet(),
+        customTabs = customTabs,
+      ),
       onDismiss = { showLibraryTabs = false },
-      onConfirm = { newOrder ->
+      onSetBuiltInVisibility = { tab, visible ->
+        // Reflect visibility into snapshot.libraryTabs while keeping
+        // the saved order. Add to / remove from the persisted list.
+        val current = snapshot.libraryTabs.toMutableList()
+        if (visible) {
+          if (tab !in current) current.add(tab)
+        } else {
+          current.remove(tab)
+        }
+        scope.launch { repository.setLibraryTabs(current) }
+      },
+      onReorderBuiltIns = { newOrder ->
         scope.launch { repository.setLibraryTabs(newOrder) }
-        showLibraryTabs = false
+      },
+      onReorderCustomTabs = { orderedIds ->
+        scope.launch { libraryRepository.reorderCustomTabs(orderedIds) }
+      },
+      onAddCustomTab = {
+        editorTarget = null
+        showEditor = true
+      },
+      onEditCustomTab = { tab ->
+        editorTarget = tab
+        showEditor = true
+      },
+      onDeleteCustomTab = { tab ->
+        scope.launch { libraryRepository.deleteCustomTab(tab.id) }
       },
     )
+    if (showEditor) {
+      val universe = remember(genres, artists, albums, tracks) {
+        com.eight87.tonearm.ui.library.FilterUniverse(
+          genres = genres.map { it.name }.distinct().sorted(),
+          artists = artists.map { it.name }.distinct().sorted(),
+          albums = albums.map { it.name }.distinct().sorted(),
+          minYear = tracks.mapNotNull { it.year }.minOrNull(),
+          maxYear = tracks.mapNotNull { it.year }.maxOrNull(),
+        )
+      }
+      com.eight87.tonearm.ui.library.CustomTabEditorSheet(
+        existing = editorTarget,
+        universe = universe,
+        onDismiss = { showEditor = false },
+        onSave = { name, ct, criteria ->
+          scope.launch {
+            val entity = (editorTarget ?: com.eight87.tonearm.data.db.CustomTabEntity(
+              name = name,
+              position = 0,
+              contentType = ct,
+              criteriaJson = "",
+            )).copy(
+              name = name,
+              contentType = ct,
+              criteriaJson = com.eight87.tonearm.data.FilterCriteria.toJson(criteria),
+            )
+            libraryRepository.upsertCustomTab(entity)
+          }
+          showEditor = false
+        },
+      )
+    }
   }
   if (customBarPicker) {
     RadioPicker(
@@ -308,76 +378,9 @@ private fun describeLibraryTabs(tabs: List<LibraryTab>): String {
   return tabs.joinToString(" · ") { it.name }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LibraryTabsEditor(
-  current: List<LibraryTab>,
-  onDismiss: () -> Unit,
-  onConfirm: (List<LibraryTab>) -> Unit,
-) {
-  val initialState = remember(current) {
-    val seen = current.toMutableSet()
-    val ordered = current.toMutableList()
-    LibraryTab.entries.forEach { if (it !in seen) { ordered += it; seen += it } }
-    ordered.map { tab -> tab to (tab in current) }.toMutableList()
-  }
-  var rows by remember { mutableStateOf(initialState) }
-
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("Library tabs") },
-    text = {
-      LazyColumn(modifier = Modifier.fillMaxWidth().semantics { testTag = "library_tabs_editor" }) {
-        items(rows.size) { index ->
-          val (tab, visible) = rows[index]
-          Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Switch(
-              checked = visible,
-              onCheckedChange = { v ->
-                rows = rows.toMutableList().also { it[index] = tab to v }
-              },
-            )
-            Text(tabLabel(tab), modifier = Modifier.padding(horizontal = 12.dp).weight(1f))
-            IconButton(
-              onClick = {
-                if (index > 0) rows = rows.toMutableList().also {
-                  val tmp = it[index - 1]; it[index - 1] = it[index]; it[index] = tmp
-                }
-              },
-              enabled = index > 0,
-            ) { Icon(Icons.Filled.ArrowUpward, contentDescription = "Move up") }
-            IconButton(
-              onClick = {
-                if (index < rows.size - 1) rows = rows.toMutableList().also {
-                  val tmp = it[index + 1]; it[index + 1] = it[index]; it[index] = tmp
-                }
-              },
-              enabled = index < rows.size - 1,
-            ) { Icon(Icons.Filled.ArrowDownward, contentDescription = "Move down") }
-          }
-        }
-      }
-    },
-    confirmButton = {
-      TextButton(onClick = {
-        val visibleTabs = rows.filter { it.second }.map { it.first }
-        onConfirm(visibleTabs)
-      }) { Text("OK") }
-    },
-    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-  )
-}
-
-private fun tabLabel(tab: LibraryTab): String = when (tab) {
-  LibraryTab.Songs -> "Songs"
-  LibraryTab.Albums -> "Albums"
-  LibraryTab.Artists -> "Artists"
-  LibraryTab.Genres -> "Genres"
-  LibraryTab.Playlists -> "Playlists"
-}
+// D.18.3 — `LibraryTabsEditor` was replaced by [LibraryTabsDialog]
+// in `LibraryTabsDialog.kt`, which adds custom-tab CRUD plus
+// drag-and-drop reorder.
 
 // =============================================================================
 // Content

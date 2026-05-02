@@ -1,33 +1,93 @@
 package com.eight87.tonearm.ui.library
 
+import com.eight87.tonearm.data.FilterCriteria
+import com.eight87.tonearm.data.db.CustomTabContentType
+import com.eight87.tonearm.data.db.CustomTabEntity
+import com.eight87.tonearm.data.model.Track
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * D.11.7 Custom tab rendering — **deferred to land alongside D.8d**.
+ * D.18.6 — wires the FilterCriteria predicate into the same shape the
+ * `CustomTabContent` composable exercises in production: feed a list
+ * of tracks through the filter and assert the surviving subset.
  *
- * D.8c (Room schema for `CustomTabEntity` + `FilterCriteria` matching
- * predicates + `CustomTabDao` + `LibraryRepository` matching methods)
- * and D.8d (`CustomTabEditorSheet` + rendered custom tabs in the rail)
- * are still open in `docs/plans/main.md`. The asserted behaviours for
- * D.11.7 — filter intersection, criteria-matched track / album / artist
- * / genre lists, custom tab in the rail — depend on those entities
- * existing. Once D.8c/d ship, this file will host:
- *
- *   - `criteria_with_genres_synthwave_returns_only_synthwave_tracks`
- *   - `criteria_with_yearMin_2025_returns_only_2025_tracks`
- *   - `criteria_intersection_narrows_results`
- *   - `custom_tab_appears_in_rail_after_save`
- *
- * For now this file ships a placeholder that the JVM test harness
- * picks up — keeps the file present, the tracking visible, and the
- * test harness green.
+ * Replaces the D.11.7 placeholder that was deferred until D.8c/d
+ * (now D.18) shipped.
  */
 class CustomTabRenderingTest {
 
-  @Test
-  fun deferred_to_land_alongside_d8d() {
-    // Marker test: the D.11.7 unit assertions move in once D.8c/d land.
-    assertTrue("placeholder pending D.8c/d", true)
+  private fun track(
+    id: Long,
+    artist: String? = null,
+    album: String? = null,
+    genre: String? = null,
+    year: Int? = null,
+  ) = Track(
+    id = id,
+    title = "T$id",
+    artist = artist,
+    album = album,
+    albumArtist = null,
+    durationMs = 0,
+    trackNumber = null,
+    year = year,
+    genre = genre,
+    data = "/m/$id.mp3",
+    dateAddedSeconds = 0,
+  )
+
+  @Test fun criteria_with_genres_synthwave_returns_only_synthwave_tracks() {
+    val tracks = listOf(
+      track(1, genre = "Synthwave"),
+      track(2, genre = "Rock"),
+      track(3, genre = "synthwave"),
+    )
+    val matched = tracks.filter {
+      FilterCriteria(genres = listOf("Synthwave")).matchesTrack(it)
+    }
+    assertEquals(listOf(1L, 3L), matched.map { it.id })
+  }
+
+  @Test fun criteria_with_yearMin_2025_returns_only_2025_or_later() {
+    val tracks = listOf(
+      track(1, year = 2024),
+      track(2, year = 2025),
+      track(3, year = 2026),
+      track(4, year = null),
+    )
+    val matched = tracks.filter {
+      FilterCriteria(yearMin = 2025).matchesTrack(it)
+    }
+    assertEquals(listOf(2L, 3L), matched.map { it.id })
+  }
+
+  @Test fun criteria_intersection_narrows_results() {
+    val tracks = listOf(
+      track(1, genre = "Synthwave", year = 2025),
+      track(2, genre = "Synthwave", year = 2010),
+      track(3, genre = "Rock", year = 2025),
+    )
+    val matched = tracks.filter {
+      FilterCriteria(genres = listOf("Synthwave"), yearMin = 2025).matchesTrack(it)
+    }
+    assertEquals(listOf(1L), matched.map { it.id })
+  }
+
+  @Test fun custom_tab_entity_round_trips_through_json_storage() {
+    val tab = CustomTabEntity(
+      id = 0,
+      name = "Synthwave 2025",
+      position = 0,
+      contentType = CustomTabContentType.SONGS,
+      criteriaJson = FilterCriteria.toJson(
+        FilterCriteria(genres = listOf("Synthwave"), yearMin = 2025),
+      ),
+    )
+    val recovered = FilterCriteria.fromJson(tab.criteriaJson)
+    assertEquals(listOf("Synthwave"), recovered.genres)
+    assertEquals(2025, recovered.yearMin)
+    assertTrue(recovered.matchesTrack(track(1, genre = "Synthwave", year = 2025)))
   }
 }

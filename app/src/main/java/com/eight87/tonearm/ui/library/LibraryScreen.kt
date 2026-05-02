@@ -155,9 +155,18 @@ fun LibraryScreen(
   val visibleTabs = remember(snapshot.libraryTabs) {
     snapshot.libraryTabs.ifEmpty { LibraryTab.DefaultOrder }
   }
+  // D.18.5 — custom tabs are rendered after the built-ins in the rail.
+  val customTabs by repository.customTabs().collectAsState(initial = emptyList())
+  val totalRailCount = visibleTabs.size + customTabs.size
   var selectedIndex by rememberSaveable { mutableStateOf(0) }
-  if (selectedIndex >= visibleTabs.size) selectedIndex = 0
-  val activeTab = visibleTabs[selectedIndex]
+  if (totalRailCount == 0) {
+    selectedIndex = 0
+  } else if (selectedIndex >= totalRailCount) {
+    selectedIndex = 0
+  }
+  val isCustomSelected = selectedIndex >= visibleTabs.size
+  val activeTab = if (!isCustomSelected && visibleTabs.isNotEmpty()) visibleTabs[selectedIndex] else LibraryTab.Songs
+  val activeCustomTab = if (isCustomSelected) customTabs.getOrNull(selectedIndex - visibleTabs.size) else null
 
   val activeSort by settingsRepository.tabSort(activeTab).collectAsState(initial = TabSort.Default)
   val scope = rememberCoroutineScope()
@@ -166,8 +175,12 @@ fun LibraryScreen(
 
   // Drive the dynamic top-bar title for the active tab.
   val sectionTitle = LocalSectionTitle.current
-  LaunchedEffect(activeTab) {
-    sectionTitle.value = "Library ${tabLabel(activeTab)}"
+  LaunchedEffect(activeTab, activeCustomTab) {
+    sectionTitle.value = if (activeCustomTab != null) {
+      "Library ${activeCustomTab.name}"
+    } else {
+      "Library ${tabLabel(activeTab)}"
+    }
   }
 
   Scaffold(
@@ -218,9 +231,24 @@ fun LibraryScreen(
         // identified the gear-on-the-rail as "tab settings", so this
         // matches accepted intent.
         onOpenSettings = onOpenLibraryTabsConfig,
+        customTabs = customTabs,
       )
       Box(modifier = Modifier.fillMaxSize()) {
-        when (activeTab) {
+        if (activeCustomTab != null) {
+          CustomTabContent(
+            customTab = activeCustomTab,
+            repository = repository,
+            sort = activeSort,
+            snapshot = snapshot,
+            onTrackClick = onTrackClick,
+            onAddToQueue = onAddToQueue,
+            onAddToPlaylist = onAddToPlaylist,
+            onOpenAlbum = onOpenAlbum,
+            onOpenArtist = onOpenArtist,
+            onOpenGenre = onOpenGenre,
+            onComingSoon = onComingSoon,
+          )
+        } else when (activeTab) {
           LibraryTab.Songs -> TracksListScreen(
             repository = repository,
             sort = activeSort,

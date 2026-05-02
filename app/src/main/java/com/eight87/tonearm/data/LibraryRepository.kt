@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import android.util.Log
 import com.eight87.tonearm.data.Mapping.toDomain
 import com.eight87.tonearm.data.Mapping.toEntity
+import com.eight87.tonearm.data.db.CustomTabEntity
 import com.eight87.tonearm.data.db.LibraryDatabase
 import com.eight87.tonearm.data.db.PlaylistEntity
 import com.eight87.tonearm.data.db.SearchExpressions
@@ -207,6 +208,89 @@ class LibraryRepository(
   suspend fun trackCountForAlbum(albumName: String?, albumArtist: String?): Int {
     if (albumName.isNullOrBlank()) return 0
     return db.trackDao().countForAlbum(albumName, albumArtist)
+  }
+
+  // -- Custom tabs (D.18) -----------------------------------------------------
+
+  /** Live, position-ordered list of user-defined library tabs. */
+  fun customTabs(): Flow<List<CustomTabEntity>> = db.customTabDao().observeAll()
+
+  /**
+   * D.18.1 — tracks that match [criteria]. Filtering happens in
+   * Kotlin against the live track Flow, on the IO dispatcher (matching
+   * is cheap; the Flow is already cold-mapped on `Dispatchers.IO`
+   * inside the DAO). For empty criteria this is the all-tracks Flow.
+   */
+  fun tracksMatching(criteria: FilterCriteria): Flow<List<Track>> {
+    val all = observeTracks()
+    if (criteria.isEmpty()) return all
+    return all.map { list -> list.filter { criteria.matchesTrack(it) } }
+  }
+
+  fun albumsMatching(criteria: FilterCriteria): Flow<List<Album>> {
+    if (criteria.isEmpty()) return observeAlbums()
+    val tracks = observeTracks()
+    val albums = observeAlbums()
+    return combine(tracks, albums) { tracksList, albumsList ->
+      // Group tracks by album-key (name + artist). Match each album row
+      // against the predicate via its tracks.
+      val grouped = tracksList.groupBy { (it.album ?: "") to ((it.albumArtist ?: it.artist) ?: "") }
+      albumsList.filter { album ->
+        val key = (album.name) to (album.artist ?: "")
+        val tracksOfAlbum = grouped[key].orEmpty()
+        criteria.matchesAlbum(album, tracksOfAlbum)
+      }
+    }
+  }
+
+  fun artistsMatching(criteria: FilterCriteria): Flow<List<Artist>> {
+    if (criteria.isEmpty()) return observeArtists()
+    val tracks = observeTracks()
+    val artists = observeArtists()
+    return combine(tracks, artists) { tracksList, artistsList ->
+      artistsList.filter { artist ->
+        val tracksOfArtist = tracksList.filter {
+          val a = it.albumArtist?.takeIf { v -> v.isNotBlank() } ?: it.artist
+          a.equals(artist.name, ignoreCase = true)
+        }
+        criteria.matchesArtist(artist, tracksOfArtist)
+      }
+    }
+  }
+
+  fun genresMatching(criteria: FilterCriteria): Flow<List<Genre>> {
+    if (criteria.isEmpty()) return observeGenres()
+    val tracks = observeTracks()
+    val genres = observeGenres()
+    return combine(tracks, genres) { tracksList, genresList ->
+      genresList.filter { genre ->
+        val tracksOfGenre = tracksList.filter { it.genre.equals(genre.name, ignoreCase = true) }
+        criteria.matchesGenre(genre, tracksOfGenre)
+      }
+    }
+  }
+
+  /**
+   * Insert or update [tab]. If the tab is new (id == 0), the position
+   * defaults to the end of the list when [tab.position] is 0 and a
+   * row already exists at that position — preserves "newest goes
+   * last" without forcing the caller to query maxPosition first.
+   */
+  suspend fun upsertCustomTab(tab: CustomTabEntity): Long {
+    val dao = db.customTabDao()
+    val resolved = if (tab.id == 0L && tab.position == 0) {
+      val next = (dao.maxPosition() ?: -1) + 1
+      tab.copy(position = next)
+    } else tab
+    return dao.upsert(resolved)
+  }
+
+  suspend fun deleteCustomTab(id: Long) {
+    db.customTabDao().delete(id)
+  }
+
+  suspend fun reorderCustomTabs(orderedIds: List<Long>) {
+    db.customTabDao().reorder(orderedIds)
   }
 
   // -- Playlist CRUD ---------------------------------------------------------

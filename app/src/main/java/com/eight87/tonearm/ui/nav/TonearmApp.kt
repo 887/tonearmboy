@@ -377,6 +377,7 @@ fun TonearmApp(graph: AppGraph) {
           LaunchedEffect(Unit) { sectionTitle.value = "Personalize" }
           SettingsPersonalizeScreen(
             repository = graph.settingsRepository,
+            libraryRepository = graph.libraryRepository,
             onBack = { backStack.pop() },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,

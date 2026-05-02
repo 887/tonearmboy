@@ -16,8 +16,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     GenreEntity::class,
     PlaylistEntity::class,
     PlaylistTrackEntity::class,
+    CustomTabEntity::class,
   ],
-  version = 2,
+  version = 3,
   exportSchema = true,
 )
 abstract class LibraryDatabase : RoomDatabase() {
@@ -27,6 +28,7 @@ abstract class LibraryDatabase : RoomDatabase() {
   abstract fun genreDao(): GenreDao
   abstract fun playlistDao(): PlaylistDao
   abstract fun libraryDao(): LibraryDao
+  abstract fun customTabDao(): CustomTabDao
 
   companion object {
     private const val DB_NAME = "tonearm-library.db"
@@ -55,6 +57,26 @@ abstract class LibraryDatabase : RoomDatabase() {
       }
     }
 
+    /**
+     * v2 -> v3: add the `custom_tabs` table introduced in Phase D.18.1.
+     *
+     * Empty by default — the user creates tabs explicitly through the
+     * Library tabs dialog. No data migration needed since no prior
+     * version stored equivalent state.
+     */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+          "CREATE TABLE IF NOT EXISTS `custom_tabs` (" +
+            "`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+            "`name` TEXT NOT NULL, " +
+            "`position` INTEGER NOT NULL, " +
+            "`contentType` TEXT NOT NULL, " +
+            "`criteriaJson` TEXT NOT NULL)"
+        )
+      }
+    }
+
     @Volatile private var instance: LibraryDatabase? = null
 
     /**
@@ -75,7 +97,7 @@ abstract class LibraryDatabase : RoomDatabase() {
         )
           // No fallbackToDestructiveMigration: schema is exported, so
           // we'll write proper migrations as the schema evolves.
-          .addMigrations(MIGRATION_1_2)
+          .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
           .build()
         instance = created
         return created

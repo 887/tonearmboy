@@ -29,7 +29,27 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearm.data.db.CustomTabEntity
 import com.eight87.tonearm.ui.settings.LibraryTab
+
+/**
+ * D.18.5 — sealed wrapper covering both built-in and user-defined tabs
+ * so the rail and the content host can switch on a single sum type.
+ */
+sealed class RailItem {
+  abstract val key: String
+  abstract val label: String
+
+  data class BuiltIn(val tab: LibraryTab) : RailItem() {
+    override val key: String get() = "builtin_${tab.name}"
+    override val label: String get() = tab.name
+  }
+
+  data class Custom(val tab: CustomTabEntity) : RailItem() {
+    override val key: String get() = "custom_${tab.id}"
+    override val label: String get() = tab.name
+  }
+}
 
 /**
  * Vertical tab rail used as the library's primary navigation chrome.
@@ -55,6 +75,7 @@ fun LibraryRail(
   onSelect: (Int) -> Unit,
   onOpenSettings: () -> Unit,
   modifier: Modifier = Modifier,
+  customTabs: List<CustomTabEntity> = emptyList(),
 ) {
   val railWidth = 52.dp
 
@@ -76,6 +97,18 @@ fun LibraryRail(
           tabName = tab.name,
           selected = index == selectedIndex,
           onClick = { onSelect(index) },
+        )
+      }
+      // D.18.5 — render any user-defined custom tabs after the
+      // built-ins. Selection indices `tabs.size + i` route to the
+      // i-th custom tab; the content host knows the same shape.
+      customTabs.forEachIndexed { i, custom ->
+        val railIndex = tabs.size + i
+        RailTabItem(
+          label = custom.name,
+          tabName = "custom_${custom.id}",
+          selected = railIndex == selectedIndex,
+          onClick = { onSelect(railIndex) },
         )
       }
       Spacer(Modifier.weight(1f))
