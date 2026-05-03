@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearm.data.FilterCondition
 import com.eight87.tonearm.data.FilterCriteria
 import com.eight87.tonearm.data.model.Track
 import java.text.SimpleDateFormat
@@ -77,11 +78,21 @@ fun LibraryFilterSheet(
   val yearLowF = yearLow.toFloat()
   val yearHighF = (if (yearHigh > yearLow) yearHigh else yearLow + 1).toFloat()
 
-  var nameDraft by remember(current) { mutableStateOf(current.nameSubstring.orEmpty()) }
-  var yearLowDraft by remember(current) { mutableStateOf((current.yearMin ?: yearLow).toFloat()) }
-  var yearHighDraft by remember(current) { mutableStateOf((current.yearMax ?: yearHigh).toFloat()) }
-  var dateAfterDraft by remember(current) { mutableStateOf(current.dateAddedAfter) }
-  var dateBeforeDraft by remember(current) { mutableStateOf(current.dateAddedBefore) }
+  // D.30 — pull legacy field values back out of the conditions list so
+  // the sheet can keep its single-form shape (it's not the composable
+  // condition builder; that lives on the custom-tab editor).
+  val initialName = (current.conditions.firstOrNull { it is FilterCondition.TitleContains }
+    as? FilterCondition.TitleContains)?.needle.orEmpty()
+  val initialYear = current.conditions.firstOrNull { it is FilterCondition.YearBetween }
+    as? FilterCondition.YearBetween
+  val initialDate = current.conditions.firstOrNull { it is FilterCondition.DateAddedBetween }
+    as? FilterCondition.DateAddedBetween
+
+  var nameDraft by remember(current) { mutableStateOf(initialName) }
+  var yearLowDraft by remember(current) { mutableStateOf((initialYear?.min ?: yearLow).toFloat()) }
+  var yearHighDraft by remember(current) { mutableStateOf((initialYear?.max ?: yearHigh).toFloat()) }
+  var dateAfterDraft by remember(current) { mutableStateOf(initialDate?.afterEpochSeconds) }
+  var dateBeforeDraft by remember(current) { mutableStateOf(initialDate?.beforeEpochSeconds) }
 
   var showDateAfterPicker by remember { mutableStateOf(false) }
   var showDateBeforePicker by remember { mutableStateOf(false) }
@@ -175,7 +186,7 @@ fun LibraryFilterSheet(
             // pinned to the extremes we omit the year predicate so the
             // user isn't accidentally filtering at-rest. Same logic for
             // the date pickers (null = unconstrained).
-            val criteria = FilterCriteria(
+            val criteria = FilterCriteria.of(
               nameSubstring = nameDraft.trim().ifBlank { null },
               yearMin = if (yearLowDraft.toInt() <= yearLow) null else yearLowDraft.toInt(),
               yearMax = if (yearHighDraft.toInt() >= yearHigh) null else yearHighDraft.toInt(),

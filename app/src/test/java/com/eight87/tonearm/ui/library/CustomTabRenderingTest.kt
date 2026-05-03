@@ -1,5 +1,6 @@
 package com.eight87.tonearm.ui.library
 
+import com.eight87.tonearm.data.FilterCondition
 import com.eight87.tonearm.data.FilterCriteria
 import com.eight87.tonearm.data.db.CustomTabContentType
 import com.eight87.tonearm.data.db.CustomTabEntity
@@ -45,7 +46,7 @@ class CustomTabRenderingTest {
       track(3, genre = "synthwave"),
     )
     val matched = tracks.filter {
-      FilterCriteria(genres = listOf("Synthwave")).matchesTrack(it)
+      FilterCriteria.of(genres = listOf("Synthwave")).matchesTrack(it)
     }
     assertEquals(listOf(1L, 3L), matched.map { it.id })
   }
@@ -58,7 +59,7 @@ class CustomTabRenderingTest {
       track(4, year = null),
     )
     val matched = tracks.filter {
-      FilterCriteria(yearMin = 2025).matchesTrack(it)
+      FilterCriteria.of(yearMin = 2025).matchesTrack(it)
     }
     assertEquals(listOf(2L, 3L), matched.map { it.id })
   }
@@ -70,7 +71,7 @@ class CustomTabRenderingTest {
       track(3, genre = "Rock", year = 2025),
     )
     val matched = tracks.filter {
-      FilterCriteria(genres = listOf("Synthwave"), yearMin = 2025).matchesTrack(it)
+      FilterCriteria.of(genres = listOf("Synthwave"), yearMin = 2025).matchesTrack(it)
     }
     assertEquals(listOf(1L), matched.map { it.id })
   }
@@ -82,12 +83,14 @@ class CustomTabRenderingTest {
       position = 0,
       contentType = CustomTabContentType.SONGS,
       criteriaJson = FilterCriteria.toJson(
-        FilterCriteria(genres = listOf("Synthwave"), yearMin = 2025),
+        FilterCriteria.of(genres = listOf("Synthwave"), yearMin = 2025),
       ),
     )
     val recovered = FilterCriteria.fromJson(tab.criteriaJson)
-    assertEquals(listOf("Synthwave"), recovered.genres)
-    assertEquals(2025, recovered.yearMin)
+    val genreCond = recovered.conditions.firstOrNull { it is FilterCondition.GenreIn } as? FilterCondition.GenreIn
+    val yearCond = recovered.conditions.firstOrNull { it is FilterCondition.YearBetween } as? FilterCondition.YearBetween
+    assertEquals(listOf("Synthwave"), genreCond?.values)
+    assertEquals(2025, yearCond?.min)
     assertTrue(recovered.matchesTrack(track(1, genre = "Synthwave", year = 2025)))
   }
 }

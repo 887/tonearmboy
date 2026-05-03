@@ -51,7 +51,7 @@ class LibraryFilterTest {
       track(3, title = "Dust Loop", year = 2018, dateAddedSeconds = 3_000_000),
       track(4, title = "Cipher Beat", year = 2018, dateAddedSeconds = 1_500_000),
     )
-    val criteria = FilterCriteria(
+    val criteria = FilterCriteria.of(
       nameSubstring = "cipher",
       yearMin = 2018,
       yearMax = 2018,
@@ -72,28 +72,28 @@ class LibraryFilterTest {
     val byAlbumArtist = track(4, title = "X", albumArtist = "The Beatles")
     val miss = track(5, title = "Stones Roll")
 
-    val criteria = FilterCriteria(nameSubstring = needle)
+    val criteria = FilterCriteria.of(nameSubstring = needle)
     val library = listOf(byTitle, byArtist, byAlbum, byAlbumArtist, miss)
     val matched = library.filter { criteria.matchesTrack(it) }
     assertEquals(setOf(1L, 2L, 3L, 4L), matched.map { it.id }.toSet())
   }
 
   @Test fun nameSubstring_is_case_insensitive() {
-    val criteria = FilterCriteria(nameSubstring = "BEATLES")
+    val criteria = FilterCriteria.of(nameSubstring = "BEATLES")
     assertTrue(criteria.matchesTrack(track(1, artist = "the beatles")))
   }
 
   // --- dateAddedBefore semantics --------------------------------------------
 
   @Test fun dateAddedBefore_is_inclusive_upper_bound() {
-    val criteria = FilterCriteria(dateAddedBefore = 1000L)
+    val criteria = FilterCriteria.of(dateAddedBefore = 1000L)
     assertTrue(criteria.matchesTrack(track(1, dateAddedSeconds = 1000L)))
     assertTrue(criteria.matchesTrack(track(1, dateAddedSeconds = 999L)))
     assertFalse(criteria.matchesTrack(track(1, dateAddedSeconds = 1001L)))
   }
 
   @Test fun between_two_dates_uses_after_and_before() {
-    val criteria = FilterCriteria(dateAddedAfter = 100L, dateAddedBefore = 200L)
+    val criteria = FilterCriteria.of(dateAddedAfter = 100L, dateAddedBefore = 200L)
     assertFalse(criteria.matchesTrack(track(1, dateAddedSeconds = 99L)))
     assertTrue(criteria.matchesTrack(track(1, dateAddedSeconds = 100L)))
     assertTrue(criteria.matchesTrack(track(1, dateAddedSeconds = 150L)))
@@ -108,27 +108,27 @@ class LibraryFilterTest {
   }
 
   @Test fun isEmpty_is_false_when_nameSubstring_set() {
-    assertFalse(FilterCriteria(nameSubstring = "x").isEmpty())
+    assertFalse(FilterCriteria.of(nameSubstring = "x").isEmpty())
   }
 
   @Test fun isEmpty_is_false_when_dateAddedBefore_set() {
-    assertFalse(FilterCriteria(dateAddedBefore = 1L).isEmpty())
+    assertFalse(FilterCriteria.of(dateAddedBefore = 1L).isEmpty())
   }
 
   @Test fun isEmpty_is_false_when_year_range_set() {
-    assertFalse(FilterCriteria(yearMin = 2000).isEmpty())
-    assertFalse(FilterCriteria(yearMax = 2020).isEmpty())
+    assertFalse(FilterCriteria.of(yearMin = 2000).isEmpty())
+    assertFalse(FilterCriteria.of(yearMax = 2020).isEmpty())
   }
 
   @Test fun isEmpty_treats_blank_nameSubstring_as_unset() {
-    assertTrue(FilterCriteria(nameSubstring = "").isEmpty())
-    assertTrue(FilterCriteria(nameSubstring = "   ").isEmpty())
+    assertTrue(FilterCriteria.of(nameSubstring = "").isEmpty())
+    assertTrue(FilterCriteria.of(nameSubstring = "   ").isEmpty())
   }
 
   // --- year-range matching --------------------------------------------------
 
   @Test fun yearRange_includes_endpoints_and_excludes_outside() {
-    val criteria = FilterCriteria(yearMin = 2000, yearMax = 2010)
+    val criteria = FilterCriteria.of(yearMin = 2000, yearMax = 2010)
     assertTrue(criteria.matchesTrack(track(1, year = 2000)))
     assertTrue(criteria.matchesTrack(track(1, year = 2010)))
     assertTrue(criteria.matchesTrack(track(1, year = 2005)))
@@ -137,7 +137,7 @@ class LibraryFilterTest {
   }
 
   @Test fun yearRange_drops_tracks_with_null_year_when_min_set() {
-    val criteria = FilterCriteria(yearMin = 2000)
+    val criteria = FilterCriteria.of(yearMin = 2000)
     assertFalse(criteria.matchesTrack(track(1, year = null)))
   }
 }

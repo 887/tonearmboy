@@ -1,6 +1,8 @@
 package com.eight87.tonearm.ui.library
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,16 +10,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RangeSlider
@@ -25,9 +36,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,20 +54,27 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearm.data.FilterCondition
 import com.eight87.tonearm.data.FilterCriteria
 import com.eight87.tonearm.data.db.CustomTabContentType
 import com.eight87.tonearm.data.db.CustomTabEntity
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 /**
- * D.30.3 — full-screen editor for a custom library tab.
+ * D.30 — full-screen editor for a custom library tab.
  *
- * Replaces the pre-D.30.3 [CustomTabEditorSheet] (a `ModalBottomSheet`).
- * The same composable handles both intents: pass [existing] to edit,
- * pass null to create. State is held locally until Save fires; back
- * discards.
+ * The form is composed of three sections: a name field, a content-type
+ * segmented row (Songs / Albums / Artists / Genres), and a stack of
+ * [FilterCondition]s the user assembles via the "Add filter" button.
+ * Save composes the chosen conditions into a [FilterCriteria], drops
+ * empty conditions, and dispatches upstream. Back discards.
  *
- * Save lives in the top app bar's right slot so the form scrolls
- * unbothered. Disabled until the name is non-empty.
+ * The conditions stack is the load-bearing change vs pre-D.30: instead
+ * of a fixed seven-section accordion, the user adds the filters they
+ * actually want and edits each one in place. AND-only across stacked
+ * conditions (confirmed in the D.30 design pass).
  *
  * The library-derived option pools — known genres, artists, albums,
  * year bounds — come in via the [universe] argument so the screen
@@ -74,25 +95,8 @@ fun CustomTabEditorScreen(
   var contentType by remember(existing) {
     mutableStateOf(existing?.contentType ?: CustomTabContentType.SONGS)
   }
-  var selectedGenres by remember(existing) { mutableStateOf(initial.genres.toSet()) }
-  var selectedArtists by remember(existing) { mutableStateOf(initial.artists.toSet()) }
-  var selectedAlbums by remember(existing) { mutableStateOf(initial.albums.toSet()) }
-  val yearLowerBound = universe.minYear ?: 1900
-  val yearUpperBound = universe.maxYear ?: 2030
-  var yearMin by remember(existing) { mutableStateOf(initial.yearMin?.toFloat() ?: yearLowerBound.toFloat()) }
-  var yearMax by remember(existing) { mutableStateOf(initial.yearMax?.toFloat() ?: yearUpperBound.toFloat()) }
-  var yearActive by remember(existing) { mutableStateOf(initial.yearMin != null || initial.yearMax != null) }
-  var dateAddedSel by remember(existing) {
-    mutableStateOf(DateAddedOption.fromEpoch(initial.dateAddedAfter))
-  }
-  var hasArtSel by remember(existing) {
-    mutableStateOf(when (initial.hasAlbumArt) {
-      null -> HasArtOption.Any
-      true -> HasArtOption.Only
-      false -> HasArtOption.Without
-    })
-  }
-  var pathContains by remember(existing) { mutableStateOf(initial.pathContains.orEmpty()) }
+  var conditions by remember(existing) { mutableStateOf(initial.conditions) }
+  var showChooser by remember { mutableStateOf(false) }
 
   val canSave = name.trim().isNotEmpty()
 
@@ -111,22 +115,11 @@ fun CustomTabEditorScreen(
         actions = {
           TextButton(
             onClick = {
-              val criteria = FilterCriteria(
-                genres = selectedGenres.toList().sorted(),
-                artists = selectedArtists.toList().sorted(),
-                albums = selectedAlbums.toList().sorted(),
-                yearMin = if (yearActive) yearMin.toInt() else null,
-                yearMax = if (yearActive) yearMax.toInt() else null,
-                dateAddedAfter = dateAddedSel.toEpochOffset(),
-                hasAlbumArt = when (hasArtSel) {
-                  HasArtOption.Any -> null
-                  HasArtOption.Only -> true
-                  HasArtOption.Without -> false
-                },
-                pathContains = pathContains.takeIf { it.isNotBlank() },
-              )
+              val cleaned = conditions.filterNot { it.isEmpty() }
               val trimmed = name.trim()
-              if (trimmed.isNotEmpty()) onSave(trimmed, contentType, criteria)
+              if (trimmed.isNotEmpty()) {
+                onSave(trimmed, contentType, FilterCriteria(cleaned))
+              }
             },
             enabled = canSave,
             modifier = Modifier.semantics { testTag = "editor_save" },
@@ -171,149 +164,60 @@ fun CustomTabEditorScreen(
           }
         }
       }
-      item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+      item { HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp)) }
       item {
-        CollapsibleSection(
-          title = "Genres",
-          summary = if (selectedGenres.isEmpty()) "Any" else "${selectedGenres.size} selected",
-          testTag = "section_genres",
-        ) {
-          MultiCheckList(
-            options = universe.genres,
-            selected = selectedGenres,
-            onToggle = { v ->
-              selectedGenres = if (v in selectedGenres) selectedGenres - v else selectedGenres + v
+        Text(
+          "Filters",
+          style = MaterialTheme.typography.titleSmall,
+          modifier = Modifier.padding(bottom = 4.dp),
+        )
+      }
+      if (conditions.isEmpty()) {
+        item {
+          Text(
+            "No filters — every track matches. Tap Add filter to narrow it.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(vertical = 8.dp),
+          )
+        }
+      } else {
+        itemsIndexed(conditions, key = { i, _ -> i }) { i, cond ->
+          FilterConditionRow(
+            condition = cond,
+            universe = universe,
+            onChange = { updated ->
+              conditions = conditions.toMutableList().also { it[i] = updated }
             },
-            tagPrefix = "genre",
-            initialVisible = Int.MAX_VALUE,
-          )
-        }
-      }
-      item {
-        CollapsibleSection(
-          title = "Artists",
-          summary = if (selectedArtists.isEmpty()) "Any" else "${selectedArtists.size} selected",
-          testTag = "section_artists",
-        ) {
-          MultiCheckList(
-            options = universe.artists,
-            selected = selectedArtists,
-            onToggle = { v ->
-              selectedArtists = if (v in selectedArtists) selectedArtists - v else selectedArtists + v
+            onDelete = {
+              conditions = conditions.toMutableList().also { it.removeAt(i) }
             },
-            tagPrefix = "artist",
+            tagPrefix = "cond_$i",
           )
         }
       }
       item {
-        CollapsibleSection(
-          title = "Albums",
-          summary = if (selectedAlbums.isEmpty()) "Any" else "${selectedAlbums.size} selected",
-          testTag = "section_albums",
+        OutlinedButton(
+          onClick = { showChooser = true },
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 24.dp)
+            .semantics { testTag = "editor_add_filter" },
         ) {
-          MultiCheckList(
-            options = universe.albums,
-            selected = selectedAlbums,
-            onToggle = { v ->
-              selectedAlbums = if (v in selectedAlbums) selectedAlbums - v else selectedAlbums + v
-            },
-            tagPrefix = "album",
-          )
-        }
-      }
-      item {
-        CollapsibleSection(
-          title = "Year",
-          summary = if (yearActive) "${yearMin.toInt()} – ${yearMax.toInt()}" else "Any",
-          testTag = "section_year",
-        ) {
-          Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Checkbox(
-                checked = yearActive,
-                onCheckedChange = { yearActive = it },
-                modifier = Modifier.semantics { testTag = "year_active" },
-              )
-              Text("Restrict by year")
-            }
-            if (yearActive) {
-              RangeSlider(
-                value = yearMin..yearMax,
-                onValueChange = { range ->
-                  yearMin = range.start
-                  yearMax = range.endInclusive
-                },
-                valueRange = yearLowerBound.toFloat()..yearUpperBound.toFloat(),
-                modifier = Modifier.fillMaxWidth().semantics { testTag = "year_range" },
-              )
-              Text(
-                "${yearMin.toInt()} – ${yearMax.toInt()}",
-                style = MaterialTheme.typography.bodySmall,
-              )
-            }
-          }
-        }
-      }
-      item {
-        CollapsibleSection(
-          title = "Date added",
-          summary = dateAddedLabel(dateAddedSel),
-          testTag = "section_date_added",
-        ) {
-          Column {
-            DateAddedOption.entries.forEach { opt ->
-              Row(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .selectable(selected = dateAddedSel == opt, onClick = { dateAddedSel = opt })
-                  .padding(vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                RadioButton(selected = dateAddedSel == opt, onClick = null)
-                Text(dateAddedLabel(opt), modifier = Modifier.padding(start = 12.dp))
-              }
-            }
-          }
-        }
-      }
-      item {
-        CollapsibleSection(
-          title = "Album art",
-          summary = hasArtLabel(hasArtSel),
-          testTag = "section_has_art",
-        ) {
-          Column {
-            HasArtOption.entries.forEach { opt ->
-              Row(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .selectable(selected = hasArtSel == opt, onClick = { hasArtSel = opt })
-                  .padding(vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                RadioButton(selected = hasArtSel == opt, onClick = null)
-                Text(hasArtLabel(opt), modifier = Modifier.padding(start = 12.dp))
-              }
-            }
-          }
-        }
-      }
-      item {
-        CollapsibleSection(
-          title = "File path contains",
-          summary = if (pathContains.isBlank()) "Any" else "\"$pathContains\"",
-          testTag = "section_path",
-        ) {
-          OutlinedTextField(
-            value = pathContains,
-            onValueChange = { pathContains = it },
-            label = { Text("Substring") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().semantics { testTag = "path_contains" },
-          )
+          Icon(Icons.Filled.Add, contentDescription = null)
+          Text("Add filter", modifier = Modifier.padding(start = 8.dp))
         }
       }
     }
+  }
+
+  if (showChooser) {
+    ConditionTypeChooser(
+      onPick = { newCondition ->
+        conditions = conditions + newCondition
+        showChooser = false
+      },
+      onDismiss = { showChooser = false },
+    )
   }
 }
 
@@ -326,25 +230,91 @@ data class FilterUniverse(
   val maxYear: Int?,
 )
 
+internal fun contentTypeLabel(ct: CustomTabContentType): String = when (ct) {
+  CustomTabContentType.SONGS -> "Songs"
+  CustomTabContentType.ALBUMS -> "Albums"
+  CustomTabContentType.ARTISTS -> "Artists"
+  CustomTabContentType.GENRES -> "Genres"
+}
+
+internal fun conditionTypeLabel(condition: FilterCondition): String = when (condition) {
+  is FilterCondition.GenreIn -> "Genre"
+  is FilterCondition.ArtistIn -> "Artist"
+  is FilterCondition.AlbumIn -> "Album"
+  is FilterCondition.YearBetween -> "Year range"
+  is FilterCondition.DateAddedBetween -> "Date added"
+  is FilterCondition.HasAlbumArt -> "Album art"
+  is FilterCondition.PathContains -> "File path contains"
+  is FilterCondition.TitleContains -> "Title contains"
+}
+
+internal fun conditionSummary(condition: FilterCondition): String = when (condition) {
+  is FilterCondition.GenreIn -> if (condition.values.isEmpty()) "Any" else condition.values.joinToString(", ")
+  is FilterCondition.ArtistIn -> if (condition.values.isEmpty()) "Any" else condition.values.joinToString(", ")
+  is FilterCondition.AlbumIn -> if (condition.values.isEmpty()) "Any" else condition.values.joinToString(", ")
+  is FilterCondition.YearBetween -> when {
+    condition.min == null && condition.max == null -> "Any"
+    condition.min != null && condition.max != null -> "${condition.min} – ${condition.max}"
+    condition.min != null -> "from ${condition.min}"
+    else -> "up to ${condition.max}"
+  }
+  is FilterCondition.DateAddedBetween -> when {
+    condition.afterEpochSeconds == null && condition.beforeEpochSeconds == null -> "Any"
+    condition.afterEpochSeconds != null && condition.beforeEpochSeconds != null ->
+      "${formatEpochDay(condition.afterEpochSeconds)} – ${formatEpochDay(condition.beforeEpochSeconds)}"
+    condition.afterEpochSeconds != null -> "since ${formatEpochDay(condition.afterEpochSeconds)}"
+    else -> "until ${formatEpochDay(condition.beforeEpochSeconds!!)}"
+  }
+  is FilterCondition.HasAlbumArt -> if (condition.value) "Only with album art" else "Only without album art"
+  is FilterCondition.PathContains -> if (condition.needle.isBlank()) "Any" else "\"${condition.needle}\""
+  is FilterCondition.TitleContains -> if (condition.needle.isBlank()) "Any" else "\"${condition.needle}\""
+}
+
+private fun formatEpochDay(epochSeconds: Long): String {
+  val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+    timeZone = TimeZone.getTimeZone("UTC")
+  }
+  return fmt.format(java.util.Date(epochSeconds * 1000))
+}
+
+/**
+ * One row in the conditions list. Renders the type + summary + delete
+ * always; tapping the row expands an inline editor for that condition.
+ */
 @Composable
-private fun CollapsibleSection(
-  title: String,
-  summary: String,
-  testTag: String,
-  content: @Composable () -> Unit,
+private fun FilterConditionRow(
+  condition: FilterCondition,
+  universe: FilterUniverse,
+  onChange: (FilterCondition) -> Unit,
+  onDelete: () -> Unit,
+  tagPrefix: String,
 ) {
   var expanded by remember { mutableStateOf(false) }
-  Column(modifier = Modifier.fillMaxWidth().semantics { this.testTag = testTag }) {
+  Column(
+    modifier = Modifier
+      .fillMaxWidth()
+      .semantics { testTag = tagPrefix },
+  ) {
     Row(
       modifier = Modifier
         .fillMaxWidth()
         .clickable { expanded = !expanded }
-        .padding(vertical = 12.dp),
+        .padding(vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Column(modifier = Modifier.weight(1f)) {
-        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
-        Text(summary, style = MaterialTheme.typography.bodySmall)
+        Text(
+          conditionTypeLabel(condition),
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = FontWeight.Medium,
+        )
+        Text(conditionSummary(condition), style = MaterialTheme.typography.bodySmall)
+      }
+      IconButton(
+        onClick = onDelete,
+        modifier = Modifier.semantics { testTag = "${tagPrefix}_delete" },
+      ) {
+        Icon(Icons.Filled.Delete, contentDescription = "Remove filter")
       }
       Icon(
         imageVector = Icons.Filled.ExpandMore,
@@ -353,10 +323,198 @@ private fun CollapsibleSection(
       )
     }
     if (expanded) {
-      content()
-      HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
-    } else {
-      HorizontalDivider()
+      Box(modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 8.dp)) {
+        ConditionEditor(condition, universe, onChange)
+      }
+    }
+    HorizontalDivider()
+  }
+}
+
+@Composable
+private fun ConditionEditor(
+  condition: FilterCondition,
+  universe: FilterUniverse,
+  onChange: (FilterCondition) -> Unit,
+) {
+  when (condition) {
+    is FilterCondition.GenreIn -> MultiCheckList(
+      options = universe.genres,
+      selected = condition.values.toSet(),
+      onToggle = { v ->
+        val next = if (v in condition.values) condition.values - v else condition.values + v
+        onChange(FilterCondition.GenreIn(next))
+      },
+      tagPrefix = "genre",
+    )
+    is FilterCondition.ArtistIn -> MultiCheckList(
+      options = universe.artists,
+      selected = condition.values.toSet(),
+      onToggle = { v ->
+        val next = if (v in condition.values) condition.values - v else condition.values + v
+        onChange(FilterCondition.ArtistIn(next))
+      },
+      tagPrefix = "artist",
+    )
+    is FilterCondition.AlbumIn -> MultiCheckList(
+      options = universe.albums,
+      selected = condition.values.toSet(),
+      onToggle = { v ->
+        val next = if (v in condition.values) condition.values - v else condition.values + v
+        onChange(FilterCondition.AlbumIn(next))
+      },
+      tagPrefix = "album",
+    )
+    is FilterCondition.YearBetween -> YearRangeEditor(condition, universe, onChange)
+    is FilterCondition.DateAddedBetween -> DateAddedEditor(condition, onChange)
+    is FilterCondition.HasAlbumArt -> HasAlbumArtEditor(condition, onChange)
+    is FilterCondition.PathContains -> OutlinedTextField(
+      value = condition.needle,
+      onValueChange = { onChange(FilterCondition.PathContains(it)) },
+      label = { Text("Path contains") },
+      singleLine = true,
+      modifier = Modifier
+        .fillMaxWidth()
+        .semantics { testTag = "path_contains" },
+    )
+    is FilterCondition.TitleContains -> OutlinedTextField(
+      value = condition.needle,
+      onValueChange = { onChange(FilterCondition.TitleContains(it)) },
+      label = { Text("Title contains") },
+      singleLine = true,
+      modifier = Modifier
+        .fillMaxWidth()
+        .semantics { testTag = "title_contains" },
+    )
+  }
+}
+
+@Composable
+private fun YearRangeEditor(
+  condition: FilterCondition.YearBetween,
+  universe: FilterUniverse,
+  onChange: (FilterCondition.YearBetween) -> Unit,
+) {
+  val low = universe.minYear ?: 1900
+  val high = (universe.maxYear ?: 2030).coerceAtLeast(low + 1)
+  val curMin = (condition.min ?: low).coerceIn(low, high).toFloat()
+  val curMax = (condition.max ?: high).coerceIn(low, high).toFloat()
+  Column(modifier = Modifier.fillMaxWidth()) {
+    Text(
+      "${curMin.toInt()} – ${curMax.toInt()}",
+      style = MaterialTheme.typography.bodySmall,
+    )
+    RangeSlider(
+      value = curMin..curMax,
+      onValueChange = { range ->
+        onChange(condition.copy(min = range.start.toInt(), max = range.endInclusive.toInt()))
+      },
+      valueRange = low.toFloat()..high.toFloat(),
+      modifier = Modifier
+        .fillMaxWidth()
+        .semantics { testTag = "year_range" },
+    )
+  }
+}
+
+@Composable
+private fun DateAddedEditor(
+  condition: FilterCondition.DateAddedBetween,
+  onChange: (FilterCondition.DateAddedBetween) -> Unit,
+) {
+  var showAfterPicker by remember { mutableStateOf(false) }
+  var showBeforePicker by remember { mutableStateOf(false) }
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    OutlinedButton(
+      onClick = { showAfterPicker = true },
+      modifier = Modifier
+        .weight(1f)
+        .semantics { testTag = "date_after_button" },
+    ) {
+      Text(condition.afterEpochSeconds?.let { "From: ${formatEpochDay(it)}" } ?: "From: any")
+    }
+    OutlinedButton(
+      onClick = { showBeforePicker = true },
+      modifier = Modifier
+        .weight(1f)
+        .semantics { testTag = "date_before_button" },
+    ) {
+      Text(condition.beforeEpochSeconds?.let { "To: ${formatEpochDay(it)}" } ?: "To: any")
+    }
+  }
+
+  if (showAfterPicker) {
+    DatePickerSheet(
+      initialEpochSeconds = condition.afterEpochSeconds,
+      onConfirm = {
+        onChange(condition.copy(afterEpochSeconds = it))
+        showAfterPicker = false
+      },
+      onClear = {
+        onChange(condition.copy(afterEpochSeconds = null))
+        showAfterPicker = false
+      },
+      onDismiss = { showAfterPicker = false },
+    )
+  }
+  if (showBeforePicker) {
+    DatePickerSheet(
+      initialEpochSeconds = condition.beforeEpochSeconds,
+      onConfirm = {
+        onChange(condition.copy(beforeEpochSeconds = it))
+        showBeforePicker = false
+      },
+      onClear = {
+        onChange(condition.copy(beforeEpochSeconds = null))
+        showBeforePicker = false
+      },
+      onDismiss = { showBeforePicker = false },
+    )
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DatePickerSheet(
+  initialEpochSeconds: Long?,
+  onConfirm: (Long) -> Unit,
+  onClear: () -> Unit,
+  onDismiss: () -> Unit,
+) {
+  val state = rememberDatePickerState(
+    initialSelectedDateMillis = initialEpochSeconds?.let { it * 1000 },
+  )
+  DatePickerDialog(
+    onDismissRequest = onDismiss,
+    confirmButton = {
+      TextButton(onClick = {
+        state.selectedDateMillis?.let { onConfirm(it / 1000) } ?: onDismiss()
+      }) { Text("OK") }
+    },
+    dismissButton = { TextButton(onClick = onClear) { Text("Clear") } },
+  ) { DatePicker(state = state) }
+}
+
+@Composable
+private fun HasAlbumArtEditor(
+  condition: FilterCondition.HasAlbumArt,
+  onChange: (FilterCondition.HasAlbumArt) -> Unit,
+) {
+  Column {
+    listOf(true to "Only with album art", false to "Only without album art").forEach { (value, label) ->
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .selectable(selected = condition.value == value, onClick = { onChange(FilterCondition.HasAlbumArt(value)) })
+          .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        RadioButton(selected = condition.value == value, onClick = null)
+        Text(label, modifier = Modifier.padding(start = 12.dp))
+      }
     }
   }
 }
@@ -379,7 +537,7 @@ private fun MultiCheckList(
     return
   }
   val visible = if (showAll || options.size <= initialVisible) options else options.take(initialVisible)
-  Column(modifier = Modifier.heightIn(max = 240.dp)) {
+  Column(modifier = Modifier.heightIn(max = 320.dp)) {
     visible.forEach { value ->
       val checked = value in selected
       Row(
@@ -402,49 +560,56 @@ private fun MultiCheckList(
   }
 }
 
-internal enum class DateAddedOption {
-  Any, Last7Days, Last30Days, LastYear;
-
-  fun toEpochOffset(nowSeconds: Long = System.currentTimeMillis() / 1000): Long? = when (this) {
-    Any -> null
-    Last7Days -> nowSeconds - 7L * 24 * 3600
-    Last30Days -> nowSeconds - 30L * 24 * 3600
-    LastYear -> nowSeconds - 365L * 24 * 3600
-  }
-
-  companion object {
-    fun fromEpoch(epoch: Long?): DateAddedOption {
-      if (epoch == null) return Any
-      val nowSeconds = System.currentTimeMillis() / 1000
-      val daysAgo = (nowSeconds - epoch) / (24 * 3600)
-      return when {
-        daysAgo <= 8 -> Last7Days
-        daysAgo <= 31 -> Last30Days
-        daysAgo <= 366 -> LastYear
-        else -> Any
-      }
+/**
+ * Bottom-sheet picker that lists every available [FilterCondition]
+ * type. Each entry produces a default-empty instance of the chosen
+ * variant; the user fills it in via the inline editor on the row.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ConditionTypeChooser(
+  onPick: (FilterCondition) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  ModalBottomSheet(
+    onDismissRequest = onDismiss,
+    sheetState = sheetState,
+    modifier = Modifier.semantics { testTag = "condition_chooser" },
+  ) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+      Text(
+        "Add filter",
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+      )
+      ConditionPickRow("Genre", "Match selected genres") { onPick(FilterCondition.GenreIn(emptyList())) }
+      ConditionPickRow("Artist", "Match selected artists") { onPick(FilterCondition.ArtistIn(emptyList())) }
+      ConditionPickRow("Album", "Match selected albums") { onPick(FilterCondition.AlbumIn(emptyList())) }
+      ConditionPickRow("Year range", "Limit by release year") { onPick(FilterCondition.YearBetween()) }
+      ConditionPickRow("Date added", "Limit by when added to library") { onPick(FilterCondition.DateAddedBetween()) }
+      ConditionPickRow("Album art", "Only tracks with / without art") { onPick(FilterCondition.HasAlbumArt(true)) }
+      ConditionPickRow("Title contains", "Substring match on title / artist / album") { onPick(FilterCondition.TitleContains("")) }
+      ConditionPickRow("File path contains", "Substring match on the file path") { onPick(FilterCondition.PathContains("")) }
     }
   }
 }
 
-internal fun dateAddedLabel(opt: DateAddedOption): String = when (opt) {
-  DateAddedOption.Any -> "Any"
-  DateAddedOption.Last7Days -> "Last 7 days"
-  DateAddedOption.Last30Days -> "Last 30 days"
-  DateAddedOption.LastYear -> "Last year"
-}
-
-internal enum class HasArtOption { Any, Only, Without }
-
-internal fun hasArtLabel(opt: HasArtOption): String = when (opt) {
-  HasArtOption.Any -> "Any"
-  HasArtOption.Only -> "Only with album art"
-  HasArtOption.Without -> "Only without album art"
-}
-
-internal fun contentTypeLabel(ct: CustomTabContentType): String = when (ct) {
-  CustomTabContentType.SONGS -> "Songs"
-  CustomTabContentType.ALBUMS -> "Albums"
-  CustomTabContentType.ARTISTS -> "Artists"
-  CustomTabContentType.GENRES -> "Genres"
+@Composable
+private fun ConditionPickRow(
+  title: String,
+  subtitle: String,
+  onClick: () -> Unit,
+) {
+  Surface(
+    onClick = onClick,
+    modifier = Modifier
+      .fillMaxWidth()
+      .semantics { testTag = "pick_${title.lowercase().replace(' ', '_')}" },
+  ) {
+    ListItem(
+      headlineContent = { Text(title) },
+      supportingContent = { Text(subtitle, style = MaterialTheme.typography.bodySmall) },
+    )
+  }
 }
