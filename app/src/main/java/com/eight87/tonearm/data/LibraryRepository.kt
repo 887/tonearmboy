@@ -69,7 +69,14 @@ class LibraryRepository(
    * existing call sites keep working without ceremony.
    */
   private val settingsRepository: SettingsRepository = SettingsRepository(context),
-) {
+) : TrackSource,
+  AlbumSource,
+  ArtistSource,
+  GenreSource,
+  PlaylistStore,
+  CustomTabStore,
+  LibraryScanner,
+  MediaChangeSource {
 
   private val rescanRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 16)
   private val initialScanDone = AtomicBoolean(false)
@@ -90,7 +97,16 @@ class LibraryRepository(
     val fraction: Float get() = if (total <= 0) 0f else scanned.toFloat() / total.toFloat()
   }
   private val _scanProgress = MutableStateFlow<ScanProgress?>(null)
-  val scanProgress: StateFlow<ScanProgress?> = _scanProgress.asStateFlow()
+  override val scanProgress: StateFlow<ScanProgress?> = _scanProgress.asStateFlow()
+
+  /**
+   * R.A.1 — `Flow<Unit>` of MediaStore content-observer ticks. The
+   * repository's own debounced rescan loop subscribes via the
+   * `rescanRequests` shared flow; this is the externally-visible
+   * read-only projection of the same stream for [MediaChangeSource]
+   * consumers.
+   */
+  override val mediaChanges: Flow<Unit> get() = rescanRequests
 
   private val observerThread by lazy {
     HandlerThread("tonearm-mediastore-observer").apply { start() }
@@ -120,12 +136,12 @@ class LibraryRepository(
 
   // -- Public surface --------------------------------------------------------
 
-  fun observeTracks(): Flow<List<Track>> {
+  override fun observeTracks(): Flow<List<Track>> {
     ensureInitialScan()
     return db.trackDao().observeAll().map { rows -> rows.map { it.toDomain() } }
   }
 
-  fun observeAlbums(): Flow<List<Album>> {
+  override fun observeAlbums(): Flow<List<Album>> {
     ensureInitialScan()
     return db.albumDao().observeAlbumsWithCounts().map { rows ->
       rows.map {
@@ -141,7 +157,7 @@ class LibraryRepository(
     }
   }
 
-  fun observeArtists(): Flow<List<Artist>> = observeArtists(flowOf(false))
+  override fun observeArtists(): Flow<List<Artist>> = observeArtists(flowOf(false))
 
   /**
    * D.9a.6 — when [hideCollaboratorsFlow] emits `true`, the artist list
@@ -156,7 +172,7 @@ class LibraryRepository(
    * libraries; if the user has tens of thousands of tracks we'd switch
    * to two precomputed views in the DB.
    */
-  fun observeArtists(hideCollaboratorsFlow: Flow<Boolean>): Flow<List<Artist>> {
+  override fun observeArtists(hideCollaboratorsFlow: Flow<Boolean>): Flow<List<Artist>> {
     ensureInitialScan()
     val tracks = db.trackDao().observeAll()
     return combine(tracks, hideCollaboratorsFlow) { rows, hide ->
@@ -164,19 +180,19 @@ class LibraryRepository(
     }
   }
 
-  fun observeGenres(): Flow<List<Genre>> {
+  override fun observeGenres(): Flow<List<Genre>> {
     ensureInitialScan()
     return db.genreDao().observeGenresWithCounts().map { rows ->
       rows.map { Genre(it.id, it.name, it.trackCount) }
     }
   }
 
-  fun observePlaylists(): Flow<List<Playlist>> =
+  override fun observePlaylists(): Flow<List<Playlist>> =
     db.playlistDao().observePlaylistsWithCounts().map { rows ->
       rows.map { Playlist(it.id, it.name, it.trackCount, it.createdAtSeconds, it.coverUri) }
     }
 
-  fun observePlaylistTracks(playlistId: Long): Flow<List<Track>> =
+  override fun observePlaylistTracks(playlistId: Long): Flow<List<Track>> =
     db.playlistDao().observeTracks(playlistId).map { rows -> rows.map { it.toDomain() } }
 
   /**
@@ -184,7 +200,7 @@ class LibraryRepository(
    * Returns null when the playlist is empty or none of its tracks has
    * album art. Used by the tile cover-resolution chain.
    */
-  fun observePlaylistFirstAlbumArt(playlistId: Long): Flow<Long?> =
+  override fun observePlaylistFirstAlbumArt(playlistId: Long): Flow<Long?> =
     db.playlistDao().observeFirstTrackAlbumId(playlistId)
 
   /**
@@ -192,7 +208,7 @@ class LibraryRepository(
    * possible, falls back to LIKE for inputs that are pure punctuation
    * or otherwise unsafe to feed to MATCH.
    */
-  fun search(query: String): Flow<List<Track>> {
+  override fun search(query: String): Flow<List<Track>> {
     val match = SearchExpressions.ftsMatch(query)
     val flow = if (match != null) {
       db.trackDao().searchFts(match)
@@ -207,7 +223,7 @@ class LibraryRepository(
   }
 
   /** Force a rescan now (used by the smoke test + the Settings UI in Phase D). */
-  suspend fun rescanNow() {
+  override suspend fun rescanNow() {
     runScan(initial = false)
   }
 
@@ -227,7 +243,7 @@ class LibraryRepository(
    * Idempotent — invoking with an empty / already-dropped id list is a
    * no-op.
    */
-  suspend fun onTracksDeleted(uris: List<Uri>) {
+  override suspend fun onTracksDeleted(uris: List<Uri>) {
     if (uris.isEmpty()) return
     val ids = uris.mapNotNull { it.lastPathSegment?.toLongOrNull() }
     if (ids.isEmpty()) {
@@ -254,21 +270,21 @@ class LibraryRepository(
    * artist when album-artist is missing — same precedence as
    * `Mapping.deriveAlbums` uses to compose the unique album key.
    */
-  suspend fun albumReplayGain(albumName: String?, albumArtist: String?): Pair<Float?, Float?> {
+  override suspend fun albumReplayGain(albumName: String?, albumArtist: String?): Pair<Float?, Float?> {
     if (albumName.isNullOrBlank()) return null to null
     val row = db.albumDao().byNameAndArtist(albumName, albumArtist)
     return row?.replayGainAlbumDb to row?.replayGainAlbumPeak
   }
 
   /** Track-by-id retrieval for the playback gain pipeline. */
-  suspend fun trackById(id: Long): Track? =
+  override suspend fun trackById(id: Long): Track? =
     db.trackDao().getById(id)?.toDomain()
 
   /**
    * D.9b.1 — count of tracks for a given album key. Used to compute
    * how much of the album the queue covers in Smart mode.
    */
-  suspend fun trackCountForAlbum(albumName: String?, albumArtist: String?): Int {
+  override suspend fun trackCountForAlbum(albumName: String?, albumArtist: String?): Int {
     if (albumName.isNullOrBlank()) return 0
     return db.trackDao().countForAlbum(albumName, albumArtist)
   }
@@ -276,7 +292,7 @@ class LibraryRepository(
   // -- Custom tabs (D.18) -----------------------------------------------------
 
   /** Live, position-ordered list of user-defined library tabs. */
-  fun customTabs(): Flow<List<CustomTabEntity>> = db.customTabDao().observeAll()
+  override fun customTabs(): Flow<List<CustomTabEntity>> = db.customTabDao().observeAll()
 
   /**
    * D.18.1 — tracks that match [criteria]. Filtering happens in
@@ -284,13 +300,13 @@ class LibraryRepository(
    * is cheap; the Flow is already cold-mapped on `Dispatchers.IO`
    * inside the DAO). For empty criteria this is the all-tracks Flow.
    */
-  fun tracksMatching(criteria: FilterCriteria): Flow<List<Track>> {
+  override fun tracksMatching(criteria: FilterCriteria): Flow<List<Track>> {
     val all = observeTracks()
     if (criteria.isEmpty()) return all
     return all.map { list -> list.filter { criteria.matchesTrack(it) } }
   }
 
-  fun albumsMatching(criteria: FilterCriteria): Flow<List<Album>> {
+  override fun albumsMatching(criteria: FilterCriteria): Flow<List<Album>> {
     if (criteria.isEmpty()) return observeAlbums()
     val tracks = observeTracks()
     val albums = observeAlbums()
@@ -306,7 +322,7 @@ class LibraryRepository(
     }
   }
 
-  fun artistsMatching(criteria: FilterCriteria): Flow<List<Artist>> {
+  override fun artistsMatching(criteria: FilterCriteria): Flow<List<Artist>> {
     if (criteria.isEmpty()) return observeArtists()
     val tracks = observeTracks()
     val artists = observeArtists()
@@ -321,7 +337,7 @@ class LibraryRepository(
     }
   }
 
-  fun genresMatching(criteria: FilterCriteria): Flow<List<Genre>> {
+  override fun genresMatching(criteria: FilterCriteria): Flow<List<Genre>> {
     if (criteria.isEmpty()) return observeGenres()
     val tracks = observeTracks()
     val genres = observeGenres()
@@ -339,7 +355,7 @@ class LibraryRepository(
    * row already exists at that position — preserves "newest goes
    * last" without forcing the caller to query maxPosition first.
    */
-  suspend fun upsertCustomTab(tab: CustomTabEntity): Long {
+  override suspend fun upsertCustomTab(tab: CustomTabEntity): Long {
     val dao = db.customTabDao()
     val resolved = if (tab.id == 0L && tab.position == 0) {
       val next = (dao.maxPosition() ?: -1) + 1
@@ -348,27 +364,27 @@ class LibraryRepository(
     return dao.upsert(resolved)
   }
 
-  suspend fun deleteCustomTab(id: Long) {
+  override suspend fun deleteCustomTab(id: Long) {
     db.customTabDao().delete(id)
   }
 
-  suspend fun reorderCustomTabs(orderedIds: List<Long>) {
+  override suspend fun reorderCustomTabs(orderedIds: List<Long>) {
     db.customTabDao().reorder(orderedIds)
   }
 
   // -- Playlist CRUD ---------------------------------------------------------
 
-  suspend fun createPlaylist(name: String, nowSeconds: Long = System.currentTimeMillis() / 1000): Long {
+  override suspend fun createPlaylist(name: String, nowSeconds: Long): Long {
     return db.playlistDao().insert(
       PlaylistEntity(name = name, createdAtSeconds = nowSeconds),
     )
   }
 
-  suspend fun deletePlaylist(playlistId: Long) {
+  override suspend fun deletePlaylist(playlistId: Long) {
     db.playlistDao().delete(playlistId)
   }
 
-  suspend fun renamePlaylist(playlistId: Long, name: String) {
+  override suspend fun renamePlaylist(playlistId: Long, name: String) {
     db.playlistDao().rename(playlistId, name)
   }
 
@@ -378,11 +394,11 @@ class LibraryRepository(
    * caller is responsible for taking a persistable URI permission on
    * SAF-picked images before passing the URI through here.
    */
-  suspend fun setPlaylistCoverUri(playlistId: Long, uri: String?) {
+  override suspend fun setPlaylistCoverUri(playlistId: Long, uri: String?) {
     db.playlistDao().setCoverUri(playlistId, uri)
   }
 
-  suspend fun addTrackToPlaylist(playlistId: Long, trackId: Long) {
+  override suspend fun addTrackToPlaylist(playlistId: Long, trackId: Long) {
     val dao = db.playlistDao()
     val next = (dao.maxPosition(playlistId) ?: -1) + 1
     dao.insertJoin(
@@ -394,13 +410,13 @@ class LibraryRepository(
     )
   }
 
-  suspend fun removeTrackFromPlaylist(playlistId: Long, position: Int) {
+  override suspend fun removeTrackFromPlaylist(playlistId: Long, position: Int) {
     val dao = db.playlistDao()
     val joins = dao.rawJoins(playlistId).filter { it.position != position }
     dao.replaceJoins(playlistId, joins.map { it.trackId })
   }
 
-  suspend fun reorderPlaylist(playlistId: Long, orderedTrackIds: List<Long>) {
+  override suspend fun reorderPlaylist(playlistId: Long, orderedTrackIds: List<Long>) {
     db.playlistDao().replaceJoins(playlistId, orderedTrackIds)
   }
 
