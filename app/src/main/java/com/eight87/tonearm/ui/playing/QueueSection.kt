@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -26,10 +28,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -65,6 +69,17 @@ import com.eight87.tonearm.ui.common.DragReorderColumn
  * Visual-to-controller index translation simplifies to 1:1 when the
  * full queue is visible (no more `currentIdx + 1` offset).
  */
+/**
+ * One row of the queue list, paired with its 1:1 controller index
+ * and an `isActive` flag so taps / removes / drags can forward
+ * without re-deriving the index inside the row composable.
+ *
+ * Hoisted to file scope (was declared inside `QueueSection`) so the
+ * memoized `remember { … }` block doesn't have to reach into a
+ * composable-local type.
+ */
+internal data class QueueEntry(val realIndex: Int, val item: QueueItem, val isActive: Boolean)
+
 @OptIn(UnstableApi::class)
 @Composable
 fun QueueSection(
@@ -114,18 +129,50 @@ fun QueueSection(
   // D.26.2: render the full queue as a positional timeline. Each
   // visual entry knows its 1:1 controller index so taps / removes /
   // drags forward without offset arithmetic.
-  data class QueueEntry(val realIndex: Int, val item: QueueItem, val isActive: Boolean)
-  val allEntries: List<QueueEntry> = items.mapIndexed { i, qi ->
-    QueueEntry(realIndex = i, item = qi, isActive = i == currentIndex)
+  //
+  // Memoized on (items, currentIndex) so we don't reallocate the
+  // list every recomposition — the controller's queue StateFlow
+  // ticks more often than the snapshot identity changes (position
+  // updates, etc.) and re-allocating ~hundreds of QueueEntry per
+  // tick is real work the user can perceive on slower devices.
+  val allEntries: List<QueueEntry> = remember(items, currentIndex) {
+    items.mapIndexed { i, qi ->
+      QueueEntry(realIndex = i, item = qi, isActive = i == currentIndex)
+    }
   }
 
   val needle = filter.trim().lowercase()
-  val visibleEntries: List<QueueEntry> = if (filterActive) {
-    allEntries.filter {
-      it.item.title.lowercase().contains(needle) ||
-        it.item.artist.lowercase().contains(needle)
-    }
-  } else allEntries
+  val visibleEntries: List<QueueEntry> = remember(allEntries, needle, filterActive) {
+    if (filterActive) {
+      allEntries.filter {
+        it.item.title.lowercase().contains(needle) ||
+          it.item.artist.lowercase().contains(needle)
+      }
+    } else allEntries
+  }
+
+  // D.30.1 — mini-player → NowPlaying open lag. The unfiltered render
+  // path uses `DragReorderColumn`, an eager `Column { forEach }` that
+  // composes every QueueRow up-front (it has to, for offset-based drag
+  // bookkeeping). With a few hundred queued tracks that meant a 300–
+  // 500 ms hitch on the first frame after the user tapped the mini-
+  // player. We can't easily virtualize the row composition without
+  // losing drag-reorder semantics, so we instead defer the row mount
+  // by exactly one frame: the chrome (divider, "Queue" header, filter
+  // field) lands immediately on first composition, then a coroutine
+  // yields once via `withFrameNanos { }` and flips this flag — the
+  // row block (and its hundreds of QueueRow composables) lands on
+  // frame N+1, after the perceived "screen open" is already visible.
+  //
+  // Drag-reorder behaviour is unchanged once mounted. The placeholder
+  // reserves the same vertical space (`heightIn(min = N×rowHeight)`,
+  // already on the outer Column) so the parent LazyColumn's scroll
+  // position stays stable across the row mount.
+  var rowsMounted by remember { mutableStateOf(false) }
+  LaunchedEffect(Unit) {
+    withFrameNanos { /* yield one frame */ }
+    rowsMounted = true
+  }
 
   // D.27.4 — `imePadding()` keeps the active row visible when the
   // on-screen keyboard pops up for the filter field. The min-height
@@ -180,6 +227,18 @@ fun QueueSection(
       ) {
         Text("Nothing in the queue", style = MaterialTheme.typography.bodyMedium)
       }
+    } else if (!rowsMounted) {
+      // D.30.1 — first frame after mini-player tap. Rows mount on the
+      // next frame; until then, claim the same vertical space the row
+      // list would occupy so the parent LazyColumn's content height
+      // (and the user's scroll position, if they've returned to the
+      // screen) stays stable across the transition.
+      Spacer(
+        modifier = Modifier
+          .fillMaxWidth()
+          .height((allEntries.size * QUEUE_ROW_HEIGHT_DP).dp)
+          .semantics { testTag = "queue_rows_pending" },
+      )
     } else if (visibleEntries.isEmpty()) {
       // D.26.3 — claim the SAME vertical space the unfiltered list
       // would have occupied, so the queue_section item's overall
