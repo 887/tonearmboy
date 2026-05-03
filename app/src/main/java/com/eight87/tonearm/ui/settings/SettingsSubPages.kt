@@ -173,7 +173,7 @@ fun SettingsLookAndFeelScreen(
     // commit immediately like before.
     RadioPicker(
       title = "Base theme",
-      options = BaseTheme.pickerOptions,
+      options = baseThemePickerOptions,
       label = ::baseThemeLabel,
       // Match by *kind* — the radio dialog's Custom sentinel carries
       // a placeholder seed, but the live state's Custom carries the
@@ -205,19 +205,6 @@ fun SettingsLookAndFeelScreen(
       onDismiss = { colorPicker = false },
     )
   }
-}
-
-/**
- * D.25.1 — collapse a stored [BaseTheme] onto one of the four picker
- * options so the radio dialog can highlight the active row. Any
- * `Custom(...)` value (whatever the seed) maps to the picker's
- * `Custom` sentinel.
- */
-private fun baseThemeMatch(stored: BaseTheme): BaseTheme = when (stored) {
-  is BaseTheme.DefaultAndroid -> BaseTheme.DefaultAndroid
-  is BaseTheme.DefaultColors -> BaseTheme.DefaultColors
-  is BaseTheme.PureBlack -> BaseTheme.PureBlack
-  is BaseTheme.Custom -> BaseTheme.pickerOptions.last()
 }
 
 private fun themeLabel(p: ThemePreference): String = when (p) {

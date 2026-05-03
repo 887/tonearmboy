@@ -173,7 +173,7 @@ class SettingsRepositoryTest {
 
   @Test
   fun libraryTabsParser_handlesUnknownToken() {
-    val parsed = SettingsRepository.parseLibraryTabs("Albums,Garbage,Songs")
+    val parsed = LibraryTabOrder.fromStored("Albums,Garbage,Songs")
     assertEquals(LibraryTab.Albums, parsed[0])
     assertEquals(LibraryTab.Songs, parsed[1])
     assertTrue(parsed.containsAll(LibraryTab.entries))

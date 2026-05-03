@@ -90,19 +90,6 @@ sealed class BaseTheme {
       }
     }
 
-    /**
-     * The four base-theme variants surfaced by the picker dialog. Used
-     * in place of the old `enum.entries` since a sealed class can't
-     * enumerate its leaves automatically. The [Custom] entry here is a
-     * sentinel — the dialog displays it, and tapping opens the colour
-     * picker; the actual stored value carries the user-picked seed.
-     */
-    val pickerOptions: List<BaseTheme> = listOf(
-      DefaultAndroid,
-      DefaultColors,
-      PureBlack,
-      Custom(seedRgb = 0xFF6750A4L and 0xFFFFFFL), // Material 3 default purple
-    )
   }
 }
 
@@ -526,8 +513,8 @@ class SettingsRepository(private val context: Context) :
   // --- TabLayoutSettings ---
   override val libraryTabs: Setting<List<LibraryTab>> = PreferencesSetting(
     store, KEY_LIBRARY_TABS,
-    read = { parseLibraryTabs(it) },
-    write = { it.joinToString(",") { tab -> tab.name } },
+    read = { LibraryTabOrder.fromStored(it) },
+    write = { LibraryTabOrder.toStored(it) },
   )
   /** R.B.3 — Per-tab `TabSort` is a composite of two Preferences keys. */
   override fun tabSortSetting(tab: LibraryTab): Setting<TabSort> = object : Setting<TabSort> {
@@ -695,31 +682,5 @@ class SettingsRepository(private val context: Context) :
     internal fun sortDirFor(tab: LibraryTab) = stringPreferencesKey("sort_dir_${tab.name}")
     internal fun viewModeKeyFor(tab: LibraryTab) = stringPreferencesKey("view_mode_${tab.name}")
     internal fun customTabViewModeKey(id: Long) = stringPreferencesKey("view_mode_custom_$id")
-
-    /**
-     * Parse the persisted library-tab order. Always returns a list that
-     * contains every [LibraryTab] entry exactly once: persisted
-     * (visible-and-ordered) entries first, then any new tabs that
-     * weren't yet in storage. The visible subset is encoded by the
-     * `_hidden_` token — anything after that prefix is hidden.
-     *
-     * Storage format example:
-     *   "Songs,Albums,Artists,_hidden_,Genres,Playlists"
-     */
-    internal fun parseLibraryTabs(raw: String?): List<LibraryTab> {
-      if (raw.isNullOrBlank()) return LibraryTab.DefaultOrder
-      val parts = raw.split(",")
-      val resolved = parts.mapNotNull { p ->
-        if (p == HIDDEN_MARKER) null
-        else LibraryTab.entries.firstOrNull { it.name == p }
-      }
-      // append unknown / new entries at the end so a future tab
-      // doesn't disappear when the user upgrades.
-      val seen = resolved.toSet()
-      val tail = LibraryTab.entries.filter { it !in seen }
-      return resolved + tail
-    }
-
-    internal const val HIDDEN_MARKER = "_hidden_"
   }
 }
