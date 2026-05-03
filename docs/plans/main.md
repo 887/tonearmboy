@@ -2,7 +2,7 @@
 
 ## Status: ✅ DONE
 
-_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (parent-scroll suppression while dragging) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped in commit `b52d660`. D.27.10 (cross-boundary drag survives reorder) shipped in commit `cfe6071`. D.29 (Save queue as playlist — top-bar action on Now Playing) shipped in commit `<PENDING>`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
+_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (parent-scroll suppression while dragging) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped in commit `b52d660`. D.27.10 (cross-boundary drag survives reorder) shipped in commit `cfe6071`. D.29 shipped in commit `7fa419e`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
 
 
 ## Stack (locked)
@@ -826,7 +826,7 @@ After D.27.10 lands, restore `## Status: ✅ DONE` at the top with a fresh re-co
 
 ---
 
-## Phase D.29 — save queue as playlist (top-bar action on Now Playing) — shipped in commit `<PENDING>`
+## Phase D.29 — save queue as playlist (top-bar action on Now Playing) — shipped in commit `7fa419e`
 
 User feedback after the D.27.10 release tag landed and the user confirmed reorder works:
 > "can you add a feature on the now playing/queue page that lets me add the current queue to a playlist or save it as a new playlist? currently in the top right there is the button that now scrolls me down to the queue, I want the button for that feature there"
@@ -844,7 +844,7 @@ Today (post-D.27.10): the Now Playing top app bar's right-side action is `Icons.
 - Do NOT customise the snackbar copy yet ("Saved queue to X" vs "Added N tracks to X"). Reuse the bulk-picker copy. If the user wants distinct wording, follow up.
 - Do NOT change the queue scroll-to behaviour from anywhere else. The `now_playing_queue` test tag was unreferenced in tests; renaming is safe.
 
-**Shipped in commit `<PENDING>`.** Verified on the headless `medium_phone` AVD: tapped the new icon at top-right of NowPlaying → `PlaylistPickerSheet` slid up showing "Add to playlist" header, "+ New playlist…" row, and the existing playlists ("Mixtape" / "Quiet Hours"). Test count unchanged at 624; no Robolectric test added because the wiring is one-line plumbing through an already-tested picker sheet.
+**Shipped in commit `7fa419e`.** Verified on the headless `medium_phone` AVD: tapped the new icon at top-right of NowPlaying → `PlaylistPickerSheet` slid up showing "Add to playlist" header, "+ New playlist…" row, and the existing playlists ("Mixtape" / "Quiet Hours"). Test count unchanged at 624; no Robolectric test added because the wiring is one-line plumbing through an already-tested picker sheet.
 
 After D.29 lands, restore `## Status: ✅ DONE` at the top with a fresh re-completion note.
 
