@@ -1,6 +1,6 @@
 package com.eight87.tonearm.data.playlist
 
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.PlaylistStore
 import com.eight87.tonearm.data.db.LibraryDatabase
 import com.eight87.tonearm.data.db.TrackDao
 import java.io.BufferedReader
@@ -38,12 +38,12 @@ data class M3UImportResult(
  * don't trust their metadata, MediaStore is the source of truth).
  */
 class M3UImporter(
-  private val repository: LibraryRepository,
+  private val repository: PlaylistStore,
   private val trackDao: TrackDao,
 ) {
 
   /** Convenience constructor that pulls the DAO out of [LibraryDatabase]. */
-  constructor(repository: LibraryRepository, db: LibraryDatabase) :
+  constructor(repository: PlaylistStore, db: LibraryDatabase) :
     this(repository, db.trackDao())
 
   /**

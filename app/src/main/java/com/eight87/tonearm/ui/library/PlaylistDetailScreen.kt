@@ -32,14 +32,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.PlaylistStore
 import com.eight87.tonearm.data.model.Track
 import com.eight87.tonearm.ui.nav.LocalSectionTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistDetailScreen(
-  repository: LibraryRepository,
+  repository: PlaylistStore,
   playlistId: Long,
   onTrackClick: (List<Track>, Int) -> Unit,
   onBack: () -> Unit,

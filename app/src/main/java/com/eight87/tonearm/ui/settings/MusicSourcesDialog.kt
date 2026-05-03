@@ -48,7 +48,7 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.LibraryScanner
 import kotlinx.coroutines.launch
 
 /**
@@ -105,7 +105,7 @@ data class MusicSourcesDialogState(
 @Composable
 fun MusicSourcesDialog(
   settings: SettingsRepository,
-  library: LibraryRepository,
+  scanner: LibraryScanner,
   onDismiss: () -> Unit,
 ) {
   val context = LocalContext.current
@@ -232,7 +232,7 @@ fun MusicSourcesDialog(
                     )
                   }
                 }
-                library.rescanNow()
+                scanner.rescanNow()
               }
               onDismiss()
             },

@@ -2,8 +2,11 @@ package com.eight87.tonearm.ui.library
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.eight87.tonearm.data.AlbumSource
+import com.eight87.tonearm.data.ArtistSource
 import com.eight87.tonearm.data.FilterCriteria
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.GenreSource
+import com.eight87.tonearm.data.TrackSource
 import com.eight87.tonearm.data.db.CustomTabContentType
 import com.eight87.tonearm.data.db.CustomTabEntity
 import com.eight87.tonearm.data.model.Track
@@ -43,7 +46,15 @@ fun defaultViewModeFor(contentType: CustomTabContentType): ViewMode = when (cont
 @Composable
 internal fun CustomTabContent(
   customTab: CustomTabEntity,
-  repository: LibraryRepository,
+  // R.A.4 — each branch dispatches into one tab screen so we take all
+  // four sources up-front. Smaller-blast-radius alternative (one
+  // composite "LibrarySources" interface) was rejected per the brief:
+  // "ISP isn't about minimizing parameter count, it's about minimizing
+  // the surface a caller depends on".
+  tracks: TrackSource,
+  albums: AlbumSource,
+  artists: ArtistSource,
+  genres: GenreSource,
   settingsRepository: SettingsRepository,
   sort: TabSort,
   snapshot: SettingsSnapshot,
@@ -63,7 +74,7 @@ internal fun CustomTabContent(
   }
   when (customTab.contentType) {
     CustomTabContentType.SONGS -> TracksListScreen(
-      repository = repository,
+      repository = tracks,
       sort = sort,
       intelligentSorting = snapshot.intelligentSorting,
       filter = criteria,
@@ -88,7 +99,7 @@ internal fun CustomTabContent(
       onDeleteTracks = onDeleteTracks,
     )
     CustomTabContentType.ALBUMS -> AlbumsTabScreen(
-      repository = repository,
+      repository = albums,
       sort = sort,
       intelligentSorting = snapshot.intelligentSorting,
       forceSquare = snapshot.forceSquareCovers,
@@ -98,7 +109,7 @@ internal fun CustomTabContent(
       onAlbumClick = { a -> onOpenAlbum(a.name, a.artist) },
     )
     CustomTabContentType.ARTISTS -> ArtistsTabScreen(
-      repository = repository,
+      repository = artists,
       settingsRepository = settingsRepository,
       sort = sort,
       intelligentSorting = snapshot.intelligentSorting,
@@ -107,7 +118,7 @@ internal fun CustomTabContent(
       onArtistClick = { a -> onOpenArtist(a.name) },
     )
     CustomTabContentType.GENRES -> GenresTabScreen(
-      repository = repository,
+      repository = genres,
       sort = sort,
       viewMode = viewMode,
       filter = criteria,

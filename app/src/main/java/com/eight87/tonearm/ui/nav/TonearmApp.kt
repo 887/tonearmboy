@@ -97,7 +97,7 @@ fun TonearmApp(
   // root means the consent dialog can return after a screen pop.
   val trackDeleter = remember { com.eight87.tonearm.data.delete.TrackDeleter(graph.applicationContextForUi) }
   val onDeleteTracks = com.eight87.tonearm.ui.library.rememberDeleteFlow(
-    repository = graph.libraryRepository,
+    scanner = graph.scanner,
     playback = playback,
     snackbarHostState = snackbarHostState,
     applicationScope = graph.applicationScope,
@@ -117,7 +117,7 @@ fun TonearmApp(
   LaunchedEffect(Unit) {
     // D.9b.1 — give the controller a library handle for ReplayGain
     // album lookups before it sees the first track transition.
-    playback.setLibrary(graph.libraryRepository)
+    playback.setLibrary(graph.tracks)
     playback.connect()
   }
 
@@ -210,10 +210,10 @@ fun TonearmApp(
             it.bufferedReader(Charsets.UTF_8).readText()
           } ?: error("Could not read selected file")
           val envelope = com.eight87.tonearm.data.playlist.PlaylistBackupCodec.decode(raw)
-          val tracks = graph.libraryRepository.observeTracks().first()
+          val tracks = graph.tracks.observeTracks().first()
           val resolution = com.eight87.tonearm.data.playlist
             .resolvePlaylistImport(envelope, tracks)
-          val existing = graph.libraryRepository.observePlaylists().first()
+          val existing = graph.playlists.observePlaylists().first()
           val existingNames = existing.map { it.name }.toSet()
           val collisions = resolution.resolved.keys.filter { it in existingNames }
           envelope to resolution to collisions
@@ -225,7 +225,7 @@ fun TonearmApp(
             // No collisions, apply with Merge as the default policy
             // (irrelevant since none collide, but keeps the path simple).
             val summary = com.eight87.tonearm.data.playlist.applyPlaylistImport(
-              repository = graph.libraryRepository,
+              repository = graph.playlists,
               envelope = env,
               resolution = resolution,
               collisionPolicy = com.eight87.tonearm.data.playlist
@@ -247,7 +247,7 @@ fun TonearmApp(
   val onExportPlaylists: () -> Unit = {
     graph.applicationScope.launch {
       val envelope = com.eight87.tonearm.data.playlist
-        .buildPlaylistBackup(graph.libraryRepository)
+        .buildPlaylistBackup(graph.playlists)
       pendingExportEnvelope = envelope
       createDocLauncher.launch(
         com.eight87.tonearm.data.playlist.PlaylistBackupCodec.defaultFileName(),
@@ -257,17 +257,17 @@ fun TonearmApp(
   val onImportPlaylists: () -> Unit = {
     openDocLauncher.launch(arrayOf("application/json"))
   }
-  val playlists by graph.libraryRepository.observePlaylists()
+  val playlists by graph.playlists.observePlaylists()
     .collectAsStateWithLifecycle(initialValue = emptyList())
   val onRefreshMusic: () -> Unit = {
     graph.applicationScope.launch {
-      graph.libraryRepository.rescanNow()
+      graph.scanner.rescanNow()
       snackbarHostState.showSnackbar("Refreshed music library")
     }
   }
   val onRescanMusic: () -> Unit = {
     graph.applicationScope.launch {
-      graph.libraryRepository.rescanNow()
+      graph.scanner.rescanNow()
       snackbarHostState.showSnackbar("Rescanned music library")
     }
   }
@@ -304,7 +304,13 @@ fun TonearmApp(
       entryProvider = entryProvider {
         entry<LibraryRoot> {
           LibraryScreen(
-            repository = graph.libraryRepository,
+            tracks = graph.tracks,
+            albums = graph.albums,
+            artists = graph.artists,
+            genres = graph.genres,
+            playlists = graph.playlists,
+            customTabs = graph.customTabs,
+            scanner = graph.scanner,
             settingsRepository = graph.settingsRepository,
             onTrackClick = { tracks, index ->
               // D.9a.4: queue depends on the user's "When playing from
@@ -346,19 +352,19 @@ fun TonearmApp(
             onAddTracksToPlaylist = { ids -> addingToPlaylistTrackIds = ids },
             onRenamePlaylist = { id, name ->
               graph.applicationScope.launch {
-                graph.libraryRepository.renamePlaylist(id, name)
+                graph.playlists.renamePlaylist(id, name)
                 snackbarHostState.showSnackbar("Renamed to \"$name\"")
               }
             },
             onDeletePlaylist = { id ->
               graph.applicationScope.launch {
-                graph.libraryRepository.deletePlaylist(id)
+                graph.playlists.deletePlaylist(id)
                 snackbarHostState.showSnackbar("Playlist deleted")
               }
             },
             onSetPlaylistCover = { id, uri ->
               graph.applicationScope.launch {
-                graph.libraryRepository.setPlaylistCoverUri(id, uri)
+                graph.playlists.setPlaylistCoverUri(id, uri)
                 snackbarHostState.showSnackbar(
                   if (uri == null) "Playlist cover cleared" else "Playlist cover updated",
                 )
@@ -372,7 +378,8 @@ fun TonearmApp(
         }
         entry<AlbumDetail> { key ->
           AlbumDetailScreen(
-            repository = graph.libraryRepository,
+            trackSource = graph.tracks,
+            albumSource = graph.albums,
             albumName = key.name,
             albumArtist = key.albumArtist,
             albumCoversMode = settingsSnapshot.albumCoversMode,
@@ -401,7 +408,8 @@ fun TonearmApp(
         }
         entry<ArtistDetail> { key ->
           ArtistDetailScreen(
-            repository = graph.libraryRepository,
+            trackSource = graph.tracks,
+            albumSource = graph.albums,
             artistName = key.name,
             albumCoversMode = settingsSnapshot.albumCoversMode,
             onTrackClick = { tracks, index ->
@@ -430,7 +438,7 @@ fun TonearmApp(
         }
         entry<GenreDetail> { key ->
           GenreDetailScreen(
-            repository = graph.libraryRepository,
+            trackSource = graph.tracks,
             genreName = key.name,
             onTrackClick = { tracks, index ->
               playback.playFromDetail(
@@ -458,7 +466,7 @@ fun TonearmApp(
         entry<Search> {
           LaunchedEffect(Unit) { sectionTitle.value = "Search" }
           SearchScreen(
-            repository = graph.libraryRepository,
+            repository = graph.tracks,
             onTrackClick = { track ->
               playback.playTrack(track)
               backStack.push(NowPlaying)
@@ -485,7 +493,7 @@ fun TonearmApp(
         }
         entry<PlaylistDetail> { key ->
           PlaylistDetailScreen(
-            repository = graph.libraryRepository,
+            repository = graph.playlists,
             playlistId = key.playlistId,
             onTrackClick = { tracks, index ->
               // D.9a.5: tapped from a detail surface (playlist).
@@ -503,24 +511,25 @@ fun TonearmApp(
         entry<PlaylistTrackPicker> { key ->
           LaunchedEffect(Unit) { sectionTitle.value = "Add tracks" }
           com.eight87.tonearm.ui.library.TrackPickerScreen(
-            repository = graph.libraryRepository,
+            trackSource = graph.tracks,
+            playlists = graph.playlists,
             playlistId = key.playlistId,
             onBack = { backStack.pop() },
             onConfirm = { toAdd, toRemove ->
               graph.applicationScope.launch {
                 toAdd.forEach { tid ->
-                  graph.libraryRepository.addTrackToPlaylist(key.playlistId, tid)
+                  graph.playlists.addTrackToPlaylist(key.playlistId, tid)
                 }
                 if (toRemove.isNotEmpty()) {
                   // Remove by re-writing the playlist's join rows
                   // without the unchecked ids; the repository helper
                   // doesn't take an id-set directly so we use the same
                   // pattern as the M3U importer.
-                  val current = graph.libraryRepository
+                  val current = graph.playlists
                     .observePlaylistTracks(key.playlistId).first()
                     .map { it.id }
                   val remaining = current.filter { it !in toRemove }
-                  graph.libraryRepository.reorderPlaylist(key.playlistId, remaining)
+                  graph.playlists.reorderPlaylist(key.playlistId, remaining)
                 }
                 snackbarHostState.showSnackbar(
                   "Updated playlist (added ${toAdd.size}, removed ${toRemove.size})",
@@ -588,7 +597,7 @@ fun TonearmApp(
           LaunchedEffect(Unit) { sectionTitle.value = "Personalize" }
           SettingsPersonalizeScreen(
             repository = graph.settingsRepository,
-            libraryRepository = graph.libraryRepository,
+            customTabStore = graph.customTabs,
             onBack = { backStack.pop() },
             onOpenCustomTabEditor = { id -> backStack.push(CustomTabEditor(id)) },
             onComingSoon = onComingSoon,
@@ -600,11 +609,11 @@ fun TonearmApp(
           // entity (when editing) is resolved from the live customTabs
           // Flow on entry; FilterUniverse is built from the same Flows
           // the dialog used pre-D.30.3.
-          val customTabs by graph.libraryRepository.customTabs().collectAsStateWithLifecycle(initialValue = emptyList())
-          val genres by graph.libraryRepository.observeGenres().collectAsStateWithLifecycle(initialValue = emptyList())
-          val artists by graph.libraryRepository.observeArtists().collectAsStateWithLifecycle(initialValue = emptyList())
-          val albums by graph.libraryRepository.observeAlbums().collectAsStateWithLifecycle(initialValue = emptyList())
-          val tracks by graph.libraryRepository.observeTracks().collectAsStateWithLifecycle(initialValue = emptyList())
+          val customTabs by graph.customTabs.customTabs().collectAsStateWithLifecycle(initialValue = emptyList())
+          val genres by graph.genres.observeGenres().collectAsStateWithLifecycle(initialValue = emptyList())
+          val artists by graph.artists.observeArtists().collectAsStateWithLifecycle(initialValue = emptyList())
+          val albums by graph.albums.observeAlbums().collectAsStateWithLifecycle(initialValue = emptyList())
+          val tracks by graph.tracks.observeTracks().collectAsStateWithLifecycle(initialValue = emptyList())
           val existing = key.tabId?.let { id -> customTabs.firstOrNull { it.id == id } }
           val universe = remember(genres, artists, albums, tracks) {
             FilterUniverse(
@@ -635,7 +644,7 @@ fun TonearmApp(
                   contentType = ct,
                   criteriaJson = com.eight87.tonearm.data.FilterCriteria.toJson(criteria),
                 )
-                graph.libraryRepository.upsertCustomTab(entity)
+                graph.customTabs.upsertCustomTab(entity)
                 backStack.pop()
               }
             },
@@ -685,15 +694,15 @@ fun TonearmApp(
         onPick = { p ->
           addingToPlaylistTrack = null
           graph.applicationScope.launch {
-            graph.libraryRepository.addTrackToPlaylist(p.id, track.id)
+            graph.playlists.addTrackToPlaylist(p.id, track.id)
             snackbarHostState.showSnackbar("Added \"${track.title}\" to ${p.name}")
           }
         },
         onCreateAndPick = { name ->
           addingToPlaylistTrack = null
           graph.applicationScope.launch {
-            val id = graph.libraryRepository.createPlaylist(name)
-            graph.libraryRepository.addTrackToPlaylist(id, track.id)
+            val id = graph.playlists.createPlaylist(name)
+            graph.playlists.addTrackToPlaylist(id, track.id)
             snackbarHostState.showSnackbar("Added \"${track.title}\" to $name")
           }
         },
@@ -711,15 +720,15 @@ fun TonearmApp(
         onPick = { p ->
           addingToPlaylistTrackIds = null
           graph.applicationScope.launch {
-            ids.forEach { tid -> graph.libraryRepository.addTrackToPlaylist(p.id, tid) }
+            ids.forEach { tid -> graph.playlists.addTrackToPlaylist(p.id, tid) }
             snackbarHostState.showSnackbar("Added ${ids.size} tracks to ${p.name}")
           }
         },
         onCreateAndPick = { name ->
           addingToPlaylistTrackIds = null
           graph.applicationScope.launch {
-            val id = graph.libraryRepository.createPlaylist(name)
-            ids.forEach { tid -> graph.libraryRepository.addTrackToPlaylist(id, tid) }
+            val id = graph.playlists.createPlaylist(name)
+            ids.forEach { tid -> graph.playlists.addTrackToPlaylist(id, tid) }
             snackbarHostState.showSnackbar("Added ${ids.size} tracks to $name")
           }
         },
@@ -732,7 +741,7 @@ fun TonearmApp(
     if (showMusicSourcesDialog) {
       MusicSourcesDialog(
         settings = graph.settingsRepository,
-        library = graph.libraryRepository,
+        scanner = graph.scanner,
         onDismiss = { showMusicSourcesDialog = false },
       )
     }
@@ -749,7 +758,7 @@ fun TonearmApp(
           pendingImport = null
           graph.applicationScope.launch {
             val summary = com.eight87.tonearm.data.playlist.applyPlaylistImport(
-              repository = graph.libraryRepository,
+              repository = graph.playlists,
               envelope = captured.envelope,
               resolution = captured.resolution,
               collisionPolicy = policy,
