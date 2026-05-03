@@ -113,8 +113,7 @@ class PlaybackService : MediaSessionService() {
     // re-renders the notification with.
     val settingsRepo = SettingsRepository(applicationContext)
     serviceScope.launch {
-      settingsRepo.snapshot
-        .map { it.customNotificationAction }
+      settingsRepo.customNotificationAction.flow
         .distinctUntilChanged()
         .collect { applyCustomNotificationLayout(it) }
     }

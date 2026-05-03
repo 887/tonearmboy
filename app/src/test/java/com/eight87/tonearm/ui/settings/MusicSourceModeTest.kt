@@ -32,15 +32,13 @@ class MusicSourceModeTest {
   fun default_is_system_when_no_value_is_persisted() = runTest {
     val repo = SettingsRepository(context)
     assertEquals(MusicSourceMode.System, repo.musicSourceMode.flow.first())
-    assertEquals(MusicSourceMode.System, repo.snapshot.first().musicSourceMode)
   }
 
   @Test
-  fun set_round_trips_through_snapshot_and_flow() = runTest {
+  fun set_round_trips_through_flow() = runTest {
     val repo = SettingsRepository(context)
     repo.setMusicSourceMode(MusicSourceMode.FilePicker)
     assertEquals(MusicSourceMode.FilePicker, repo.musicSourceMode.flow.first())
-    assertEquals(MusicSourceMode.FilePicker, repo.snapshot.first().musicSourceMode)
     repo.setMusicSourceMode(MusicSourceMode.System)
     assertEquals(MusicSourceMode.System, repo.musicSourceMode.flow.first())
   }

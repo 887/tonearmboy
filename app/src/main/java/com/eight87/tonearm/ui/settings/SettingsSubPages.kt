@@ -104,7 +104,7 @@ fun SettingsLookAndFeelScreen(
   val themePref by theme.theme.flow.collectAsState(initial = ThemePreference.Default)
   val baseTheme by theme.baseTheme.flow.collectAsState(initial = BaseTheme.Default)
   val albumArtTintEnabled by theme.albumArtTintEnabled.flow.collectAsState(
-    initial = SettingsSnapshot.Default.albumArtTintEnabled,
+    initial = true,
   )
   val scope = rememberCoroutineScope()
   var themePicker by remember { mutableStateOf(false) }
@@ -266,7 +266,7 @@ fun SettingsPersonalizeScreen(
     initial = PlayFromItemDetails.Default,
   )
   val rememberShuffle by playback.rememberShuffle.flow.collectAsState(
-    initial = SettingsSnapshot.Default.rememberShuffle,
+    initial = false,
   )
   val scope = rememberCoroutineScope()
   var showLibraryTabs by remember { mutableStateOf(false) }
@@ -455,25 +455,25 @@ fun SettingsContentScreen(
   snackbarHostState: SnackbarHostState,
 ) {
   val automaticReloading by library.automaticReloading.flow.collectAsState(
-    initial = SettingsSnapshot.Default.automaticReloading,
+    initial = false,
   )
   val multiValueSeparators by library.multiValueSeparators.flow.collectAsState(
     initial = MultiValueSeparator.Default,
   )
   val intelligentSorting by library.intelligentSorting.flow.collectAsState(
-    initial = SettingsSnapshot.Default.intelligentSorting,
+    initial = true,
   )
   val hideCollaborators by library.hideCollaborators.flow.collectAsState(
-    initial = SettingsSnapshot.Default.hideCollaborators,
+    initial = false,
   )
   val autoDiscoverAlbumArt by library.autoDiscoverAlbumArt.flow.collectAsState(
-    initial = SettingsSnapshot.Default.autoDiscoverAlbumArt,
+    initial = false,
   )
   val albumCoversMode by library.albumCoversMode.flow.collectAsState(
     initial = AlbumCoversMode.Default,
   )
   val forceSquareCovers by library.forceSquareCovers.flow.collectAsState(
-    initial = SettingsSnapshot.Default.forceSquareCovers,
+    initial = false,
   )
   val scope = rememberCoroutineScope()
   var albumCoversPicker by remember { mutableStateOf(false) }
@@ -622,22 +622,22 @@ fun SettingsAudioScreen(
   playback: com.eight87.tonearm.playback.PlaybackUiController? = null,
 ) {
   val headsetAutoplay by settings.headsetAutoplay.flow.collectAsState(
-    initial = SettingsSnapshot.Default.headsetAutoplay,
+    initial = false,
   )
   val rewindBeforeSkipBack by settings.rewindBeforeSkipBack.flow.collectAsState(
-    initial = SettingsSnapshot.Default.rewindBeforeSkipBack,
+    initial = true,
   )
   val pauseOnRepeat by settings.pauseOnRepeat.flow.collectAsState(
-    initial = SettingsSnapshot.Default.pauseOnRepeat,
+    initial = false,
   )
   val rememberPause by settings.rememberPause.flow.collectAsState(
-    initial = SettingsSnapshot.Default.rememberPause,
+    initial = false,
   )
   val replayGainStrategy by settings.replayGainStrategy.flow.collectAsState(
     initial = ReplayGainStrategy.Default,
   )
   val replayGainPreampDb by settings.replayGainPreampDb.flow.collectAsState(
-    initial = SettingsSnapshot.Default.replayGainPreampDb,
+    initial = 0f,
   )
   val scope = rememberCoroutineScope()
   val context = LocalContext.current

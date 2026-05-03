@@ -30,7 +30,7 @@ import org.junit.Assert.assertTrue
  * Two flavours of test live here:
  *  - **Pure logic** for tab visibility / order / active-index resolution
  *    — these don't need Compose, just exercise the bookkeeping the
- *    library screen does on top of `SettingsSnapshot.libraryTabs`.
+ *    library screen does on top of `TabLayoutSettings.libraryTabs`.
  *  - **Compose UI** through `createComposeRule()` (Robolectric host)
  *    rendering [LibraryRail] at varying tab counts (3 / 5 / 7) and
  *    asserting the rotated text labels are laid out and the active-tab

@@ -192,14 +192,20 @@ fun LibraryScreen(
   // callback serve the single-track menu item and the multi-select bar.
   onDeleteTracks: (List<Track>) -> Unit,
 ) {
-  val snapshot by settingsRepository.snapshot.collectAsState(
-    initial = com.eight87.tonearm.ui.settings.SettingsSnapshot.Default,
-  )
-  // Visible tabs: anything in libraryTabs is "shown" (hidden tabs
+  // R.B.5 — narrow per-key Flow reads via the facets the repository implements.
+  val libraryTabsList by settingsRepository.libraryTabs.flow
+    .collectAsState(initial = LibraryTab.DefaultOrder)
+  val intelligentSorting by settingsRepository.intelligentSorting.flow
+    .collectAsState(initial = true)
+  val albumCoversMode by settingsRepository.albumCoversMode.flow
+    .collectAsState(initial = com.eight87.tonearm.ui.settings.AlbumCoversMode.Default)
+  val forceSquareCovers by settingsRepository.forceSquareCovers.flow
+    .collectAsState(initial = false)
+  // Visible tabs: anything in libraryTabsList is "shown" (hidden tabs
   // already filtered by SettingsRepository's parser when wired to the
   // Personalize sub-page). Default order = canonical.
-  val visibleTabs = remember(snapshot.libraryTabs) {
-    snapshot.libraryTabs.ifEmpty { LibraryTab.DefaultOrder }
+  val visibleTabs = remember(libraryTabsList) {
+    libraryTabsList.ifEmpty { LibraryTab.DefaultOrder }
   }
   // D.18.5 — custom tabs are rendered after the built-ins in the rail.
   val customTabsList by customTabs.customTabs().collectAsState(initial = emptyList())
@@ -366,7 +372,9 @@ fun LibraryScreen(
             genres = genres,
             settingsRepository = settingsRepository,
             sort = activeSort,
-            snapshot = snapshot,
+            intelligentSorting = intelligentSorting,
+            forceSquareCovers = forceSquareCovers,
+            albumCoversMode = albumCoversMode,
             viewMode = activeViewMode,
             onTrackClick = onTrackClick,
             onAddToQueue = onAddToQueue,
@@ -382,10 +390,10 @@ fun LibraryScreen(
           LibraryTab.Songs -> TracksListScreen(
             repository = tracks,
             sort = activeSort,
-            intelligentSorting = snapshot.intelligentSorting,
+            intelligentSorting = intelligentSorting,
             filter = filter,
             viewMode = activeViewMode,
-            albumCoversMode = snapshot.albumCoversMode,
+            albumCoversMode = albumCoversMode,
             onTrackClick = onTrackClick,
             onAddToQueue = onAddToQueue,
             onAddToPlaylist = onAddToPlaylist,
@@ -398,9 +406,9 @@ fun LibraryScreen(
           LibraryTab.Albums -> AlbumsTabScreen(
             repository = albums,
             sort = activeSort,
-            intelligentSorting = snapshot.intelligentSorting,
-            forceSquare = snapshot.forceSquareCovers,
-            albumCoversMode = snapshot.albumCoversMode,
+            intelligentSorting = intelligentSorting,
+            forceSquare = forceSquareCovers,
+            albumCoversMode = albumCoversMode,
             viewMode = activeViewMode,
             onAlbumClick = { a -> onOpenAlbum(a.name, a.artist) },
           )
@@ -408,7 +416,7 @@ fun LibraryScreen(
             repository = artists,
             settingsRepository = settingsRepository,
             sort = activeSort,
-            intelligentSorting = snapshot.intelligentSorting,
+            intelligentSorting = intelligentSorting,
             viewMode = activeViewMode,
             onArtistClick = { a -> onOpenArtist(a.name) },
           )

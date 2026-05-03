@@ -24,7 +24,7 @@ import com.eight87.tonearm.ui.nav.TonearmApp
 import com.eight87.tonearm.ui.permission.RequireAudioPermission
 import com.eight87.tonearm.ui.permission.RequirePostNotifications
 import com.eight87.tonearm.data.watcher.LibraryWatcherService
-import com.eight87.tonearm.ui.settings.SettingsSnapshot
+import com.eight87.tonearm.ui.settings.BaseTheme
 import com.eight87.tonearm.ui.settings.ThemePreference
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -102,9 +102,17 @@ class MainActivity : ComponentActivity() {
     handleIntent(intent)
 
     setContent {
-      val snapshot by graph.settingsRepository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
+      // R.B.5 — per-key Flow reads. Each subscription is its own
+      // narrow stream so toggling, e.g., albumArtTintEnabled doesn't
+      // recompose the theme-mode `when` block.
+      val theme by graph.settingsRepository.theme.flow
+        .collectAsState(initial = ThemePreference.Default)
+      val baseTheme by graph.settingsRepository.baseTheme.flow
+        .collectAsState(initial = BaseTheme.Default)
+      val albumArtTintEnabled by graph.settingsRepository.albumArtTintEnabled.flow
+        .collectAsState(initial = true)
       val systemDark = isSystemInDarkTheme()
-      val resolvedDark = when (snapshot.theme) {
+      val resolvedDark = when (theme) {
         ThemePreference.System -> systemDark
         ThemePreference.Light -> false
         ThemePreference.Dark -> true
@@ -121,8 +129,8 @@ class MainActivity : ComponentActivity() {
       CompositionLocalProvider(LocalAlbumPalette provides albumPalette) {
         TonearmTheme(
           darkTheme = resolvedDark,
-          baseTheme = snapshot.baseTheme,
-          albumArtTintEnabled = snapshot.albumArtTintEnabled,
+          baseTheme = baseTheme,
+          albumArtTintEnabled = albumArtTintEnabled,
         ) {
           Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             // D.19 — wrap the app in the runtime-permission gate so a

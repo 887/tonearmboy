@@ -43,7 +43,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [x] **R.B.2** Migrate the rest of `SettingsRepository`'s keys to `Setting<T>` declarations (~25 keys). Hand-rolled boilerplate gone; on-disk keys unchanged.
 - [x] **R.B.3** Define facet interfaces: `ThemeSettings`, `PlaybackSettings`, `LibrarySettings`, `MusicSourcesSettings`, `TabLayoutSettings`. `SettingsRepository` implements all five (mirror of R.A.2).
 - [x] **R.B.4** Sub-pages take only the facet they need: `SettingsLookAndFeelScreen(theme: ThemeSettings)`, `SettingsAudioScreen(playback: PlaybackSettings)`, etc. Drop the `SettingsRepository`-wholesale parameter (Settings-F4).
-- [ ] **R.B.5** Delete `SettingsSnapshot` and the `combine` that builds it (Settings-F3). Each consumer reads its narrow `Flow<T>` directly via `collectAsStateWithLifecycle`.
+- [x] **R.B.5** Delete `SettingsSnapshot` and the `combine` that builds it (Settings-F3). Each consumer reads its narrow `Flow<T>` directly via `collectAsStateWithLifecycle`.
 - [ ] **R.B.6** Move UI-only helpers out of the repo: `BaseTheme.pickerOptions` + `baseThemeMatch` → `ui/settings/BaseThemeUi.kt` (Settings-F11). `parseLibraryTabs` → `LibraryTabOrder` value type (Settings-F12).
 - [ ] **R.B.7** Verify: tests + AVD round-trip every settings sub-page, confirm nothing recomposes-on-unrelated-key any more (rough check via logcat).
 - [ ] **R.B.8** Ship + tick.

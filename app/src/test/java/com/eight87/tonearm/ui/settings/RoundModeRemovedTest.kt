@@ -15,7 +15,9 @@ import org.junit.Test
  *   2. `SettingsCatalog` does not declare `ID_ROUND_MODE` (compile-
  *      time check via reflection — getting the constant by name
  *      returns null when it doesn't exist).
- *   3. `SettingsSnapshot` has no `roundMode` property.
+ *   3. `SettingsRepository` has no `setRoundMode` mutator. (R.B.5
+ *      retired the snapshot data class so the original
+ *      `getRoundMode` reflection check moved to the repo.)
  */
 class RoundModeRemovedTest {
 
@@ -37,18 +39,6 @@ class RoundModeRemovedTest {
     assertNull(
       "SettingsCatalog must not re-introduce ID_ROUND_MODE",
       field,
-    )
-  }
-
-  @Test
-  fun settings_snapshot_has_no_round_mode_property() {
-    // The Kotlin compiler synthesises a `getRoundMode()` accessor on
-    // the data class for every property. If that getter exists, the
-    // property is back.
-    val hasGetter = SettingsSnapshot::class.java.methods.any { it.name == "getRoundMode" }
-    assertFalse(
-      "SettingsSnapshot must not re-introduce roundMode",
-      hasGetter,
     )
   }
 

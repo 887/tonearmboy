@@ -74,9 +74,9 @@ class BaseThemeCustomTest {
   fun roundTrip_through_datastore_preserves_seed() = runTest {
     val seed = 0xFF8800L
     repo.setBaseTheme(BaseTheme.Custom(seed))
-    val s = repo.snapshot.first()
-    assertTrue(s.baseTheme is BaseTheme.Custom)
-    assertEquals(seed, (s.baseTheme as BaseTheme.Custom).seedRgb)
+    val baseTheme = repo.baseTheme.flow.first()
+    assertTrue(baseTheme is BaseTheme.Custom)
+    assertEquals(seed, (baseTheme as BaseTheme.Custom).seedRgb)
   }
 
   @Test
