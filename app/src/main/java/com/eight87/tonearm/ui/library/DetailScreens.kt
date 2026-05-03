@@ -48,7 +48,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.AlbumSource
+import com.eight87.tonearm.data.TrackSource
 import com.eight87.tonearm.data.model.Album
 import com.eight87.tonearm.data.model.Track
 import com.eight87.tonearm.ui.nav.LocalSectionTitle
@@ -74,7 +75,9 @@ import com.eight87.tonearm.ui.settings.catalog.SettingsDimens
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumDetailScreen(
-  repository: LibraryRepository,
+  // R.A.4 — read both rollups; pre-existing in-Compose join over them.
+  trackSource: TrackSource,
+  albumSource: AlbumSource,
   albumName: String,
   albumArtist: String?,
   albumCoversMode: AlbumCoversMode,
@@ -82,16 +85,16 @@ fun AlbumDetailScreen(
   onTrackAction: (Track, AlbumDetailTrackAction) -> Unit,
   onBack: () -> Unit,
 ) {
-  val allTracks by repository.observeTracks().collectAsState(initial = emptyList())
-  val albums by repository.observeAlbums().collectAsState(initial = emptyList())
+  val allTracks by trackSource.observeTracks().collectAsState(initial = emptyList())
+  val allAlbumsList by albumSource.observeAlbums().collectAsState(initial = emptyList())
 
   val tracks = remember(allTracks, albumName, albumArtist) {
     allTracks
       .filter { it.album == albumName && (it.albumArtist ?: it.artist) == albumArtist }
       .sortedWith(compareBy({ it.year ?: Int.MIN_VALUE }, { it.trackNumber ?: Int.MAX_VALUE }, { it.title }))
   }
-  val album: Album? = remember(albums, albumName, albumArtist) {
-    albums.firstOrNull { it.name == albumName && it.artist == albumArtist }
+  val album: Album? = remember(allAlbumsList, albumName, albumArtist) {
+    allAlbumsList.firstOrNull { it.name == albumName && it.artist == albumArtist }
   }
   val totalDurationMs = remember(tracks) { tracks.sumOf { it.durationMs } }
 
@@ -179,7 +182,8 @@ fun AlbumDetailScreen(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ArtistDetailScreen(
-  repository: LibraryRepository,
+  trackSource: TrackSource,
+  albumSource: AlbumSource,
   artistName: String,
   albumCoversMode: AlbumCoversMode,
   onTrackClick: (List<Track>, Int) -> Unit,
@@ -187,8 +191,8 @@ fun ArtistDetailScreen(
   onAlbumClick: (Album) -> Unit,
   onBack: () -> Unit,
 ) {
-  val allTracks by repository.observeTracks().collectAsState(initial = emptyList())
-  val allAlbums by repository.observeAlbums().collectAsState(initial = emptyList())
+  val allTracks by trackSource.observeTracks().collectAsState(initial = emptyList())
+  val allAlbums by albumSource.observeAlbums().collectAsState(initial = emptyList())
 
   val tracks = remember(allTracks, artistName) {
     allTracks
@@ -299,13 +303,13 @@ fun ArtistDetailScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GenreDetailScreen(
-  repository: LibraryRepository,
+  trackSource: TrackSource,
   genreName: String,
   onTrackClick: (List<Track>, Int) -> Unit,
   onTrackAction: (Track, AlbumDetailTrackAction) -> Unit,
   onBack: () -> Unit,
 ) {
-  val allTracks by repository.observeTracks().collectAsState(initial = emptyList())
+  val allTracks by trackSource.observeTracks().collectAsState(initial = emptyList())
   val tracks = remember(allTracks, genreName) {
     allTracks.filter { it.genre == genreName }
       .sortedBy { it.title }

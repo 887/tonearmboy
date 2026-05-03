@@ -133,7 +133,7 @@ class MainActivity : ComponentActivity() {
             RequireAudioPermission(
               onGranted = {
                 graph.applicationScope.launch {
-                  graph.libraryRepository.rescanNow()
+                  graph.scanner.rescanNow()
                 }
               },
             ) {

@@ -31,7 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.TrackSource
 import com.eight87.tonearm.data.model.Track
 import com.eight87.tonearm.ui.library.libraryListCard
 import kotlinx.coroutines.flow.collectLatest
@@ -39,14 +39,14 @@ import kotlinx.coroutines.flow.flowOf
 
 /**
  * Search screen — full-text search over titles / artists / albums via
- * the FTS-backed [LibraryRepository.search]. The query string is
+ * the FTS-backed [TrackSource.search]. The query string is
  * debounced inside [SearchInputReducer] (unit-tested) so we do not
  * thrash the FTS index on every keystroke.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
-  repository: LibraryRepository,
+  repository: TrackSource,
   onTrackClick: (Track) -> Unit,
   onBack: () -> Unit = {},
 ) {

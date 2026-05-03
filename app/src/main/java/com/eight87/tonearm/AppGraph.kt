@@ -3,7 +3,15 @@ package com.eight87.tonearm
 import android.app.Application
 import android.content.Context
 import androidx.media3.common.util.UnstableApi
+import com.eight87.tonearm.data.AlbumSource
+import com.eight87.tonearm.data.ArtistSource
+import com.eight87.tonearm.data.CustomTabStore
+import com.eight87.tonearm.data.GenreSource
 import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.LibraryScanner
+import com.eight87.tonearm.data.MediaChangeSource
+import com.eight87.tonearm.data.PlaylistStore
+import com.eight87.tonearm.data.TrackSource
 import com.eight87.tonearm.playback.PlaybackUiController
 import com.eight87.tonearm.theme.AlbumPaletteSource
 import com.eight87.tonearm.ui.settings.SettingsRepository
@@ -34,9 +42,48 @@ class AppGraph(private val applicationContext: Context) {
    */
   val applicationContextForUi: Context get() = applicationContext
 
+  /**
+   * R.A.3 — concrete library repo. Exposed `@Deprecated` so remaining
+   * direct uses surface as compile warnings — every UI consumer should
+   * take one of the narrow interfaces below ([tracks], [albums],
+   * [artists], [genres], [playlists], [customTabs], [scanner],
+   * [mediaChanges]).
+   */
+  @Deprecated(
+    "Take a narrow interface (TrackSource / AlbumSource / etc.) instead.",
+    ReplaceWith("tracks / albums / artists / genres / playlists / customTabs / scanner"),
+  )
   val libraryRepository: LibraryRepository by lazy {
-    LibraryRepository(applicationContext, externalScope = applicationScope)
+    // R.A.6 — explicit wiring of every collaborator. No more
+    // self-defaults inside LibraryRepository.
+    LibraryRepository(
+      context = applicationContext,
+      scanner = com.eight87.tonearm.data.mediastore.MediaStoreScanner(applicationContext),
+      db = com.eight87.tonearm.data.db.LibraryDatabase.get(applicationContext),
+      externalScope = applicationScope,
+      scanConfig = settingsRepository,
+    )
   }
+
+  // R.A.3 — narrow interface aliases. UI screens take one of these
+  // instead of the whole repository so a change to (say) playlist CRUD
+  // can't ripple into the tab renderers (ISP).
+  @Suppress("DEPRECATION")
+  val tracks: TrackSource get() = libraryRepository
+  @Suppress("DEPRECATION")
+  val albums: AlbumSource get() = libraryRepository
+  @Suppress("DEPRECATION")
+  val artists: ArtistSource get() = libraryRepository
+  @Suppress("DEPRECATION")
+  val genres: GenreSource get() = libraryRepository
+  @Suppress("DEPRECATION")
+  val playlists: PlaylistStore get() = libraryRepository
+  @Suppress("DEPRECATION")
+  val customTabs: CustomTabStore get() = libraryRepository
+  @Suppress("DEPRECATION")
+  val scanner: LibraryScanner get() = libraryRepository
+  @Suppress("DEPRECATION")
+  val mediaChanges: MediaChangeSource get() = libraryRepository
 
   val playbackUiController: PlaybackUiController by lazy {
     PlaybackUiController(applicationContext)

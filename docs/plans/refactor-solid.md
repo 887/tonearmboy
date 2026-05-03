@@ -14,20 +14,20 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 ---
 
-## Phase R.A — narrow data interfaces (LibraryRepository → focused readers)
+## Phase R.A — narrow data interfaces (LibraryRepository → focused readers) — shipped in commits `1b2f68e..b702585` (R.A.7 verified in this commit)
 
 **Why:** Every UI screen takes the whole `LibraryRepository` (~30 methods) when it needs 1–3 Flows. This forces recomposition coupling, makes preview/test setup heavy (a real `Context` + Room are needed for the simplest screen), and means a change to playlist CRUD risks breaking the tab renderers. Fixing it first unblocks Phases R.D and R.E (composables can shrink to narrow params).
 
 **How to apply:** Define narrow interfaces in `data/`. The composition root (`AppGraph`) is the only place that maps interface → concrete `LibraryRepository`.
 
-- [ ] **R.A.1** Define `TrackSource`, `AlbumSource`, `ArtistSource`, `GenreSource`, `PlaylistStore`, `CustomTabStore`, `LibraryScanner`, `MediaChangeSource` interfaces in `data/`. Each carries only the methods its consumers need (audit reports F1+F2 enumerate them).
-- [ ] **R.A.2** `LibraryRepository` implements all eight interfaces (single class, multiple narrow contracts) — no behaviour change yet.
-- [ ] **R.A.3** Update `AppGraph` to expose each interface separately (`val tracks: TrackSource = libraryRepository`, etc.). Mark `libraryRepository` `@Deprecated` to flag remaining direct uses.
-- [ ] **R.A.4** Migrate UI call sites to take the narrow interface: tab dispatchers → `TrackSource`/`AlbumSource`/etc.; `PlaylistTile` → just the playlist-cover Flow (function-typed param). Audit findings UI-F6, UI-F7, UI-F8 enumerate the screens.
-- [ ] **R.A.5** Remove the data → ui import: move `SettingsRepository` to a neutral package (`data.settings/` or top-level `settings/`) **OR** define `ScanConfigSource` in `data/` and have `SettingsRepository` implement it. `LibraryRepository` constructor takes `ScanConfigSource`, not the concrete settings repo. (Data-F3.)
-- [ ] **R.A.6** Drop the constructor self-defaults in `LibraryRepository` (Data-F6); `AppGraph` supplies all collaborators explicitly.
-- [ ] **R.A.7** Verify: `:app:assembleDebug` clean, `:app:testDebugUnitTest` green, AVD smoke (open Library tabs, play a track, edit MyMix).
-- [ ] **R.A.8** Ship + tick.
+- [x] **R.A.1** Define `TrackSource`, `AlbumSource`, `ArtistSource`, `GenreSource`, `PlaylistStore`, `CustomTabStore`, `LibraryScanner`, `MediaChangeSource` interfaces in `data/`. Each carries only the methods its consumers need (audit reports F1+F2 enumerate them).
+- [x] **R.A.2** `LibraryRepository` implements all eight interfaces (single class, multiple narrow contracts) — no behaviour change yet.
+- [x] **R.A.3** Update `AppGraph` to expose each interface separately (`val tracks: TrackSource = libraryRepository`, etc.). Mark `libraryRepository` `@Deprecated` to flag remaining direct uses.
+- [x] **R.A.4** Migrate UI call sites to take the narrow interface: tab dispatchers → `TrackSource`/`AlbumSource`/etc.; `PlaylistTile` → just the playlist-cover Flow (function-typed param). Audit findings UI-F6, UI-F7, UI-F8 enumerate the screens.
+- [x] **R.A.5** Remove the data → ui import: move `SettingsRepository` to a neutral package (`data.settings/` or top-level `settings/`) **OR** define `ScanConfigSource` in `data/` and have `SettingsRepository` implement it. `LibraryRepository` constructor takes `ScanConfigSource`, not the concrete settings repo. (Data-F3.)
+- [x] **R.A.6** Drop the constructor self-defaults in `LibraryRepository` (Data-F6); `AppGraph` supplies all collaborators explicitly.
+- [x] **R.A.7** Verify: `:app:assembleDebug` clean, `:app:testDebugUnitTest` green, AVD smoke (open Library tabs, play a track, edit MyMix).
+- [x] **R.A.8** Ship + tick.
 
 **Effort:** L (1–2 days). **Risk:** medium — wide call-site change, but each migration is mechanical. **Blast radius:** UI library/playing/playlist/customtab; no DB / no Room migration.
 

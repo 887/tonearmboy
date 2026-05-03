@@ -32,7 +32,7 @@ class LibraryRescanWorker(
 
   override suspend fun doWork(): Result {
     return try {
-      AppGraph.get(applicationContext).libraryRepository.rescanNow()
+      AppGraph.get(applicationContext).scanner.rescanNow()
       Log.i(TAG, "rescanNow completed")
       Result.success()
     } catch (t: Throwable) {

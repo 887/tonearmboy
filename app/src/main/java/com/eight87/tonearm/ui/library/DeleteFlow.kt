@@ -18,7 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.LibraryScanner
 import com.eight87.tonearm.data.delete.DeleteRequest
 import com.eight87.tonearm.data.delete.TrackDeleter
 import com.eight87.tonearm.data.model.Track
@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
 @OptIn(UnstableApi::class)
 @Composable
 fun rememberDeleteFlow(
-  repository: LibraryRepository,
+  scanner: LibraryScanner,
   playback: PlaybackUiController,
   snackbarHostState: SnackbarHostState,
   applicationScope: CoroutineScope,
@@ -67,7 +67,7 @@ fun rememberDeleteFlow(
     if (result.resultCode == android.app.Activity.RESULT_OK) {
       finalizeDelete(
         deleted = pending,
-        repository = repository,
+        scanner = scanner,
         playback = playback,
         snackbarHostState = snackbarHostState,
         applicationScope = applicationScope,
@@ -102,7 +102,7 @@ fun rememberDeleteFlow(
                 is DeleteRequest.Immediate -> {
                   finalizeDelete(
                     deleted = toDelete,
-                    repository = repository,
+                    scanner = scanner,
                     playback = playback,
                     snackbarHostState = snackbarHostState,
                     applicationScope = applicationScope,
@@ -155,7 +155,7 @@ internal fun trackUri(track: Track) =
 @OptIn(UnstableApi::class)
 private fun finalizeDelete(
   deleted: List<Track>,
-  repository: LibraryRepository,
+  scanner: LibraryScanner,
   playback: PlaybackUiController,
   snackbarHostState: SnackbarHostState,
   applicationScope: CoroutineScope,
@@ -164,7 +164,7 @@ private fun finalizeDelete(
   val uris = deleted.map { trackUri(it) }
   val mediaIds = deleted.map { it.id.toString() }.toSet()
   applicationScope.launch {
-    repository.onTracksDeleted(uris)
+    scanner.onTracksDeleted(uris)
     playback.removeQueueItemsByMediaIds(mediaIds)
     val message = if (deleted.size == 1) "Deleted ${deleted.first().title}"
     else "Deleted ${deleted.size} tracks"

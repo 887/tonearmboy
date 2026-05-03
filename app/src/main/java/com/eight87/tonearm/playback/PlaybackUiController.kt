@@ -8,7 +8,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.TrackSource
 import com.eight87.tonearm.data.model.Track
 import com.eight87.tonearm.playback.replaygain.computeGain
 import com.eight87.tonearm.playback.replaygain.linearGainFromDb
@@ -141,9 +141,9 @@ class PlaybackUiController(private val applicationContext: Context) {
    * falls back to track gain from the [MediaItem] metadata.
    */
   @Volatile
-  private var library: LibraryRepository? = null
+  private var library: TrackSource? = null
 
-  fun setLibrary(repo: LibraryRepository) {
+  fun setLibrary(repo: TrackSource) {
     library = repo
   }
 

@@ -21,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.LibraryScanner
 
 /**
  * Compact "library scanning…" bar surfaced at the top of every library
@@ -30,16 +30,16 @@ import com.eight87.tonearm.data.LibraryRepository
  *
  * Renders a `LinearProgressIndicator` driven by `progress.fraction`
  * plus a one-line "<scanned>/<total> · <currentTitle>" caption. The
- * bar is purely a UI consumer of [LibraryRepository.scanProgress];
+ * bar is purely a UI consumer of [LibraryScanner.scanProgress];
  * the scanner runs entirely on `Dispatchers.IO` and bounds parallelism
  * at 4, so this component never blocks the main thread.
  */
 @Composable
 fun ScanProgressBar(
-  repository: LibraryRepository,
+  scanner: LibraryScanner,
   modifier: Modifier = Modifier,
 ) {
-  val progress by repository.scanProgress.collectAsStateWithLifecycle()
+  val progress by scanner.scanProgress.collectAsStateWithLifecycle()
   AnimatedVisibility(
     visible = progress != null,
     enter = fadeIn() + expandVertically(),

@@ -72,7 +72,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearm.data.AlbumSource
+import com.eight87.tonearm.data.ArtistSource
+import com.eight87.tonearm.data.CustomTabStore
+import com.eight87.tonearm.data.GenreSource
 import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.PlaylistStore
+import com.eight87.tonearm.data.TrackSource
 import com.eight87.tonearm.data.model.Album
 import com.eight87.tonearm.data.model.Artist
 import com.eight87.tonearm.data.model.Genre
@@ -135,7 +141,18 @@ internal fun Modifier.libraryListCard(): Modifier {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
-  repository: LibraryRepository,
+  // R.A.4 — composition root for the Library destination, so it takes
+  // every narrow interface its sub-tabs need (ISP at the dispatch layer
+  // means more constructor params here, but each downstream screen
+  // depends on only the slice it reads). Keep them in the same order
+  // as the eight-interface declaration in `data/LibraryDataInterfaces`.
+  tracks: TrackSource,
+  albums: AlbumSource,
+  artists: ArtistSource,
+  genres: GenreSource,
+  playlists: PlaylistStore,
+  customTabs: CustomTabStore,
+  scanner: com.eight87.tonearm.data.LibraryScanner,
   settingsRepository: SettingsRepository,
   onTrackClick: (List<Track>, Int) -> Unit,
   onPlaylistClick: (Long) -> Unit,
@@ -185,8 +202,8 @@ fun LibraryScreen(
     snapshot.libraryTabs.ifEmpty { LibraryTab.DefaultOrder }
   }
   // D.18.5 — custom tabs are rendered after the built-ins in the rail.
-  val customTabs by repository.customTabs().collectAsState(initial = emptyList())
-  val totalRailCount = visibleTabs.size + customTabs.size
+  val customTabsList by customTabs.customTabs().collectAsState(initial = emptyList())
+  val totalRailCount = visibleTabs.size + customTabsList.size
   var selectedIndex by rememberSaveable { mutableStateOf(0) }
   if (totalRailCount == 0) {
     selectedIndex = 0
@@ -195,7 +212,7 @@ fun LibraryScreen(
   }
   val isCustomSelected = selectedIndex >= visibleTabs.size
   val activeTab = if (!isCustomSelected && visibleTabs.isNotEmpty()) visibleTabs[selectedIndex] else LibraryTab.Songs
-  val activeCustomTab = if (isCustomSelected) customTabs.getOrNull(selectedIndex - visibleTabs.size) else null
+  val activeCustomTab = if (isCustomSelected) customTabsList.getOrNull(selectedIndex - visibleTabs.size) else null
 
   val activeSort by settingsRepository.tabSort(activeTab).collectAsState(initial = TabSort.Default)
   // D.28.1 — read every tab's persisted view mode in one Flow so the
@@ -326,7 +343,7 @@ fun LibraryScreen(
     Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
     // Library scan progress — appears at the top while a scan runs,
     // disappears when done. Bound to LibraryRepository.scanProgress.
-    ScanProgressBar(repository = repository)
+    ScanProgressBar(scanner = scanner)
     Row(modifier = Modifier.fillMaxSize()) {
       LibraryRail(
         tabs = visibleTabs,
@@ -337,13 +354,16 @@ fun LibraryScreen(
         // identified the gear-on-the-rail as "tab settings", so this
         // matches accepted intent.
         onOpenSettings = onOpenLibraryTabsConfig,
-        customTabs = customTabs,
+        customTabs = customTabsList,
       )
       Box(modifier = Modifier.fillMaxSize()) {
         if (activeCustomTab != null) {
           CustomTabContent(
             customTab = activeCustomTab,
-            repository = repository,
+            tracks = tracks,
+            albums = albums,
+            artists = artists,
+            genres = genres,
             settingsRepository = settingsRepository,
             sort = activeSort,
             snapshot = snapshot,
@@ -360,7 +380,7 @@ fun LibraryScreen(
           )
         } else when (activeTab) {
           LibraryTab.Songs -> TracksListScreen(
-            repository = repository,
+            repository = tracks,
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
             filter = filter,
@@ -376,7 +396,7 @@ fun LibraryScreen(
             onDeleteTracks = onDeleteTracks,
           )
           LibraryTab.Albums -> AlbumsTabScreen(
-            repository = repository,
+            repository = albums,
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
             forceSquare = snapshot.forceSquareCovers,
@@ -385,7 +405,7 @@ fun LibraryScreen(
             onAlbumClick = { a -> onOpenAlbum(a.name, a.artist) },
           )
           LibraryTab.Artists -> ArtistsTabScreen(
-            repository = repository,
+            repository = artists,
             settingsRepository = settingsRepository,
             sort = activeSort,
             intelligentSorting = snapshot.intelligentSorting,
@@ -393,13 +413,13 @@ fun LibraryScreen(
             onArtistClick = { a -> onOpenArtist(a.name) },
           )
           LibraryTab.Genres -> GenresTabScreen(
-            repository = repository,
+            repository = genres,
             sort = activeSort,
             viewMode = activeViewMode,
             onGenreClick = { g -> onOpenGenre(g.name) },
           )
           LibraryTab.Playlists -> PlaylistsTabScreen(
-            repository = repository,
+            repository = playlists,
             viewMode = activeViewMode,
             onPlaylistClick = onPlaylistClick,
             onRenamePlaylist = onRenamePlaylist,
@@ -424,7 +444,7 @@ fun LibraryScreen(
   }
 
   if (showFilterSheet) {
-    val tracksForRange by repository.observeTracks().collectAsState(initial = emptyList())
+    val tracksForRange by tracks.observeTracks().collectAsState(initial = emptyList())
     LibraryFilterSheet(
       current = filter,
       tracks = tracksForRange,
@@ -518,7 +538,7 @@ internal fun sortGenres(genres: List<Genre>, sort: TabSort): List<Genre> {
  */
 @Composable
 fun AlbumsTabScreen(
-  repository: LibraryRepository,
+  repository: AlbumSource,
   sort: TabSort,
   intelligentSorting: Boolean,
   forceSquare: Boolean,
@@ -687,7 +707,7 @@ private fun AlbumListRow(
  */
 @Composable
 fun AlbumsGridScreen(
-  repository: LibraryRepository,
+  repository: AlbumSource,
   sort: TabSort,
   intelligentSorting: Boolean,
   forceSquare: Boolean,
@@ -718,7 +738,7 @@ fun AlbumsGridScreen(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ArtistsTabScreen(
-  repository: LibraryRepository,
+  repository: ArtistSource,
   settingsRepository: SettingsRepository,
   sort: TabSort,
   intelligentSorting: Boolean,
@@ -819,7 +839,7 @@ fun ArtistsTabScreen(
 /** Pre-D.28 wrapper retained so existing callers / tests still compile. */
 @Composable
 fun ArtistsListScreen(
-  repository: LibraryRepository,
+  repository: ArtistSource,
   settingsRepository: SettingsRepository,
   sort: TabSort,
   intelligentSorting: Boolean,
@@ -849,7 +869,7 @@ private fun ArtistRow(artist: Artist, onClick: () -> Unit) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TracksListScreen(
-  repository: LibraryRepository,
+  repository: TrackSource,
   sort: TabSort,
   intelligentSorting: Boolean,
   // D.27.5 — when non-empty, the underlying tracks Flow is filtered.
@@ -1225,7 +1245,7 @@ private fun TrackRow(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GenresTabScreen(
-  repository: LibraryRepository,
+  repository: GenreSource,
   sort: TabSort,
   viewMode: ViewMode,
   // D.30.2 — when non-empty, the underlying genres Flow is filtered.
@@ -1318,7 +1338,7 @@ fun GenresTabScreen(
 /** Pre-D.28 wrapper retained for callers / tests. */
 @Composable
 fun GenresListScreen(
-  repository: LibraryRepository,
+  repository: GenreSource,
   sort: TabSort,
   onGenreClick: (Genre) -> Unit = {},
 ) {
@@ -1345,7 +1365,7 @@ private fun GenreRow(genre: Genre, onClick: () -> Unit) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PlaylistsTabScreen(
-  repository: LibraryRepository,
+  repository: PlaylistStore,
   viewMode: ViewMode,
   onPlaylistClick: (Long) -> Unit,
   onRenamePlaylist: (Long, String) -> Unit = { _, _ -> },
@@ -1411,7 +1431,7 @@ fun PlaylistsTabScreen(
 /** Pre-D.28 wrapper retained for the existing `PlaylistsListScreenTest` and callers. */
 @Composable
 fun PlaylistsListScreen(
-  repository: LibraryRepository,
+  repository: PlaylistStore,
   onPlaylistClick: (Long) -> Unit,
   onRenamePlaylist: (Long, String) -> Unit = { _, _ -> },
   onDeletePlaylist: (Long) -> Unit = {},

@@ -1,6 +1,6 @@
 package com.eight87.tonearm.data.playlist
 
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.PlaylistStore
 import com.eight87.tonearm.data.model.Playlist
 import com.eight87.tonearm.data.model.Track
 import kotlinx.serialization.Serializable
@@ -175,7 +175,7 @@ private fun preferAlbum(candidates: List<Track>, albumKey: String?): Track? {
  * Build an envelope from the current library state. Reads the live
  * playlist list once + each playlist's track list once.
  */
-suspend fun buildPlaylistBackup(repository: LibraryRepository): PlaylistBackupEnvelope {
+suspend fun buildPlaylistBackup(repository: PlaylistStore): PlaylistBackupEnvelope {
   val playlists: List<Playlist> = repository.observePlaylists().first()
   val backups = playlists.map { p ->
     val tracks = repository.observePlaylistTracks(p.id).first()
@@ -203,7 +203,7 @@ suspend fun buildPlaylistBackup(repository: LibraryRepository): PlaylistBackupEn
  * snackbar.
  */
 suspend fun applyPlaylistImport(
-  repository: LibraryRepository,
+  repository: PlaylistStore,
   envelope: PlaylistBackupEnvelope,
   resolution: PlaylistImportResolution,
   collisionPolicy: PlaylistImportCollisionPolicy,

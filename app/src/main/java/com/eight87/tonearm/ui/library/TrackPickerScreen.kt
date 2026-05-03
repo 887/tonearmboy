@@ -33,7 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.PlaylistStore
+import com.eight87.tonearm.data.TrackSource
 import com.eight87.tonearm.data.model.Track
 import kotlinx.coroutines.flow.first
 
@@ -59,17 +60,20 @@ import kotlinx.coroutines.flow.first
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrackPickerScreen(
-  repository: LibraryRepository,
+  // R.A.4 — needs `observeTracks` (TrackSource) for the picker list and
+  // `observePlaylistTracks` (PlaylistStore) for the pre-checked state.
+  trackSource: TrackSource,
+  playlists: PlaylistStore,
   playlistId: Long,
   onBack: () -> Unit,
   onConfirm: (toAdd: List<Long>, toRemove: List<Long>) -> Unit,
 ) {
-  val allTracks by repository.observeTracks().collectAsState(initial = emptyList())
+  val allTracks by trackSource.observeTracks().collectAsState(initial = emptyList())
   // Initial set of ids already in the playlist. Read once on enter so
   // the user's checkbox edits are stable while they're scrolling.
   var alreadyIn by remember { mutableStateOf<Set<Long>?>(null) }
   androidx.compose.runtime.LaunchedEffect(playlistId) {
-    alreadyIn = repository.observePlaylistTracks(playlistId).first().map { it.id }.toSet()
+    alreadyIn = playlists.observePlaylistTracks(playlistId).first().map { it.id }.toSet()
   }
   val initialIds = alreadyIn ?: emptySet()
   var selected by remember(initialIds) { mutableStateOf(initialIds) }

@@ -43,6 +43,8 @@ class LibraryRepositoryDeleteTest {
       context = ctx,
       scanner = MediaStoreScanner(ctx),
       db = db,
+      externalScope = kotlinx.coroutines.MainScope(),
+      scanConfig = com.eight87.tonearm.data.EmptyScanConfigSource,
     )
   }
 

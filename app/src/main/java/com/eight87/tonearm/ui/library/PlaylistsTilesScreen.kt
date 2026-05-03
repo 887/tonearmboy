@@ -53,7 +53,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.eight87.tonearm.data.LibraryRepository
+import com.eight87.tonearm.data.PlaylistStore
 import com.eight87.tonearm.data.model.Playlist
 import com.eight87.tonearm.data.model.Track
 import com.eight87.tonearm.ui.settings.AlbumCoversMode
@@ -79,7 +79,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistsTilesScreen(
-  repository: LibraryRepository,
+  repository: PlaylistStore,
   onPlaylistClick: (Long) -> Unit,
   onRenamePlaylist: (Long, String) -> Unit = { _, _ -> },
   onDeletePlaylist: (Long) -> Unit = {},
@@ -221,7 +221,7 @@ fun PlaylistsTilesScreen(
 @Composable
 private fun PlaylistTile(
   playlist: Playlist,
-  repository: LibraryRepository,
+  repository: PlaylistStore,
   onClick: () -> Unit,
   onLongPress: () -> Unit,
   contextMenuAnchorOpen: Boolean,
@@ -360,7 +360,7 @@ private fun NewPlaylistSheet(
 @Composable
 private fun PlaylistCoverChooserSheet(
   playlist: Playlist,
-  repository: LibraryRepository,
+  repository: PlaylistStore,
   onDismiss: () -> Unit,
   onChoose: (String?) -> Unit,
 ) {
@@ -429,7 +429,7 @@ private fun PlaylistCoverChooserSheet(
 @Composable
 private fun PickFromTrackSheet(
   playlist: Playlist,
-  repository: LibraryRepository,
+  repository: PlaylistStore,
   onDismiss: () -> Unit,
   onPick: (Long) -> Unit,
 ) {

@@ -236,7 +236,7 @@ internal fun baseThemeLabel(b: BaseTheme): String = when (b) {
 @Composable
 fun SettingsPersonalizeScreen(
   repository: SettingsRepository,
-  libraryRepository: com.eight87.tonearm.data.LibraryRepository,
+  customTabStore: com.eight87.tonearm.data.CustomTabStore,
   onBack: () -> Unit,
   /**
    * D.30.3 — open the full-screen custom-tab editor route. `null` =
@@ -298,7 +298,7 @@ fun SettingsPersonalizeScreen(
   }
 
   if (showLibraryTabs) {
-    val customTabs by libraryRepository.customTabs().collectAsState(initial = emptyList())
+    val customTabs by customTabStore.customTabs().collectAsState(initial = emptyList())
     LibraryTabsDialog(
       model = LibraryTabsDialogModel(
         builtIns = LibraryTab.entries.toList(),
@@ -321,7 +321,7 @@ fun SettingsPersonalizeScreen(
         scope.launch { repository.setLibraryTabs(newOrder) }
       },
       onReorderCustomTabs = { orderedIds ->
-        scope.launch { libraryRepository.reorderCustomTabs(orderedIds) }
+        scope.launch { customTabStore.reorderCustomTabs(orderedIds) }
       },
       // D.30.3 — Add / Edit dismiss the dialog and push the full-screen
       // editor route. The dialog is rebuilt fresh when the user pops
@@ -336,7 +336,7 @@ fun SettingsPersonalizeScreen(
         onOpenCustomTabEditor(tab.id)
       },
       onDeleteCustomTab = { tab ->
-        scope.launch { libraryRepository.deleteCustomTab(tab.id) }
+        scope.launch { customTabStore.deleteCustomTab(tab.id) }
       },
     )
   }

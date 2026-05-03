@@ -467,7 +467,25 @@ data class SettingsSnapshot(
  * the `set*` mutators. Per-tab sort state lives in its own [tabSort] /
  * [setTabSort] pair because the value depends on a tab key.
  */
-class SettingsRepository(private val context: Context) {
+class SettingsRepository(private val context: Context) :
+  com.eight87.tonearm.data.ScanConfigSource {
+
+  // R.A.5 — implement ScanConfigSource so the data layer's
+  // LibraryRepository can depend on the neutral interface (defined in
+  // `data/`) rather than reaching back into `ui.settings`. The two
+  // properties just project the existing Flows into the data-layer
+  // shape; storage is unchanged.
+  override val multiValueSeparatorTokens: kotlinx.coroutines.flow.Flow<Set<String>>
+    get() = multiValueSeparators.map { set -> set.map { it.token }.toSet() }
+
+  override val musicSourceScope: kotlinx.coroutines.flow.Flow<com.eight87.tonearm.data.MusicSourceScope>
+    get() = kotlinx.coroutines.flow.combine(musicSourceMode, musicSourceUris) { mode, uris ->
+      com.eight87.tonearm.data.MusicSourceScope(
+        useFilePicker = mode == MusicSourceMode.FilePicker,
+        treeUris = uris,
+      )
+    }
+
 
   private val store: DataStore<Preferences> = context.tonearmDataStore
 
