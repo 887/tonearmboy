@@ -2,7 +2,7 @@
 
 ## Status: ✅ DONE
 
-_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (parent-scroll suppression while dragging) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped in commit `b52d660`. D.27.10 (cross-boundary drag survives reorder) shipped in commit `cfe6071`. D.29 shipped in commit `7fa419e`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
+_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (parent-scroll suppression while dragging) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped in commit `b52d660`. D.27.10 (cross-boundary drag survives reorder) shipped in commit `cfe6071`. D.29 shipped in commit `7fa419e`. D.30 (custom tabs as first-class citizens) shipped 2026-05-03: D.30.1 in `30d4c4d`, D.30.2 in `932ddcd`, D.30.3 in `7ff9c20`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
 
 
 ## Stack (locked)
@@ -910,6 +910,22 @@ Goal: Claude can drive the app end-to-end without an emulator. Local unit tests 
 - [x] **H.7.4** Screenshots: `170-h-sleep-timer-presets.png`, `171-h-sleep-timer-running.png`, `172-h-system-eq-launched.png` (the system EQ panel itself), `173-h-export-playlists-success.png`, `174-h-import-playlists-merge-dialog.png`. — Captured under `docs/screenshots/phase-h/`. (`172` shows the snackbar fallback because the AVD has no system EQ activity registered, which is the documented stripped-ROM code path.)
 
 **Shipped:** commit `b638622` — Phase H closeout.
+
+---
+
+## Phase D.30 — custom tabs as first-class citizens — shipped in commits `30d4c4d` (D.30.1), `932ddcd` (D.30.2), `7ff9c20` (D.30.3)
+
+User feedback after the D.29 release: a custom "MyMix" tab rendered with its own bespoke surface that differed from the built-in tabs (no alphabet rail, sort options no-op'd, segmented Songs/Albums/Artists/Genres toggle did nothing useful), and the editor was a slide-up `ModalBottomSheet` with a fixed seven-section accordion. Three sub-phases reshape the feature so custom tabs behave like built-ins and the editor lets the user assemble the filters they actually want.
+
+- [x] **D.30.1 Built-in screens take a filter; custom tabs delegate.** `TracksListScreen` already accepted a `filter: FilterCriteria`; extend the same param to `AlbumsTabScreen`, `ArtistsTabScreen`, `GenresTabScreen`. Each screen switches its source flow between `repository.observeXxx()` and `repository.xxxMatching(filter)` based on `filter.isEmpty()`. `CustomTabContent` collapses from ~410 lines to ~110, becoming a thin dispatcher that hands its `criteria` to the matching built-in screen — alphabet rail, view-mode toggle, sort, and album-art view all come for free. Per-custom-tab view-mode persists via `SettingsRepository.customTabViewMode(id)`.
+
+- [x] **D.30.2 Editor as full-screen route.** Promote the editor from a `ModalBottomSheet` inside `SettingsPersonalize` to a navigation destination `CustomTabEditor(tabId: Long? = null)` with a `TopAppBar` carrying back + Save. `SettingsPersonalize` pushes the route via a new `onOpenCustomTabEditor: (Long?) -> Unit` callback instead of inline-rendering the form. Renames `CustomTabEditorSheet.kt` → `CustomTabEditorScreen.kt`. Editor body keeps the seven-section accordion at this stage — only the wrapper changes.
+
+- [x] **D.30.3 Composable filter conditions.** Replace the seven-section accordion with a `LazyColumn` of `FilterCondition` rows assembled via "+ Add filter". `FilterCondition` is a sealed type with eight variants: `GenreIn`, `ArtistIn`, `AlbumIn`, `YearBetween`, `DateAddedBetween`, `HasAlbumArt`, `PathContains`, `TitleContains`. `FilterCriteria` becomes `data class FilterCriteria(val conditions: List<FilterCondition>)` with `matchesTrack` walking `conditions.all { it.matches(track) }`. Stacked conditions AND; OR within a multi-value condition. Tapping `+` opens a `ModalBottomSheet` chooser listing the eight types; picking one appends a default-empty instance. Rows expand inline for editing (range slider for `YearBetween`, two date-pickers for `DateAddedBetween`, checkboxes / text fields for the rest) and carry a delete icon. AND-only across stacked conditions confirmed by the user during design.
+  - **Backward compat without Room migration:** `FilterCriteria.fromJson` checks for the `conditions` key — if present it parses the new shape, otherwise it parses the pre-D.30 flat-field shape (`genres` / `artists` / `yearMin` / etc.) and translates to a conditions list. The `criteriaJson` Room column is opaque, so no schema change.
+  - **Library top-level filter sheet** (`LibraryFilterSheet.kt`) keeps its single-form shape; calls `FilterCriteria.of(...)` instead of the old field-based constructor. The single-form shape stays because the library filter is one-shot per session, not a persisted assembly.
+
+After D.30 lands, restore `## Status: ✅ DONE` at the top of the plan with a fresh re-completion note covering D.29 + D.30.
 
 ---
 
