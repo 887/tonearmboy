@@ -344,12 +344,15 @@ fun LibraryScreen(
           CustomTabContent(
             customTab = activeCustomTab,
             repository = repository,
+            settingsRepository = settingsRepository,
             sort = activeSort,
             snapshot = snapshot,
             viewMode = activeViewMode,
             onTrackClick = onTrackClick,
             onAddToQueue = onAddToQueue,
             onAddToPlaylist = onAddToPlaylist,
+            onAddTracksToPlaylist = onAddTracksToPlaylist,
+            onDeleteTracks = onDeleteTracks,
             onOpenAlbum = onOpenAlbum,
             onOpenArtist = onOpenArtist,
             onOpenGenre = onOpenGenre,
@@ -521,9 +524,16 @@ fun AlbumsTabScreen(
   forceSquare: Boolean,
   albumCoversMode: com.eight87.tonearm.ui.settings.AlbumCoversMode,
   viewMode: ViewMode,
+  // D.30.2 — when non-empty, the underlying albums Flow is filtered.
+  // Mirrors the [TracksListScreen.filter] contract so custom tabs can
+  // delegate straight into this screen and inherit its full chrome
+  // (alphabet rail, list↔tile, sort).
+  filter: com.eight87.tonearm.data.FilterCriteria = com.eight87.tonearm.data.FilterCriteria(),
   onAlbumClick: (Album) -> Unit = {},
 ) {
-  val albums by repository.observeAlbums().collectAsState(initial = emptyList())
+  val albums by remember(filter) {
+    if (filter.isEmpty()) repository.observeAlbums() else repository.albumsMatching(filter)
+  }.collectAsState(initial = emptyList())
   if (albums.isEmpty()) {
     EmptyState("No albums yet. Add audio files to your device, then tap Rescan music.")
     return
@@ -713,11 +723,18 @@ fun ArtistsTabScreen(
   sort: TabSort,
   intelligentSorting: Boolean,
   viewMode: ViewMode,
+  // D.30.2 — when non-empty, the underlying artists Flow is filtered.
+  // Note: the global `hideCollaborators` setting only applies to the
+  // unfiltered path; custom tabs apply their own predicate against the
+  // unfiltered artist set, since the user is intentionally building a
+  // subset and may want collaborators (the filter is the authority).
+  filter: com.eight87.tonearm.data.FilterCriteria = com.eight87.tonearm.data.FilterCriteria(),
   onArtistClick: (Artist) -> Unit = {},
 ) {
-  val artists by repository
-    .observeArtists(settingsRepository.hideCollaborators)
-    .collectAsState(initial = emptyList())
+  val artists by remember(filter) {
+    if (filter.isEmpty()) repository.observeArtists(settingsRepository.hideCollaborators)
+    else repository.artistsMatching(filter)
+  }.collectAsState(initial = emptyList())
   if (artists.isEmpty()) {
     EmptyState("No artists yet.")
     return
@@ -1211,9 +1228,13 @@ fun GenresTabScreen(
   repository: LibraryRepository,
   sort: TabSort,
   viewMode: ViewMode,
+  // D.30.2 — when non-empty, the underlying genres Flow is filtered.
+  filter: com.eight87.tonearm.data.FilterCriteria = com.eight87.tonearm.data.FilterCriteria(),
   onGenreClick: (Genre) -> Unit = {},
 ) {
-  val genres by repository.observeGenres().collectAsState(initial = emptyList())
+  val genres by remember(filter) {
+    if (filter.isEmpty()) repository.observeGenres() else repository.genresMatching(filter)
+  }.collectAsState(initial = emptyList())
   if (genres.isEmpty()) {
     EmptyState("No genres yet.")
     return
