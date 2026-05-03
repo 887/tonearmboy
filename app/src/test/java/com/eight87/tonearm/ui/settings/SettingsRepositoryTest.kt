@@ -142,9 +142,9 @@ class SettingsRepositoryTest {
 
   @Test
   fun zz_hideCollaborators_flow_emits_independently() = runTest {
-    assertEquals(false, repo.hideCollaborators.first())
+    assertEquals(false, repo.hideCollaborators.flow.first())
     repo.setHideCollaborators(true)
-    assertEquals(true, repo.hideCollaborators.first())
+    assertEquals(true, repo.hideCollaborators.flow.first())
   }
 
   @Test
@@ -157,7 +157,7 @@ class SettingsRepositoryTest {
 
   @Test
   fun zz_multiValueSeparators_default_is_semicolon_and_slash() = runTest {
-    val initial = repo.multiValueSeparators.first()
+    val initial = repo.multiValueSeparators.flow.first()
     assertEquals(MultiValueSeparator.Default, initial)
     assertEquals(setOf(MultiValueSeparator.Semicolon, MultiValueSeparator.Slash), initial)
   }
@@ -170,14 +170,14 @@ class SettingsRepositoryTest {
       MultiValueSeparator.Feat,
     )
     repo.setMultiValueSeparators(picked)
-    assertEquals(picked, repo.multiValueSeparators.first())
+    assertEquals(picked, repo.multiValueSeparators.flow.first())
     assertEquals(picked, repo.snapshot.first().multiValueSeparators)
   }
 
   @Test
   fun zz_multiValueSeparators_empty_set_disables_all_splitting() = runTest {
     repo.setMultiValueSeparators(emptySet())
-    assertEquals(emptySet<MultiValueSeparator>(), repo.multiValueSeparators.first())
+    assertEquals(emptySet<MultiValueSeparator>(), repo.multiValueSeparators.flow.first())
   }
 
   // R.B.1 — smoke tests for Setting<T>: prove the new abstraction
@@ -186,23 +186,23 @@ class SettingsRepositoryTest {
 
   @Test
   fun zz_blackThemeSetting_round_trips_and_shares_storage_with_legacy() = runTest {
-    assertEquals(false, repo.blackThemeSetting.flow.first())
-    repo.blackThemeSetting.set(true)
-    assertEquals(true, repo.blackThemeSetting.flow.first())
+    assertEquals(false, repo.blackTheme.flow.first())
+    repo.blackTheme.set(true)
+    assertEquals(true, repo.blackTheme.flow.first())
     // legacy snapshot reader sees the new write
     assertEquals(true, repo.snapshot.first().blackTheme)
     // legacy mutator is visible to the new Setting handle
     repo.setBlackTheme(false)
-    assertEquals(false, repo.blackThemeSetting.flow.first())
+    assertEquals(false, repo.blackTheme.flow.first())
   }
 
   @Test
   fun zz_colorSchemeSetting_round_trips_and_shares_storage_with_legacy() = runTest {
-    assertEquals(ColorScheme.Default, repo.colorSchemeSetting.flow.first())
-    repo.colorSchemeSetting.set(ColorScheme.Brand)
-    assertEquals(ColorScheme.Brand, repo.colorSchemeSetting.flow.first())
+    assertEquals(ColorScheme.Default, repo.colorScheme.flow.first())
+    repo.colorScheme.set(ColorScheme.Brand)
+    assertEquals(ColorScheme.Brand, repo.colorScheme.flow.first())
     assertEquals(ColorScheme.Brand, repo.snapshot.first().colorScheme)
     repo.setColorScheme(ColorScheme.Dynamic)
-    assertEquals(ColorScheme.Dynamic, repo.colorSchemeSetting.flow.first())
+    assertEquals(ColorScheme.Dynamic, repo.colorScheme.flow.first())
   }
 }

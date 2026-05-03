@@ -111,8 +111,8 @@ fun MusicSourcesDialog(
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
 
-  val persistedMode by settings.musicSourceMode.collectAsState(initial = MusicSourceMode.Default)
-  val persistedFolders by settings.musicSourceUris.collectAsState(initial = emptySet())
+  val persistedMode by settings.musicSourceMode.flow.collectAsState(initial = MusicSourceMode.Default)
+  val persistedFolders by settings.musicSourceUris.flow.collectAsState(initial = emptySet())
 
   // Working copy. Re-seeded any time the persisted snapshot changes
   // before Save (so opening the dialog reflects the current persisted

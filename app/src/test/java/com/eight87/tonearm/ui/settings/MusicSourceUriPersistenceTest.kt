@@ -38,7 +38,7 @@ class MusicSourceUriPersistenceTest {
 
   @Test
   fun default_is_empty_set() = runTest {
-    assertEquals(emptySet<String>(), repo.musicSourceUris.first())
+    assertEquals(emptySet<String>(), repo.musicSourceUris.flow.first())
     assertEquals(emptySet<String>(), repo.snapshot.first().musicSourceUris)
   }
 
@@ -49,13 +49,13 @@ class MusicSourceUriPersistenceTest {
 
     repo.addMusicSourceUri(a)
     repo.addMusicSourceUri(b)
-    assertEquals(setOf(a, b), repo.musicSourceUris.first())
+    assertEquals(setOf(a, b), repo.musicSourceUris.flow.first())
 
     repo.removeMusicSourceUri(a)
-    assertEquals(setOf(b), repo.musicSourceUris.first())
+    assertEquals(setOf(b), repo.musicSourceUris.flow.first())
 
     repo.removeMusicSourceUri(b)
-    assertTrue(repo.musicSourceUris.first().isEmpty())
+    assertTrue(repo.musicSourceUris.flow.first().isEmpty())
   }
 
   @Test
@@ -64,7 +64,7 @@ class MusicSourceUriPersistenceTest {
     repo.addMusicSourceUri(a)
     repo.addMusicSourceUri(a)
     repo.addMusicSourceUri(a)
-    assertEquals(setOf(a), repo.musicSourceUris.first())
+    assertEquals(setOf(a), repo.musicSourceUris.flow.first())
   }
 
   @Test
@@ -79,7 +79,7 @@ class MusicSourceUriPersistenceTest {
     repo.addMusicSourceUri("a")
     repo.addMusicSourceUri("b")
     repo.setMusicSourceUris(setOf("c", "d", "e"))
-    assertEquals(setOf("c", "d", "e"), repo.musicSourceUris.first())
+    assertEquals(setOf("c", "d", "e"), repo.musicSourceUris.flow.first())
   }
 
   @Test
@@ -89,16 +89,16 @@ class MusicSourceUriPersistenceTest {
     // Mimic process restart: a fresh SettingsRepository instance pointed
     // at the same datastore should observe the persisted set.
     val freshRepo = SettingsRepository(context)
-    assertEquals(setOf(uri), freshRepo.musicSourceUris.first())
+    assertEquals(setOf(uri), freshRepo.musicSourceUris.flow.first())
   }
 
   @Test
   fun automatic_reloading_round_trips_independently() = runTest {
-    assertFalse(repo.automaticReloading.first())
+    assertFalse(repo.automaticReloading.flow.first())
     repo.setAutomaticReloading(true)
-    assertTrue(repo.automaticReloading.first())
+    assertTrue(repo.automaticReloading.flow.first())
     assertTrue(repo.snapshot.first().automaticReloading)
     repo.setAutomaticReloading(false)
-    assertFalse(repo.automaticReloading.first())
+    assertFalse(repo.automaticReloading.flow.first())
   }
 }

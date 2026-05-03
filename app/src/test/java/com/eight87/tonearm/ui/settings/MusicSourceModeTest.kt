@@ -31,7 +31,7 @@ class MusicSourceModeTest {
   @Test
   fun default_is_system_when_no_value_is_persisted() = runTest {
     val repo = SettingsRepository(context)
-    assertEquals(MusicSourceMode.System, repo.musicSourceMode.first())
+    assertEquals(MusicSourceMode.System, repo.musicSourceMode.flow.first())
     assertEquals(MusicSourceMode.System, repo.snapshot.first().musicSourceMode)
   }
 
@@ -39,17 +39,17 @@ class MusicSourceModeTest {
   fun set_round_trips_through_snapshot_and_flow() = runTest {
     val repo = SettingsRepository(context)
     repo.setMusicSourceMode(MusicSourceMode.FilePicker)
-    assertEquals(MusicSourceMode.FilePicker, repo.musicSourceMode.first())
+    assertEquals(MusicSourceMode.FilePicker, repo.musicSourceMode.flow.first())
     assertEquals(MusicSourceMode.FilePicker, repo.snapshot.first().musicSourceMode)
     repo.setMusicSourceMode(MusicSourceMode.System)
-    assertEquals(MusicSourceMode.System, repo.musicSourceMode.first())
+    assertEquals(MusicSourceMode.System, repo.musicSourceMode.flow.first())
   }
 
   @Test
   fun firstLaunchInitialise_writes_default_when_unset() = runTest {
     val repo = SettingsRepository(context)
     repo.firstLaunchInitialise()
-    assertEquals(MusicSourceMode.System, repo.musicSourceMode.first())
+    assertEquals(MusicSourceMode.System, repo.musicSourceMode.flow.first())
   }
 
   @Test
@@ -60,7 +60,7 @@ class MusicSourceModeTest {
     assertEquals(
       "firstLaunchInitialise must not clobber a previously-set mode",
       MusicSourceMode.FilePicker,
-      repo.musicSourceMode.first(),
+      repo.musicSourceMode.flow.first(),
     )
   }
 

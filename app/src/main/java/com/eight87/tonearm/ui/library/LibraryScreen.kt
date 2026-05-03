@@ -752,7 +752,7 @@ fun ArtistsTabScreen(
   onArtistClick: (Artist) -> Unit = {},
 ) {
   val artists by remember(filter) {
-    if (filter.isEmpty()) repository.observeArtists(settingsRepository.hideCollaborators)
+    if (filter.isEmpty()) repository.observeArtists(settingsRepository.hideCollaborators.flow)
     else repository.artistsMatching(filter)
   }.collectAsState(initial = emptyList())
   if (artists.isEmpty()) {

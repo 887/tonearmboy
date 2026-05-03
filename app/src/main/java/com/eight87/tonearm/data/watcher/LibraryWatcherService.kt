@@ -128,7 +128,7 @@ class LibraryWatcherService : Service() {
   private fun watchSourceUris() {
     val settings = AppGraph.get(applicationContext).settingsRepository
     sourceWatchJob = scope.launch {
-      settings.musicSourceUris.collectLatest { sources ->
+      settings.musicSourceUris.flow.collectLatest { sources ->
         // Diff: drop observers for URIs we no longer track, register
         // observers for newly-added URIs.
         val targetUris = sources.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }.toSet()

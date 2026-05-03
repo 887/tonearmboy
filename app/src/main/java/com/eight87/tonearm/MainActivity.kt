@@ -87,7 +87,7 @@ class MainActivity : ComponentActivity() {
     // the UI also start/stops it directly, this branch covers cold
     // start / boot.
     graph.applicationScope.launch {
-      val on = graph.settingsRepository.automaticReloading.first()
+      val on = graph.settingsRepository.automaticReloading.flow.first()
       if (on) LibraryWatcherService.start(applicationContext)
     }
 
