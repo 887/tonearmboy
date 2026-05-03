@@ -713,6 +713,20 @@ class SettingsRepository(private val context: Context) {
     store.edit { it[viewModeKeyFor(tab)] = mode.name }
   }
 
+  /**
+   * Per-custom-tab view mode, keyed by [CustomTabEntity.id]. Caller
+   * supplies the [default] (typically `Tile` for ALBUMS-content custom
+   * tabs, `List` otherwise) since [SettingsRepository] doesn't depend on
+   * the data layer's `CustomTabContentType` enum.
+   */
+  fun customTabViewMode(id: Long, default: ViewMode): Flow<ViewMode> = store.data.map { prefs ->
+    ViewMode.fromStored(prefs[customTabViewModeKey(id)]) ?: default
+  }
+
+  suspend fun setCustomTabViewMode(id: Long, mode: ViewMode) {
+    store.edit { it[customTabViewModeKey(id)] = mode.name }
+  }
+
   // --- internals ------------------------------------------------------------
 
   private fun Preferences.toSnapshot(): SettingsSnapshot = SettingsSnapshot(
@@ -781,6 +795,7 @@ class SettingsRepository(private val context: Context) {
     internal fun sortKeyFor(tab: LibraryTab) = stringPreferencesKey("sort_key_${tab.name}")
     internal fun sortDirFor(tab: LibraryTab) = stringPreferencesKey("sort_dir_${tab.name}")
     internal fun viewModeKeyFor(tab: LibraryTab) = stringPreferencesKey("view_mode_${tab.name}")
+    internal fun customTabViewModeKey(id: Long) = stringPreferencesKey("view_mode_custom_$id")
 
     /**
      * Parse the persisted library-tab order. Always returns a list that

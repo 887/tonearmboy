@@ -59,6 +59,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -202,7 +203,22 @@ fun LibraryScreen(
   val viewModes by settingsRepository.viewModes.collectAsState(
     initial = LibraryTab.entries.associateWith { ViewMode.defaultFor(it) },
   )
-  val activeViewMode = viewModes[activeTab] ?: ViewMode.defaultFor(activeTab)
+  // Custom tabs persist their view mode in DataStore keyed by tab id —
+  // independent from the built-in `viewModes` map. When `activeCustomTab`
+  // changes we re-subscribe so the icon and content reflect the new tab.
+  val customTabViewModeDefault = activeCustomTab?.let { defaultViewModeFor(it.contentType) } ?: ViewMode.List
+  val customTabViewMode by produceState(
+    initialValue = customTabViewModeDefault,
+    key1 = activeCustomTab?.id,
+  ) {
+    val tab = activeCustomTab
+    if (tab != null) {
+      val default = defaultViewModeFor(tab.contentType)
+      settingsRepository.customTabViewMode(tab.id, default).collect { value = it }
+    }
+  }
+  val activeViewMode = if (activeCustomTab != null) customTabViewMode
+    else viewModes[activeTab] ?: ViewMode.defaultFor(activeTab)
   val scope = rememberCoroutineScope()
 
   var showSortSheet by remember { mutableStateOf(false) }
@@ -244,7 +260,11 @@ fun LibraryScreen(
           IconButton(
             onClick = {
               val next = activeViewMode.toggle()
-              scope.launch { settingsRepository.setViewModeFor(activeTab, next) }
+              scope.launch {
+                val custom = activeCustomTab
+                if (custom != null) settingsRepository.setCustomTabViewMode(custom.id, next)
+                else settingsRepository.setViewModeFor(activeTab, next)
+              }
             },
             modifier = Modifier.semantics { testTag = "topbar_view_mode" },
           ) {
@@ -326,6 +346,7 @@ fun LibraryScreen(
             repository = repository,
             sort = activeSort,
             snapshot = snapshot,
+            viewMode = activeViewMode,
             onTrackClick = onTrackClick,
             onAddToQueue = onAddToQueue,
             onAddToPlaylist = onAddToPlaylist,

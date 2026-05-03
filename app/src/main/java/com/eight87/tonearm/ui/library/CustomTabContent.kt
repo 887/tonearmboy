@@ -1,16 +1,11 @@
 package com.eight87.tonearm.ui.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -30,7 +25,19 @@ import com.eight87.tonearm.data.db.CustomTabEntity
 import com.eight87.tonearm.data.model.Track
 import com.eight87.tonearm.ui.settings.SettingsSnapshot
 import com.eight87.tonearm.ui.settings.TabSort
+import com.eight87.tonearm.ui.settings.ViewMode
 import com.eight87.tonearm.ui.settings.catalog.SettingsDimens
+
+/**
+ * Per-content-type fallback view mode for a freshly-created custom tab.
+ * Mirrors `ViewMode.defaultFor` for the built-ins: ALBUMS gets Tile,
+ * everything else gets List. Used by [SettingsRepository.customTabViewMode]
+ * and the top-bar toggle when the user hasn't picked a mode yet.
+ */
+fun defaultViewModeFor(contentType: CustomTabContentType): ViewMode = when (contentType) {
+  CustomTabContentType.ALBUMS -> ViewMode.Tile
+  else -> ViewMode.List
+}
 
 /**
  * D.18.5 — content host for a user-defined library tab.
@@ -51,6 +58,7 @@ internal fun CustomTabContent(
   repository: LibraryRepository,
   sort: TabSort,
   snapshot: SettingsSnapshot,
+  viewMode: ViewMode,
   onTrackClick: (List<Track>, Int) -> Unit,
   onAddToQueue: (Track) -> Unit,
   onAddToPlaylist: (Track) -> Unit,
@@ -66,6 +74,7 @@ internal fun CustomTabContent(
       criteria = criteria,
       sort = sort,
       snapshot = snapshot,
+      viewMode = viewMode,
       onTrackClick = onTrackClick,
       onAddToQueue = onAddToQueue,
       onAddToPlaylist = onAddToPlaylist,
@@ -78,6 +87,7 @@ internal fun CustomTabContent(
       criteria = criteria,
       sort = sort,
       snapshot = snapshot,
+      viewMode = viewMode,
       onAlbumClick = { a -> onOpenAlbum(a.name, a.artist) },
     )
     CustomTabContentType.ARTISTS -> FilteredArtists(
@@ -85,12 +95,14 @@ internal fun CustomTabContent(
       criteria = criteria,
       sort = sort,
       snapshot = snapshot,
+      viewMode = viewMode,
       onArtistClick = { a -> onOpenArtist(a.name) },
     )
     CustomTabContentType.GENRES -> FilteredGenres(
       repository = repository,
       criteria = criteria,
       sort = sort,
+      viewMode = viewMode,
       onGenreClick = { g -> onOpenGenre(g.name) },
     )
   }
@@ -102,6 +114,7 @@ private fun FilteredTracks(
   criteria: FilterCriteria,
   sort: TabSort,
   snapshot: SettingsSnapshot,
+  viewMode: ViewMode,
   onTrackClick: (List<Track>, Int) -> Unit,
   onAddToQueue: (Track) -> Unit,
   onAddToPlaylist: (Track) -> Unit,
@@ -116,6 +129,32 @@ private fun FilteredTracks(
   }
   val sorted = remember(tracks, sort, snapshot.intelligentSorting) {
     sortTracks(tracks, sort, snapshot.intelligentSorting)
+  }
+  if (viewMode == ViewMode.Tile) {
+    val tileItems = remember(sorted) {
+      sorted.map { t ->
+        TileItem(
+          id = t.id,
+          title = t.title,
+          subtitle = t.artist ?: "Unknown artist",
+          artUri = null,
+          albumArtId = t.mediaStoreAlbumId,
+        )
+      }
+    }
+    LibraryTileGrid(
+      tiles = tileItems,
+      albumCoversMode = snapshot.albumCoversMode,
+      onTileClick = { tile ->
+        val idx = sorted.indexOfFirst { it.id == tile.id }
+        if (idx >= 0) onTrackClick(sorted, idx)
+      },
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = SettingsDimens.PagePadding)
+        .semantics { testTag = "custom_tracks_grid" },
+    )
+    return
   }
   LazyColumn(
     modifier = Modifier
@@ -156,6 +195,7 @@ private fun FilteredAlbums(
   criteria: FilterCriteria,
   sort: TabSort,
   snapshot: SettingsSnapshot,
+  viewMode: ViewMode,
   onAlbumClick: (com.eight87.tonearm.data.model.Album) -> Unit,
 ) {
   val albums by repository.albumsMatching(criteria).collectAsState(initial = emptyList())
@@ -166,48 +206,76 @@ private fun FilteredAlbums(
   val sorted = remember(albums, sort, snapshot.intelligentSorting) {
     sortAlbums(albums, sort, snapshot.intelligentSorting)
   }
-  LazyVerticalGrid(
-    columns = GridCells.Adaptive(minSize = 140.dp),
-    contentPadding = PaddingValues(8.dp),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+  if (viewMode == ViewMode.Tile) {
+    val tileItems = remember(sorted) {
+      sorted.map { a ->
+        TileItem(
+          id = a.id,
+          title = a.name,
+          subtitle = a.artist ?: "Unknown artist",
+          artUri = null,
+          albumArtId = a.mediaStoreAlbumId,
+        )
+      }
+    }
+    LibraryTileGrid(
+      tiles = tileItems,
+      albumCoversMode = snapshot.albumCoversMode,
+      onTileClick = { tile ->
+        val a = sorted.firstOrNull { it.id == tile.id } ?: return@LibraryTileGrid
+        onAlbumClick(a)
+      },
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = SettingsDimens.PagePadding)
+        .semantics { testTag = "custom_albums_grid" },
+    )
+    return
+  }
+  LazyColumn(
     modifier = Modifier
       .fillMaxSize()
-      .padding(horizontal = SettingsDimens.PagePadding)
-      .semantics { testTag = "custom_albums_grid" },
+      .libraryListCard()
+      .semantics { testTag = "custom_albums_list" },
   ) {
     items(sorted, key = { it.id }) { album ->
-      androidx.compose.foundation.layout.Column(
+      androidx.compose.foundation.layout.Row(
         modifier = Modifier
-          .padding(4.dp)
-          .semantics { testTag = "custom_album_cell" },
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp, vertical = 8.dp)
+          .semantics { testTag = "custom_album_row_${album.id}" },
       ) {
-        val shape = if (snapshot.forceSquareCovers) RoundedCornerShape(0.dp) else RoundedCornerShape(8.dp)
+        val shape = if (snapshot.forceSquareCovers) RoundedCornerShape(0.dp) else RoundedCornerShape(6.dp)
         CoverArt(
           albumId = album.mediaStoreAlbumId,
           size = 48.dp,
           mode = snapshot.albumCoversMode,
           contentDescription = album.name,
           modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
+            .size(48.dp)
             .clip(shape),
         )
-        androidx.compose.material3.Text(
-          text = album.name,
+        androidx.compose.foundation.layout.Column(
           modifier = Modifier
-            .padding(top = 6.dp)
-            .semantics { testTag = "custom_album_name_${album.id}" }
-            .fillMaxWidth(),
-        )
-        androidx.compose.material3.Text(
-          text = album.artist ?: "Unknown artist",
-          modifier = Modifier.fillMaxWidth(),
-        )
+            .padding(start = 12.dp)
+            .weight(1f),
+        ) {
+          androidx.compose.material3.Text(
+            text = album.name,
+            modifier = Modifier
+              .semantics { testTag = "custom_album_name_${album.id}" }
+              .fillMaxWidth(),
+          )
+          androidx.compose.material3.Text(
+            text = album.artist ?: "Unknown artist",
+            modifier = Modifier.fillMaxWidth(),
+          )
+        }
         androidx.compose.material3.TextButton(onClick = { onAlbumClick(album) }) {
           androidx.compose.material3.Text("Open")
         }
       }
+      androidx.compose.material3.HorizontalDivider()
     }
   }
 }
@@ -218,6 +286,7 @@ private fun FilteredArtists(
   criteria: FilterCriteria,
   sort: TabSort,
   snapshot: SettingsSnapshot,
+  viewMode: ViewMode,
   onArtistClick: (com.eight87.tonearm.data.model.Artist) -> Unit,
 ) {
   val artists by repository.artistsMatching(criteria).collectAsState(initial = emptyList())
@@ -227,6 +296,32 @@ private fun FilteredArtists(
   }
   val sorted = remember(artists, sort, snapshot.intelligentSorting) {
     sortArtists(artists, sort, snapshot.intelligentSorting)
+  }
+  if (viewMode == ViewMode.Tile) {
+    val tileItems = remember(sorted) {
+      sorted.map { a ->
+        TileItem(
+          id = a.id,
+          title = a.name,
+          subtitle = "${a.albumCount} albums · ${a.trackCount} tracks",
+          artUri = null,
+          albumArtId = null,
+        )
+      }
+    }
+    LibraryTileGrid(
+      tiles = tileItems,
+      albumCoversMode = snapshot.albumCoversMode,
+      onTileClick = { tile ->
+        val a = sorted.firstOrNull { it.id == tile.id } ?: return@LibraryTileGrid
+        onArtistClick(a)
+      },
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = SettingsDimens.PagePadding)
+        .semantics { testTag = "custom_artists_grid" },
+    )
+    return
   }
   LazyColumn(
     modifier = Modifier
@@ -257,6 +352,7 @@ private fun FilteredGenres(
   repository: LibraryRepository,
   criteria: FilterCriteria,
   sort: TabSort,
+  viewMode: ViewMode,
   onGenreClick: (com.eight87.tonearm.data.model.Genre) -> Unit,
 ) {
   val genres by repository.genresMatching(criteria).collectAsState(initial = emptyList())
@@ -265,6 +361,31 @@ private fun FilteredGenres(
     return
   }
   val sorted = remember(genres, sort) { sortGenres(genres, sort) }
+  if (viewMode == ViewMode.Tile) {
+    val tileItems = remember(sorted) {
+      sorted.map { g ->
+        TileItem(
+          id = g.id,
+          title = g.name,
+          subtitle = "${g.trackCount} tracks",
+          artUri = null,
+          albumArtId = null,
+        )
+      }
+    }
+    LibraryTileGrid(
+      tiles = tileItems,
+      onTileClick = { tile ->
+        val g = sorted.firstOrNull { it.id == tile.id } ?: return@LibraryTileGrid
+        onGenreClick(g)
+      },
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = SettingsDimens.PagePadding)
+        .semantics { testTag = "custom_genres_grid" },
+    )
+    return
+  }
   LazyColumn(
     modifier = Modifier
       .fillMaxSize()
