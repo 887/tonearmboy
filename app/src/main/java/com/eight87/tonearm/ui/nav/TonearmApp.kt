@@ -587,7 +587,7 @@ fun TonearmApp(
         entry<SettingsLookAndFeel> {
           LaunchedEffect(Unit) { sectionTitle.value = "Look and Feel" }
           SettingsLookAndFeelScreen(
-            repository = graph.settingsRepository,
+            theme = graph.settingsRepository,
             onBack = { backStack.pop() },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,
@@ -596,7 +596,8 @@ fun TonearmApp(
         entry<SettingsPersonalize> {
           LaunchedEffect(Unit) { sectionTitle.value = "Personalize" }
           SettingsPersonalizeScreen(
-            repository = graph.settingsRepository,
+            playback = graph.settingsRepository,
+            tabs = graph.settingsRepository,
             customTabStore = graph.customTabs,
             onBack = { backStack.pop() },
             onOpenCustomTabEditor = { id -> backStack.push(CustomTabEditor(id)) },
@@ -653,7 +654,7 @@ fun TonearmApp(
         entry<SettingsContent> {
           LaunchedEffect(Unit) { sectionTitle.value = "Content" }
           SettingsContentScreen(
-            repository = graph.settingsRepository,
+            library = graph.settingsRepository,
             onBack = { backStack.pop() },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,
@@ -674,7 +675,7 @@ fun TonearmApp(
         entry<SettingsAudio> {
           LaunchedEffect(Unit) { sectionTitle.value = "Audio" }
           SettingsAudioScreen(
-            repository = graph.settingsRepository,
+            settings = graph.settingsRepository,
             onBack = { backStack.pop() },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,

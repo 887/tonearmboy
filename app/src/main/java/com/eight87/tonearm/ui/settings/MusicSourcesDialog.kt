@@ -104,7 +104,7 @@ data class MusicSourcesDialogState(
  */
 @Composable
 fun MusicSourcesDialog(
-  settings: SettingsRepository,
+  settings: MusicSourcesSettings,
   scanner: LibraryScanner,
   onDismiss: () -> Unit,
 ) {
@@ -222,8 +222,8 @@ fun MusicSourcesDialog(
               // so the system doesn't accumulate stale grants.
               val toRelease = persistedFolders - state.folders.toSet()
               scope.launch {
-                settings.setMusicSourceMode(state.mode)
-                settings.setMusicSourceUris(state.folders.toSet())
+                settings.musicSourceMode.set(state.mode)
+                settings.musicSourceUris.set(state.folders.toSet())
                 toRelease.forEach { uri ->
                   runCatching {
                     context.contentResolver.releasePersistableUriPermission(
