@@ -2,7 +2,7 @@
 
 ## Status: ✅ DONE
 
-_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (parent-scroll suppression while dragging) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped in commit `b52d660`. D.27.10 (queue drag survives item-boundary crossings — `key(itemId)` wrap inside `DragReorderColumn`) shipped in commit `<PENDING>`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
+_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (parent-scroll suppression while dragging) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped in commit `b52d660`. D.27.10 shipped in commit `cfe6071`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
 
 
 ## Stack (locked)
@@ -820,7 +820,7 @@ D.27.8 had fixed the parent-LazyColumn-eats-the-vertical-scroll problem. But the
 
 - [x] **D.27.10.5 AVD smoke verify.** Built debug APK off the fix branch, installed on the headless `medium_phone` AVD, expanded to NowPlaying with a multi-row queue, sent `cmd input touchscreen motionevent DOWN` at the row 4 drag handle (x=949, y=1865) and confirmed via `screencap -p` that after a 700 ms hold the row visually entered the lifted/dragging state (darker shaded background from the `zIndex(1f)` modifier in DragReorderColumn). Continuous-drag visual verification past the swap is impossible to capture from `cmd input` because each `motionevent` invocation creates a new pointer ID and the system doesn't link them — the unit test in D.27.10.4 is the load-bearing verification for boundary-crossing.
 
-**Shipped in commit `<PENDING>`.** Test count 623 → 624.
+**Shipped in commit `cfe6071`.** Test count 623 → 624.
 
 After D.27.10 lands, restore `## Status: ✅ DONE` at the top with a fresh re-completion note.
 
