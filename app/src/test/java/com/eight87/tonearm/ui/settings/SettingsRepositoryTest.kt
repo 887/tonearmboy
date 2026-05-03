@@ -179,4 +179,30 @@ class SettingsRepositoryTest {
     repo.setMultiValueSeparators(emptySet())
     assertEquals(emptySet<MultiValueSeparator>(), repo.multiValueSeparators.first())
   }
+
+  // R.B.1 — smoke tests for Setting<T>: prove the new abstraction
+  // shares storage with the legacy mutators (writes either way are
+  // visible from the other side) and survives the round trip.
+
+  @Test
+  fun zz_blackThemeSetting_round_trips_and_shares_storage_with_legacy() = runTest {
+    assertEquals(false, repo.blackThemeSetting.flow.first())
+    repo.blackThemeSetting.set(true)
+    assertEquals(true, repo.blackThemeSetting.flow.first())
+    // legacy snapshot reader sees the new write
+    assertEquals(true, repo.snapshot.first().blackTheme)
+    // legacy mutator is visible to the new Setting handle
+    repo.setBlackTheme(false)
+    assertEquals(false, repo.blackThemeSetting.flow.first())
+  }
+
+  @Test
+  fun zz_colorSchemeSetting_round_trips_and_shares_storage_with_legacy() = runTest {
+    assertEquals(ColorScheme.Default, repo.colorSchemeSetting.flow.first())
+    repo.colorSchemeSetting.set(ColorScheme.Brand)
+    assertEquals(ColorScheme.Brand, repo.colorSchemeSetting.flow.first())
+    assertEquals(ColorScheme.Brand, repo.snapshot.first().colorScheme)
+    repo.setColorScheme(ColorScheme.Dynamic)
+    assertEquals(ColorScheme.Dynamic, repo.colorSchemeSetting.flow.first())
+  }
 }

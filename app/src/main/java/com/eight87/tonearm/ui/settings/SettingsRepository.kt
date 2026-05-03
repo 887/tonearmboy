@@ -491,6 +491,26 @@ class SettingsRepository(private val context: Context) :
 
   val snapshot: Flow<SettingsSnapshot> = store.data.map { prefs -> prefs.toSnapshot() }
 
+  // R.B.1 — Setting<T> smoke test. Two existing keys expressed via the
+  // new abstraction so consumers can begin migrating to narrow
+  // Setting<Boolean> / Setting<ColorScheme> handles without touching
+  // the snapshot path. Both share storage with the legacy
+  // setBlackTheme / setColorScheme mutators below; writing through
+  // either surface lands on the same on-disk key.
+  val blackThemeSetting: com.eight87.tonearm.data.settings.Setting<Boolean> =
+    com.eight87.tonearm.data.settings.PreferencesSetting(
+      store = store,
+      key = KEY_BLACK_THEME,
+      read = { it ?: SettingsSnapshot.Default.blackTheme },
+      write = { it },
+    )
+  val colorSchemeSetting: com.eight87.tonearm.data.settings.Setting<ColorScheme> =
+    com.eight87.tonearm.data.settings.EnumSetting(
+      store = store,
+      key = KEY_COLOR_SCHEME,
+      fromStored = ColorScheme.Companion::fromStored,
+    )
+
   // --- mutators -------------------------------------------------------------
 
   suspend fun setTheme(value: ThemePreference) {

@@ -39,7 +39,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 **How to apply:** Keep one DataStore on disk (no migration). Introduce a `Setting<T>(key, default, encode, decode)` value type with `flow(store)` + `set(store, value)` extensions. Group settings into facets that each sub-page can take in isolation.
 
-- [ ] **R.B.1** Introduce `Setting<T>` + `EnumSetting<E>` in `data/settings/`. Express two existing keys via the new abstraction as a smoke test.
+- [x] **R.B.1** Introduce `Setting<T>` + `EnumSetting<E>` in `data/settings/`. Express two existing keys via the new abstraction as a smoke test.
 - [ ] **R.B.2** Migrate the rest of `SettingsRepository`'s keys to `Setting<T>` declarations (~25 keys). Hand-rolled boilerplate gone; on-disk keys unchanged.
 - [ ] **R.B.3** Define facet interfaces: `ThemeSettings`, `PlaybackSettings`, `LibrarySettings`, `MusicSourcesSettings`, `TabLayoutSettings`. `SettingsRepository` implements all five (mirror of R.A.2).
 - [ ] **R.B.4** Sub-pages take only the facet they need: `SettingsLookAndFeelScreen(theme: ThemeSettings)`, `SettingsAudioScreen(playback: PlaybackSettings)`, etc. Drop the `SettingsRepository`-wholesale parameter (Settings-F4).
