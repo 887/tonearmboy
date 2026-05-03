@@ -58,3 +58,19 @@ class EnumSetting<E : Enum<E>>(
     store.edit { it[key] = value.name }
   }
 }
+
+/**
+ * R.B.2 — boolean [Setting] convenience. The hand-rolled `it ?: default`
+ * is the most common shape across the repository; this factory removes
+ * the per-key boilerplate.
+ */
+fun booleanSetting(
+  store: DataStore<Preferences>,
+  key: Preferences.Key<Boolean>,
+  default: Boolean,
+): Setting<Boolean> = PreferencesSetting(
+  store = store,
+  key = key,
+  read = { it ?: default },
+  write = { it },
+)
