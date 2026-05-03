@@ -126,3 +126,61 @@ interface LibraryScanner {
 interface MediaChangeSource {
   val mediaChanges: Flow<Unit>
 }
+
+/**
+ * R.A.5 — neutral data-layer view of the scan configuration the
+ * library scanner needs (multi-value separators + music-source mode +
+ * persisted SAF tree URIs). Replaces a wrong-direction
+ * `data → ui.settings` import: `LibraryRepository` now depends on this
+ * interface, and the concrete `SettingsRepository` implements it.
+ *
+ * The shape is read-only: scan doesn't write settings, so no setters
+ * leak into this interface. Each value is a one-shot read (`first()`d
+ * inside the scan loop) so the scanner sees the user's latest choice
+ * without subscribing to the Flow.
+ */
+interface ScanConfigSource {
+  /**
+   * The user's chosen multi-value separator tokens (commas, semicolons,
+   * etc.). The scanner reads `first()` and uses the snapshot to split
+   * artist / genre tags during ingestion.
+   */
+  val multiValueSeparatorTokens: Flow<Set<String>>
+
+  /**
+   * The chosen music-source mode and its persisted tree URIs, packaged
+   * together so the scanner reads one Flow instead of joining two
+   * inside the data layer. `treeUris` is empty (and ignored) when
+   * `useFilePicker` is false; that's the System mode case where the
+   * scanner walks MediaStore unscoped.
+   */
+  val musicSourceScope: Flow<MusicSourceScope>
+}
+
+/**
+ * Pure data view of the user's music-source choice. Lives in `data/`
+ * so [LibraryRepository] doesn't need to import the `ui.settings`
+ * `MusicSourceMode` enum to express the same meaning.
+ */
+data class MusicSourceScope(
+  val useFilePicker: Boolean,
+  val treeUris: Set<String>,
+)
+
+/**
+ * R.A.5 — fall-back implementation used when [LibraryRepository] is
+ * constructed without an explicit [ScanConfigSource]. Emits empty
+ * separators and System-mode (no scope) — matches the legacy default
+ * a fresh-install user would see before toggling any setting.
+ *
+ * In production, [com.eight87.tonearm.AppGraph] passes the real
+ * `SettingsRepository`, which implements [ScanConfigSource].
+ */
+internal class DefaultScanConfigSource(
+  @Suppress("UNUSED_PARAMETER") context: android.content.Context,
+) : ScanConfigSource {
+  override val multiValueSeparatorTokens: Flow<Set<String>> =
+    kotlinx.coroutines.flow.flowOf(emptySet())
+  override val musicSourceScope: Flow<MusicSourceScope> =
+    kotlinx.coroutines.flow.flowOf(MusicSourceScope(useFilePicker = false, treeUris = emptySet()))
+}

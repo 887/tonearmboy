@@ -54,7 +54,11 @@ class AppGraph(private val applicationContext: Context) {
     ReplaceWith("tracks / albums / artists / genres / playlists / customTabs / scanner"),
   )
   val libraryRepository: LibraryRepository by lazy {
-    LibraryRepository(applicationContext, externalScope = applicationScope)
+    LibraryRepository(
+      applicationContext,
+      externalScope = applicationScope,
+      scanConfig = settingsRepository,
+    )
   }
 
   // R.A.3 — narrow interface aliases. UI screens take one of these

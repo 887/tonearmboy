@@ -21,7 +21,6 @@ import com.eight87.tonearm.data.model.Artist
 import com.eight87.tonearm.data.model.Genre
 import com.eight87.tonearm.data.model.Playlist
 import com.eight87.tonearm.data.model.Track
-import com.eight87.tonearm.ui.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -64,11 +63,13 @@ class LibraryRepository(
   private val db: LibraryDatabase = LibraryDatabase.get(context),
   private val externalScope: CoroutineScope = MainScope(),
   /**
-   * D.9c.1 — read on every scan to apply the user's multi-value
-   * separator selection. Defaults to a fresh [SettingsRepository] so
-   * existing call sites keep working without ceremony.
+   * R.A.5 — read on every scan to apply the user's multi-value
+   * separator selection + music-source scope. Concrete impl
+   * (`SettingsRepository`) lives in `ui.settings`; the data layer only
+   * sees the [ScanConfigSource] interface, which keeps the dependency
+   * direction `ui → data` (DIP).
    */
-  private val settingsRepository: SettingsRepository = SettingsRepository(context),
+  private val scanConfig: ScanConfigSource = DefaultScanConfigSource(context),
 ) : TrackSource,
   AlbumSource,
   ArtistSource,
@@ -429,27 +430,24 @@ class LibraryRepository(
   }
 
   private suspend fun runScan(initial: Boolean) = scanMutex.withLock {
-    // D.9c.1 — read the latest separator selection (a one-shot, not a
-    // subscription) so re-scans triggered after the user toggles the
-    // setting see the new tokens. Existing-cache invalidation is the
-    // user's job: we surface a snackbar telling them to rescan.
-    val separators: Set<String> =
-      settingsRepository.multiValueSeparators.first().map { it.token }.toSet()
+    // R.A.5 — one-shot reads against the [ScanConfigSource] view. The
+    // scan reads the user's latest choice on every pass; toggling the
+    // setting at runtime doesn't auto-rescan (surfaced via snackbar
+    // copy in the settings UI).
+    val separators: Set<String> = scanConfig.multiValueSeparatorTokens.first()
 
     // D.9d.1 / D.17.3 — when the user has configured one or more music
     // sources AND the mode is FilePicker, restrict the scan to
     // MediaStore rows whose `DATA` path lives under one of the source
-    // trees. In System mode we deliberately ignore any persisted SAF
-    // tree URIs so toggling System wipes the scope without losing the
-    // user's saved folder list.
-    val mode = settingsRepository.musicSourceMode.first()
-    val scopePrefixes: Set<String> = when (mode) {
-      com.eight87.tonearm.ui.settings.MusicSourceMode.FilePicker ->
-        settingsRepository.musicSourceUris.first()
-          .mapNotNull { raw -> SafScopeMapping.treeUriToPathPrefix(Uri.parse(raw)) }
-          .toSet()
-      com.eight87.tonearm.ui.settings.MusicSourceMode.System -> emptySet()
-    }
+    // trees. In System mode we ignore any persisted SAF tree URIs so
+    // toggling System wipes the scope without losing the user's saved
+    // folder list.
+    val scope = scanConfig.musicSourceScope.first()
+    val scopePrefixes: Set<String> = if (scope.useFilePicker) {
+      scope.treeUris
+        .mapNotNull { raw -> SafScopeMapping.treeUriToPathPrefix(Uri.parse(raw)) }
+        .toSet()
+    } else emptySet()
 
     // Snapshot the domain Track list so we keep the per-track album
     // ReplayGain values around long enough to fold them into the

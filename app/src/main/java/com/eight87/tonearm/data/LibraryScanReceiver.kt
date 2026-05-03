@@ -45,11 +45,17 @@ class LibraryScanReceiver : BroadcastReceiver() {
 
         // Round-trip through Room so we exercise the persistence path
         // the repository takes during a real scan.
+        // R.A.5 — pass the real ScanConfigSource so the smoke test
+        // exercises the same scan path production uses. The
+        // `SettingsRepository` lives in `ui.settings`, but this is a
+        // smoke-test receiver, not the library implementation, so
+        // crossing the layer boundary here is fine.
         val repo = LibraryRepository(
           context = app,
           scanner = scanner,
           db = LibraryDatabase.get(app),
           externalScope = scope,
+          scanConfig = com.eight87.tonearm.ui.settings.SettingsRepository(app),
         )
         repo.rescanNow()
         val cached = LibraryDatabase.get(app).trackDao().allIds()
