@@ -1,8 +1,8 @@
 # tonearm — main build plan
 
-## Status: ✅ DONE
+## Status: 🔄 In progress — Phase D.27.9 (queue row UX: X on left + remove-confirm dialog)
 
-_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (queue drag-drop suppresses parent LazyColumn scroll) shipped in commit `ec2bf1d`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 (search bug, multi-select Add-to-Playlist, playlist detail empty state, single-song queue scroll, advanced filtering, playlist tile UX) shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
+_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (queue drag-drop suppresses parent LazyColumn scroll) shipped in commit `ec2bf1d`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`. D.27.9 reopens with a small queue-row UX fix the user asked for after D.27.8 was already in flight._
 
 
 ## Stack (locked)
@@ -770,6 +770,34 @@ The combined goal: every library tab supports **both** view modes (list with sti
 **Shipped:** D.28.1–D.28.6 in commit `517f097`. Per-tab view mode persisted via `SettingsRepository.setViewModeFor` / `viewModes: Flow<Map<LibraryTab, ViewMode>>`. `LibraryTileGrid.kt` ships the shared tile renderer (`GridCells.Adaptive(minSize = 160.dp)`, full-row span letter section headers) consumed by Songs / Albums / Artists / Genres tabs; Playlists keeps `PlaylistsTilesScreen` (D.27.6) for tile mode and gets a new sticky-header list mode. Top-bar icon between Sort and Filter swaps between `Icons.AutoMirrored.Filled.ViewList` and `Icons.Filled.GridView`. Alphabet rail mounted on every tab × both modes (rail-tap on a `LazyGridState` uses the new `tileIndexFor(sectionKeys, letter)` helper); rail hidden when sort isn't alphabetical. Four new unit-test classes (`LibraryViewModeToggleTest`, `LibraryTileGridSongsTest`, `LibraryAlbumsListViewTest`, `AlphabetScrollerTileTest`) raise the suite from 595 → 617 cases. Eight screenshots captured at `docs/screenshots/phase-d/200-d28-*.png` through `207-d28-*.png` on the headless `medium_phone` AVD.
 
 After D.28 lands, restore `## Status: ✅ DONE` at the top of the plan once D.27 + D.28 are both ticked.
+
+---
+
+## Phase D.27.9 — queue row UX (X on left + remove-confirm dialog)
+
+User feedback after D.27.8 landed:
+> "also there is an X to remove songs from the queue right where the drag is.. that x belongs on the left side and also needs a 'do you want to remove song 'xxx' from playlist?' confirm"
+
+Today (post-D.27.8): each queue row in `QueueSection.kt` `QueueRow` lays out left-to-right as `[GraphicEq if active] [Title/Artist column, weight=1f] [IconButton X (Remove from queue)] [Box drag handle, 40dp]`. The X and the drag handle live adjacent on the right edge, so a fat-finger tap on the drag handle area can hit X and silently remove the wrong row. Plus the remove is destructive without confirmation.
+
+- [ ] **D.27.9.1 Move the X to the left of the row.** New row order: `[IconButton X (Remove from queue)] [GraphicEq if active] [Title/Artist column, weight=1f] [Box drag handle, 40dp]`. Keep the existing test tag `queue_remove` on the X so existing tests survive. Visual padding: 4 dp horizontal between the X and the GraphicEq / title column so it doesn't crowd.
+
+- [ ] **D.27.9.2 Confirmation dialog before remove.** Tapping the X opens an M3 `AlertDialog` (NOT the system AlertDialog — use `androidx.compose.material3.AlertDialog`). Title: `"Remove from queue?"`. Body: `"Remove '$title' from the queue?"` where `$title` is `item.title.ifEmpty { "Unknown" }`. Buttons: Cancel (dismiss) / Remove (calls `onRemove`, then dismisses). Phrasing is "queue" (not "playlist") because the queue is a runtime list, not a saved playlist — but if a follow-up commit re-frames the queue as a saved playlist this string should be revisited.
+
+- [ ] **D.27.9.3 Test.** New `QueueRowRemoveConfirmTest` (Robolectric, sdk=34, qualifiers=w400dp-h800dp):
+  - Tapping the `queue_remove` X → dialog visible with the row's title in the body.
+  - Tapping Cancel → dialog dismisses, `onRemove` was NOT invoked.
+  - Tapping Remove → `onRemove` invoked exactly once and dialog dismisses.
+  - Add a semantics tag `queue_remove_confirm_dialog` on the dialog so the test can locate it.
+
+**Anti-scope:**
+- Do NOT touch `DragReorderColumn.kt` or `NowPlayingScreen.kt` — they just shipped in D.27.8.
+- Do NOT change the X icon or the drag-handle icon themselves; just relocate.
+- Do NOT add a "Remove without asking" preference — keep the dialog universal in this round.
+
+**Shipped:** _(not yet)_
+
+After D.27.9 lands, restore `## Status: ✅ DONE` at the top with a fresh re-completion note.
 
 ---
 
