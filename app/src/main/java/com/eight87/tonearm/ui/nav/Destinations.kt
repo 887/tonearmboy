@@ -98,3 +98,14 @@ data object SettingsSearch : Destination
  */
 @Serializable
 data object SettingsAbout : Destination
+
+/**
+ * D.30.3 — full-screen editor for a custom library tab. `tabId == null`
+ * means "create new"; a non-null id loads the matching
+ * [com.eight87.tonearm.data.db.CustomTabEntity] for editing. Replaces
+ * the pre-D.30.3 `ModalBottomSheet`-based `CustomTabEditorSheet` so
+ * the form (name + content type + filter conditions) gets a proper
+ * top-app-bar with back / save and full vertical real estate.
+ */
+@Serializable
+data class CustomTabEditor(val tabId: Long? = null) : Destination

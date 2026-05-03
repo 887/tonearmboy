@@ -1,33 +1,33 @@
 package com.eight87.tonearm.ui.library
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RangeSlider
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,25 +45,28 @@ import com.eight87.tonearm.data.db.CustomTabContentType
 import com.eight87.tonearm.data.db.CustomTabEntity
 
 /**
- * D.18.2 — Modal sheet to create or edit a custom library tab.
+ * D.30.3 — full-screen editor for a custom library tab.
  *
- * The same composable handles both intents; pass [existing] to edit.
- * State is held locally until Save fires; Cancel discards.
+ * Replaces the pre-D.30.3 [CustomTabEditorSheet] (a `ModalBottomSheet`).
+ * The same composable handles both intents: pass [existing] to edit,
+ * pass null to create. State is held locally until Save fires; back
+ * discards.
  *
- * Filter sections collapse by default (a chevron rotates 180 deg
- * when expanded). The library-derived option pools — known genres,
- * artists, albums, year bounds — come in via the [universe] argument
- * so the sheet stays a pure UI surface (no Flow plumbing here).
+ * Save lives in the top app bar's right slot so the form scrolls
+ * unbothered. Disabled until the name is non-empty.
+ *
+ * The library-derived option pools — known genres, artists, albums,
+ * year bounds — come in via the [universe] argument so the screen
+ * stays a pure UI surface (no Flow plumbing here).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomTabEditorSheet(
+fun CustomTabEditorScreen(
   existing: CustomTabEntity?,
   universe: FilterUniverse,
-  onDismiss: () -> Unit,
+  onBack: () -> Unit,
   onSave: (name: String, contentType: CustomTabContentType, criteria: FilterCriteria) -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val initial: FilterCriteria = remember(existing) {
     existing?.let { FilterCriteria.fromJson(it.criteriaJson) } ?: FilterCriteria()
   }
@@ -91,26 +94,63 @@ fun CustomTabEditorSheet(
   }
   var pathContains by remember(existing) { mutableStateOf(initial.pathContains.orEmpty()) }
 
-  ModalBottomSheet(
-    onDismissRequest = onDismiss,
-    sheetState = sheetState,
-    modifier = Modifier.semantics { testTag = "custom_tab_editor" },
-  ) {
-    LazyColumn(modifier = Modifier.padding(horizontal = 16.dp).heightIn(max = 640.dp)) {
-      item {
-        Text(
-          if (existing == null) "New custom tab" else "Edit custom tab",
-          style = MaterialTheme.typography.titleLarge,
-          modifier = Modifier.padding(bottom = 12.dp),
-        )
-      }
+  val canSave = name.trim().isNotEmpty()
+
+  Scaffold(
+    modifier = Modifier
+      .fillMaxSize()
+      .semantics { testTag = "custom_tab_editor" },
+    topBar = {
+      TopAppBar(
+        title = { Text(if (existing == null) "New custom tab" else "Edit custom tab") },
+        navigationIcon = {
+          IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+          }
+        },
+        actions = {
+          TextButton(
+            onClick = {
+              val criteria = FilterCriteria(
+                genres = selectedGenres.toList().sorted(),
+                artists = selectedArtists.toList().sorted(),
+                albums = selectedAlbums.toList().sorted(),
+                yearMin = if (yearActive) yearMin.toInt() else null,
+                yearMax = if (yearActive) yearMax.toInt() else null,
+                dateAddedAfter = dateAddedSel.toEpochOffset(),
+                hasAlbumArt = when (hasArtSel) {
+                  HasArtOption.Any -> null
+                  HasArtOption.Only -> true
+                  HasArtOption.Without -> false
+                },
+                pathContains = pathContains.takeIf { it.isNotBlank() },
+              )
+              val trimmed = name.trim()
+              if (trimmed.isNotEmpty()) onSave(trimmed, contentType, criteria)
+            },
+            enabled = canSave,
+            modifier = Modifier.semantics { testTag = "editor_save" },
+          ) { Text(if (existing == null) "Create" else "Save") }
+        },
+      )
+    },
+  ) { innerPadding ->
+    LazyColumn(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(innerPadding)
+        .padding(horizontal = 16.dp),
+    ) {
       item {
         OutlinedTextField(
           value = name,
           onValueChange = { if (it.length <= 32) name = it },
           label = { Text("Name") },
           singleLine = true,
-          modifier = Modifier.fillMaxWidth().semantics { testTag = "editor_name" },
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp)
+            .semantics { testTag = "editor_name" },
         )
       }
       item {
@@ -131,7 +171,7 @@ fun CustomTabEditorSheet(
           }
         }
       }
-      item { SectionDivider() }
+      item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
       item {
         CollapsibleSection(
           title = "Genres",
@@ -273,36 +313,6 @@ fun CustomTabEditorSheet(
           )
         }
       }
-      item {
-        Row(
-          modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp),
-          horizontalArrangement = Arrangement.End,
-        ) {
-          TextButton(onClick = onDismiss) { Text("Cancel") }
-          TextButton(
-            onClick = {
-              val criteria = FilterCriteria(
-                genres = selectedGenres.toList().sorted(),
-                artists = selectedArtists.toList().sorted(),
-                albums = selectedAlbums.toList().sorted(),
-                yearMin = if (yearActive) yearMin.toInt() else null,
-                yearMax = if (yearActive) yearMax.toInt() else null,
-                dateAddedAfter = dateAddedSel.toEpochOffset(),
-                hasAlbumArt = when (hasArtSel) {
-                  HasArtOption.Any -> null
-                  HasArtOption.Only -> true
-                  HasArtOption.Without -> false
-                },
-                pathContains = pathContains.takeIf { it.isNotBlank() },
-              )
-              val trimmed = name.trim()
-              if (trimmed.isNotEmpty()) onSave(trimmed, contentType, criteria)
-            },
-            modifier = Modifier.semantics { testTag = "editor_save" },
-            enabled = name.trim().isNotEmpty(),
-          ) { Text(if (existing == null) "Create" else "Save") }
-        }
-      }
     }
   }
 }
@@ -315,11 +325,6 @@ data class FilterUniverse(
   val minYear: Int?,
   val maxYear: Int?,
 )
-
-@Composable
-private fun SectionDivider() {
-  HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-}
 
 @Composable
 private fun CollapsibleSection(

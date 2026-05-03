@@ -238,6 +238,12 @@ fun SettingsPersonalizeScreen(
   repository: SettingsRepository,
   libraryRepository: com.eight87.tonearm.data.LibraryRepository,
   onBack: () -> Unit,
+  /**
+   * D.30.3 — open the full-screen custom-tab editor route. `null` =
+   * create new; non-null = edit existing tab id. The editor's old
+   * inline `ModalBottomSheet` is gone.
+   */
+  onOpenCustomTabEditor: (Long?) -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
 ) {
@@ -293,14 +299,6 @@ fun SettingsPersonalizeScreen(
 
   if (showLibraryTabs) {
     val customTabs by libraryRepository.customTabs().collectAsState(initial = emptyList())
-    val genres by libraryRepository.observeGenres().collectAsState(initial = emptyList())
-    val artists by libraryRepository.observeArtists().collectAsState(initial = emptyList())
-    val albums by libraryRepository.observeAlbums().collectAsState(initial = emptyList())
-    val tracks by libraryRepository.observeTracks().collectAsState(initial = emptyList())
-    var editorTarget by remember {
-      mutableStateOf<com.eight87.tonearm.data.db.CustomTabEntity?>(null)
-    }
-    var showEditor by remember { mutableStateOf(false) }
     LibraryTabsDialog(
       model = LibraryTabsDialogModel(
         builtIns = LibraryTab.entries.toList(),
@@ -325,50 +323,22 @@ fun SettingsPersonalizeScreen(
       onReorderCustomTabs = { orderedIds ->
         scope.launch { libraryRepository.reorderCustomTabs(orderedIds) }
       },
+      // D.30.3 — Add / Edit dismiss the dialog and push the full-screen
+      // editor route. The dialog is rebuilt fresh when the user pops
+      // back, picking up any newly-saved tab from the live customTabs
+      // Flow.
       onAddCustomTab = {
-        editorTarget = null
-        showEditor = true
+        showLibraryTabs = false
+        onOpenCustomTabEditor(null)
       },
       onEditCustomTab = { tab ->
-        editorTarget = tab
-        showEditor = true
+        showLibraryTabs = false
+        onOpenCustomTabEditor(tab.id)
       },
       onDeleteCustomTab = { tab ->
         scope.launch { libraryRepository.deleteCustomTab(tab.id) }
       },
     )
-    if (showEditor) {
-      val universe = remember(genres, artists, albums, tracks) {
-        com.eight87.tonearm.ui.library.FilterUniverse(
-          genres = genres.map { it.name }.distinct().sorted(),
-          artists = artists.map { it.name }.distinct().sorted(),
-          albums = albums.map { it.name }.distinct().sorted(),
-          minYear = tracks.mapNotNull { it.year }.minOrNull(),
-          maxYear = tracks.mapNotNull { it.year }.maxOrNull(),
-        )
-      }
-      com.eight87.tonearm.ui.library.CustomTabEditorSheet(
-        existing = editorTarget,
-        universe = universe,
-        onDismiss = { showEditor = false },
-        onSave = { name, ct, criteria ->
-          scope.launch {
-            val entity = (editorTarget ?: com.eight87.tonearm.data.db.CustomTabEntity(
-              name = name,
-              position = 0,
-              contentType = ct,
-              criteriaJson = "",
-            )).copy(
-              name = name,
-              contentType = ct,
-              criteriaJson = com.eight87.tonearm.data.FilterCriteria.toJson(criteria),
-            )
-            libraryRepository.upsertCustomTab(entity)
-          }
-          showEditor = false
-        },
-      )
-    }
   }
   if (customBarPicker) {
     RadioPicker(

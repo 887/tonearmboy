@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,6 +36,8 @@ import com.eight87.tonearm.ui.settings.SettingsContentScreen
 import com.eight87.tonearm.ui.settings.AboutScreen
 import com.eight87.tonearm.ui.settings.SettingsLookAndFeelScreen
 import com.eight87.tonearm.ui.settings.MusicSourcesDialog
+import com.eight87.tonearm.ui.library.CustomTabEditorScreen
+import com.eight87.tonearm.ui.library.FilterUniverse
 import com.eight87.tonearm.ui.settings.SettingsPersonalizeScreen
 import com.eight87.tonearm.ui.settings.SettingsScreen
 import com.eight87.tonearm.ui.settings.catalog.LocalHighlightedSettingId
@@ -587,8 +590,55 @@ fun TonearmApp(
             repository = graph.settingsRepository,
             libraryRepository = graph.libraryRepository,
             onBack = { backStack.pop() },
+            onOpenCustomTabEditor = { id -> backStack.push(CustomTabEditor(id)) },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,
+          )
+        }
+        entry<CustomTabEditor> { key ->
+          // D.30.3 — full-screen editor for a custom library tab. The
+          // entity (when editing) is resolved from the live customTabs
+          // Flow on entry; FilterUniverse is built from the same Flows
+          // the dialog used pre-D.30.3.
+          val customTabs by graph.libraryRepository.customTabs().collectAsStateWithLifecycle(initialValue = emptyList())
+          val genres by graph.libraryRepository.observeGenres().collectAsStateWithLifecycle(initialValue = emptyList())
+          val artists by graph.libraryRepository.observeArtists().collectAsStateWithLifecycle(initialValue = emptyList())
+          val albums by graph.libraryRepository.observeAlbums().collectAsStateWithLifecycle(initialValue = emptyList())
+          val tracks by graph.libraryRepository.observeTracks().collectAsStateWithLifecycle(initialValue = emptyList())
+          val existing = key.tabId?.let { id -> customTabs.firstOrNull { it.id == id } }
+          val universe = remember(genres, artists, albums, tracks) {
+            FilterUniverse(
+              genres = genres.map { it.name }.distinct().sorted(),
+              artists = artists.map { it.name }.distinct().sorted(),
+              albums = albums.map { it.name }.distinct().sorted(),
+              minYear = tracks.mapNotNull { it.year }.minOrNull(),
+              maxYear = tracks.mapNotNull { it.year }.maxOrNull(),
+            )
+          }
+          LaunchedEffect(existing) {
+            sectionTitle.value = if (existing == null) "New custom tab" else "Edit custom tab"
+          }
+          val scope = rememberCoroutineScope()
+          CustomTabEditorScreen(
+            existing = existing,
+            universe = universe,
+            onBack = { backStack.pop() },
+            onSave = { name, ct, criteria ->
+              scope.launch {
+                val entity = (existing ?: com.eight87.tonearm.data.db.CustomTabEntity(
+                  name = name,
+                  position = 0,
+                  contentType = ct,
+                  criteriaJson = "",
+                )).copy(
+                  name = name,
+                  contentType = ct,
+                  criteriaJson = com.eight87.tonearm.data.FilterCriteria.toJson(criteria),
+                )
+                graph.libraryRepository.upsertCustomTab(entity)
+                backStack.pop()
+              }
+            },
           )
         }
         entry<SettingsContent> {
