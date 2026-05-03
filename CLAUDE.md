@@ -133,6 +133,20 @@ adb shell am start -n com.eight87.tonearm/.MainActivity
 - No DI framework in v1 (Hilt/Koin) — pass dependencies as constructor params. Add DI later if/when the manual wiring hurts.
 - No reflection-based JSON. Use `kotlinx.serialization` if any serialization is needed.
 
+## Design principles — SOLID, applied to Kotlin + Compose
+
+The codebase follows SOLID where it earns its keep. Kotlin + Compose change *how* the principles cash out (top-level functions instead of `interface ServiceImpl`, sealed types instead of Visitor, `Flow<T>` instead of Observer wiring), but the underlying tests still apply. **When introducing a new file or refactoring an existing one, sanity-check it against these five questions.** When in doubt, prefer the principle over the shortcut.
+
+- **S — Single Responsibility.** A type / file / composable should have *one reason to change*. If you can describe what a class does without "and", "also", or "plus", you're probably fine. If a single file is editable for three independent reasons (e.g. *tab rendering* + *filter persistence* + *navigation routing*), split it. Soft heuristic: anything past ~500 LOC of non-trivial Kotlin deserves a second look; past ~800 LOC almost always needs splitting.
+- **O — Open/Closed.** Prefer adding a new sealed-class case / new strategy implementation over modifying an existing `when`/`if` chain that already covers the abstraction. Sealed types + exhaustive `when` are the Kotlin-native way to express "open for extension". *Caveat:* don't pre-build extension points for cases that don't exist yet — closed-by-default, opened only when a second variant arrives.
+- **L — Liskov Substitution.** Subtypes (or sealed-type variants) must honour the contract of the parent. A `FilterCondition.HasAlbumArt` that throws on `matches()` for a malformed track would break this — every variant must satisfy `matches: Track -> Boolean` totally. In Compose, this also means: if a composable promises to render in a `Modifier.fillMaxWidth()` parent, every implementation should.
+- **I — Interface Segregation.** Don't pass a fat type when a narrow one would do. If a screen needs only `observeTracks()` and `tracksMatching()`, take a `TrackSource` (two methods) — not the whole `LibraryRepository` (40+ methods). In Compose this often manifests as: don't pass a god-state object down five levels; pass the three fields the leaf actually reads.
+- **D — Dependency Inversion.** High-level modules (UI, playback orchestration) depend on abstractions, not concrete classes. Concretely: ViewModels / composables take repository *interfaces* or function-typed parameters; concrete Room DAOs / SAF wrappers live behind those interfaces. The `AppGraph` is the composition root — it's the *only* place that knows the concrete types.
+
+These are evaluation criteria, not religion — small ad-hoc helpers don't need their own interface, and one-off composables don't need to be split for principle's sake. But anything load-bearing (repositories, the playback controller, navigation, settings storage) should pass all five.
+
+Refactor plan: see [`docs/plans/refactor-solid.md`](docs/plans/refactor-solid.md) for the running list of SOLID wins identified in audit passes — work them in order of declared priority unless the user picks otherwise.
+
 ## Plan file
 
 The phased build plan lives at [`docs/plans/main.md`](docs/plans/main.md), per the user's global CLAUDE.md rule (numbered phases, sub-step checkboxes).
