@@ -17,12 +17,14 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -264,7 +266,7 @@ fun QueueSection(
 }
 
 @Composable
-private fun QueueRow(
+internal fun QueueRow(
   item: QueueItem,
   isActive: Boolean,
   dragHandleModifier: Modifier,
@@ -278,6 +280,11 @@ private fun QueueRow(
     MaterialTheme.colorScheme.surface
   }
   val rowTag = if (isActive) "queue_row_active" else "queue_row"
+  // D.27.9.2 — gate the destructive remove behind an M3 AlertDialog.
+  // The dialog uses "queue" wording (not "playlist") because the
+  // queue is a runtime list, not a saved playlist.
+  var showConfirm by remember { mutableStateOf(false) }
+  val title = item.title.ifEmpty { "Unknown" }
   Row(
     modifier = Modifier
       .fillMaxWidth()
@@ -287,6 +294,15 @@ private fun QueueRow(
       .semantics { testTag = rowTag },
     verticalAlignment = Alignment.CenterVertically,
   ) {
+    // D.27.9.1 — X moves to the leftmost position so it can no longer
+    // be tapped by accident when the user is reaching for the drag
+    // handle on the right edge.
+    IconButton(
+      onClick = { showConfirm = true },
+      modifier = Modifier
+        .padding(horizontal = 4.dp)
+        .semantics { testTag = "queue_remove" },
+    ) { Icon(Icons.Filled.Close, contentDescription = "Remove from queue") }
     if (isActive) {
       Icon(
         imageVector = Icons.Filled.GraphicEq,
@@ -299,7 +315,7 @@ private fun QueueRow(
     }
     Column(modifier = Modifier.weight(1f)) {
       Text(
-        text = item.title.ifEmpty { "Unknown" },
+        text = title,
         style = if (isActive) {
           MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
         } else {
@@ -314,10 +330,6 @@ private fun QueueRow(
         maxLines = 1,
       )
     }
-    IconButton(
-      onClick = onRemove,
-      modifier = Modifier.semantics { testTag = "queue_remove" },
-    ) { Icon(Icons.Filled.Close, contentDescription = "Remove from queue") }
     Box(
       modifier = Modifier
         .size(40.dp)
@@ -330,6 +342,33 @@ private fun QueueRow(
     ) {
       Icon(Icons.Filled.DragHandle, contentDescription = "Reorder")
     }
+  }
+  if (showConfirm) {
+    AlertDialog(
+      onDismissRequest = { showConfirm = false },
+      title = {
+        Text(
+          text = "Remove from queue?",
+          modifier = Modifier.semantics { testTag = "queue_remove_confirm_dialog" },
+        )
+      },
+      text = { Text(text = "Remove '$title' from the queue?") },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            showConfirm = false
+            onRemove()
+          },
+          modifier = Modifier.semantics { testTag = "queue_remove_confirm_button" },
+        ) { Text("Remove") }
+      },
+      dismissButton = {
+        TextButton(
+          onClick = { showConfirm = false },
+          modifier = Modifier.semantics { testTag = "queue_remove_cancel_button" },
+        ) { Text("Cancel") }
+      },
+    )
   }
 }
 

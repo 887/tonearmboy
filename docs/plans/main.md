@@ -1,8 +1,8 @@
 # tonearm — main build plan
 
-## Status: 🔄 In progress — Phase D.27.9 (queue row UX: X on left + remove-confirm dialog)
+## Status: ✅ DONE
 
-_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (queue drag-drop suppresses parent LazyColumn scroll) shipped in commit `ec2bf1d`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`. D.27.9 reopens with a small queue-row UX fix the user asked for after D.27.8 was already in flight._
+_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (queue drag-drop suppresses parent LazyColumn scroll) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped 2026-05-03 in commit `__D27_9_COMMIT__`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
 
 
 ## Stack (locked)
@@ -773,18 +773,18 @@ After D.28 lands, restore `## Status: ✅ DONE` at the top of the plan once D.27
 
 ---
 
-## Phase D.27.9 — queue row UX (X on left + remove-confirm dialog)
+## Phase D.27.9 — queue row UX (X on left + remove-confirm dialog) — shipped in commit `__D27_9_COMMIT__`
 
 User feedback after D.27.8 landed:
 > "also there is an X to remove songs from the queue right where the drag is.. that x belongs on the left side and also needs a 'do you want to remove song 'xxx' from playlist?' confirm"
 
 Today (post-D.27.8): each queue row in `QueueSection.kt` `QueueRow` lays out left-to-right as `[GraphicEq if active] [Title/Artist column, weight=1f] [IconButton X (Remove from queue)] [Box drag handle, 40dp]`. The X and the drag handle live adjacent on the right edge, so a fat-finger tap on the drag handle area can hit X and silently remove the wrong row. Plus the remove is destructive without confirmation.
 
-- [ ] **D.27.9.1 Move the X to the left of the row.** New row order: `[IconButton X (Remove from queue)] [GraphicEq if active] [Title/Artist column, weight=1f] [Box drag handle, 40dp]`. Keep the existing test tag `queue_remove` on the X so existing tests survive. Visual padding: 4 dp horizontal between the X and the GraphicEq / title column so it doesn't crowd.
+- [x] **D.27.9.1 Move the X to the left of the row.** New row order: `[IconButton X (Remove from queue)] [GraphicEq if active] [Title/Artist column, weight=1f] [Box drag handle, 40dp]`. Keep the existing test tag `queue_remove` on the X so existing tests survive. Visual padding: 4 dp horizontal between the X and the GraphicEq / title column so it doesn't crowd.
 
-- [ ] **D.27.9.2 Confirmation dialog before remove.** Tapping the X opens an M3 `AlertDialog` (NOT the system AlertDialog — use `androidx.compose.material3.AlertDialog`). Title: `"Remove from queue?"`. Body: `"Remove '$title' from the queue?"` where `$title` is `item.title.ifEmpty { "Unknown" }`. Buttons: Cancel (dismiss) / Remove (calls `onRemove`, then dismisses). Phrasing is "queue" (not "playlist") because the queue is a runtime list, not a saved playlist — but if a follow-up commit re-frames the queue as a saved playlist this string should be revisited.
+- [x] **D.27.9.2 Confirmation dialog before remove.** Tapping the X opens an M3 `AlertDialog` (NOT the system AlertDialog — use `androidx.compose.material3.AlertDialog`). Title: `"Remove from queue?"`. Body: `"Remove '$title' from the queue?"` where `$title` is `item.title.ifEmpty { "Unknown" }`. Buttons: Cancel (dismiss) / Remove (calls `onRemove`, then dismisses). Phrasing is "queue" (not "playlist") because the queue is a runtime list, not a saved playlist — but if a follow-up commit re-frames the queue as a saved playlist this string should be revisited.
 
-- [ ] **D.27.9.3 Test.** New `QueueRowRemoveConfirmTest` (Robolectric, sdk=34, qualifiers=w400dp-h800dp):
+- [x] **D.27.9.3 Test.** New `QueueRowRemoveConfirmTest` (Robolectric, sdk=34, qualifiers=w400dp-h800dp):
   - Tapping the `queue_remove` X → dialog visible with the row's title in the body.
   - Tapping Cancel → dialog dismisses, `onRemove` was NOT invoked.
   - Tapping Remove → `onRemove` invoked exactly once and dialog dismisses.
@@ -795,7 +795,7 @@ Today (post-D.27.8): each queue row in `QueueSection.kt` `QueueRow` lays out lef
 - Do NOT change the X icon or the drag-handle icon themselves; just relocate.
 - Do NOT add a "Remove without asking" preference — keep the dialog universal in this round.
 
-**Shipped:** _(not yet)_
+**D.27.9 shipped in commit `__D27_9_COMMIT__`.** `QueueRow` was promoted from `private` to `internal` so the new `QueueRowRemoveConfirmTest` can render it directly without touching the rest of `QueueSection`. The X (`IconButton` with tag `queue_remove`) now leads the row at left with 4 dp horizontal padding, ahead of the optional `GraphicEq` active-indicator. Tapping it flips a row-local `showConfirm` state which renders an `androidx.compose.material3.AlertDialog`; the dialog title carries `testTag = "queue_remove_confirm_dialog"`, the body is `"Remove '<title>' from the queue?"`, and the Confirm/Cancel buttons carry `queue_remove_confirm_button` / `queue_remove_cancel_button` tags so the test can target them without depending on string literals. Suite goes 620 → 623.
 
 After D.27.9 lands, restore `## Status: ✅ DONE` at the top with a fresh re-completion note.
 
