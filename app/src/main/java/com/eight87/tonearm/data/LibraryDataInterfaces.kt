@@ -168,17 +168,11 @@ data class MusicSourceScope(
 )
 
 /**
- * R.A.5 — fall-back implementation used when [LibraryRepository] is
- * constructed without an explicit [ScanConfigSource]. Emits empty
- * separators and System-mode (no scope) — matches the legacy default
- * a fresh-install user would see before toggling any setting.
- *
- * In production, [com.eight87.tonearm.AppGraph] passes the real
- * `SettingsRepository`, which implements [ScanConfigSource].
+ * R.A.6 — empty-default scan config for tests that don't exercise the
+ * scan path. Production wiring goes through `SettingsRepository`
+ * (in `ui.settings`), passed explicitly by `AppGraph`.
  */
-internal class DefaultScanConfigSource(
-  @Suppress("UNUSED_PARAMETER") context: android.content.Context,
-) : ScanConfigSource {
+object EmptyScanConfigSource : ScanConfigSource {
   override val multiValueSeparatorTokens: Flow<Set<String>> =
     kotlinx.coroutines.flow.flowOf(emptySet())
   override val musicSourceScope: Flow<MusicSourceScope> =

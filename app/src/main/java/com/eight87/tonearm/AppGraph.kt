@@ -54,8 +54,12 @@ class AppGraph(private val applicationContext: Context) {
     ReplaceWith("tracks / albums / artists / genres / playlists / customTabs / scanner"),
   )
   val libraryRepository: LibraryRepository by lazy {
+    // R.A.6 — explicit wiring of every collaborator. No more
+    // self-defaults inside LibraryRepository.
     LibraryRepository(
-      applicationContext,
+      context = applicationContext,
+      scanner = com.eight87.tonearm.data.mediastore.MediaStoreScanner(applicationContext),
+      db = com.eight87.tonearm.data.db.LibraryDatabase.get(applicationContext),
       externalScope = applicationScope,
       scanConfig = settingsRepository,
     )

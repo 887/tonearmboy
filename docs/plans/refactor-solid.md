@@ -25,7 +25,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [x] **R.A.3** Update `AppGraph` to expose each interface separately (`val tracks: TrackSource = libraryRepository`, etc.). Mark `libraryRepository` `@Deprecated` to flag remaining direct uses.
 - [x] **R.A.4** Migrate UI call sites to take the narrow interface: tab dispatchers → `TrackSource`/`AlbumSource`/etc.; `PlaylistTile` → just the playlist-cover Flow (function-typed param). Audit findings UI-F6, UI-F7, UI-F8 enumerate the screens.
 - [x] **R.A.5** Remove the data → ui import: move `SettingsRepository` to a neutral package (`data.settings/` or top-level `settings/`) **OR** define `ScanConfigSource` in `data/` and have `SettingsRepository` implement it. `LibraryRepository` constructor takes `ScanConfigSource`, not the concrete settings repo. (Data-F3.)
-- [ ] **R.A.6** Drop the constructor self-defaults in `LibraryRepository` (Data-F6); `AppGraph` supplies all collaborators explicitly.
+- [x] **R.A.6** Drop the constructor self-defaults in `LibraryRepository` (Data-F6); `AppGraph` supplies all collaborators explicitly.
 - [ ] **R.A.7** Verify: `:app:assembleDebug` clean, `:app:testDebugUnitTest` green, AVD smoke (open Library tabs, play a track, edit MyMix).
 - [ ] **R.A.8** Ship + tick.
 

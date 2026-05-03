@@ -58,10 +58,15 @@ import java.util.concurrent.atomic.AtomicBoolean
  * parameters, per the project convention.
  */
 class LibraryRepository(
+  // R.A.6 — no constructor self-defaults. `AppGraph` is the only
+  // place that knows how to wire the four collaborators; tests
+  // construct each one explicitly. Removing the defaults keeps the
+  // dependency direction visible (`AppGraph → LibraryRepository`)
+  // and stops a stray test from accidentally booting MainScope().
   private val context: Context,
-  private val scanner: MediaStoreScanner = MediaStoreScanner(context),
-  private val db: LibraryDatabase = LibraryDatabase.get(context),
-  private val externalScope: CoroutineScope = MainScope(),
+  private val scanner: MediaStoreScanner,
+  private val db: LibraryDatabase,
+  private val externalScope: CoroutineScope,
   /**
    * R.A.5 — read on every scan to apply the user's multi-value
    * separator selection + music-source scope. Concrete impl
@@ -69,7 +74,7 @@ class LibraryRepository(
    * sees the [ScanConfigSource] interface, which keeps the dependency
    * direction `ui → data` (DIP).
    */
-  private val scanConfig: ScanConfigSource = DefaultScanConfigSource(context),
+  private val scanConfig: ScanConfigSource,
 ) : TrackSource,
   AlbumSource,
   ArtistSource,

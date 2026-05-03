@@ -42,6 +42,8 @@ class M3UImporterTest {
       context = ctx,
       scanner = scanner,
       db = db,
+      externalScope = kotlinx.coroutines.MainScope(),
+      scanConfig = com.eight87.tonearm.data.EmptyScanConfigSource,
     )
   }
 
