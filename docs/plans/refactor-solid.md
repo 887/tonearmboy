@@ -20,7 +20,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 **How to apply:** Define narrow interfaces in `data/`. The composition root (`AppGraph`) is the only place that maps interface → concrete `LibraryRepository`.
 
-- [ ] **R.A.1** Define `TrackSource`, `AlbumSource`, `ArtistSource`, `GenreSource`, `PlaylistStore`, `CustomTabStore`, `LibraryScanner`, `MediaChangeSource` interfaces in `data/`. Each carries only the methods its consumers need (audit reports F1+F2 enumerate them).
+- [x] **R.A.1** Define `TrackSource`, `AlbumSource`, `ArtistSource`, `GenreSource`, `PlaylistStore`, `CustomTabStore`, `LibraryScanner`, `MediaChangeSource` interfaces in `data/`. Each carries only the methods its consumers need (audit reports F1+F2 enumerate them).
 - [ ] **R.A.2** `LibraryRepository` implements all eight interfaces (single class, multiple narrow contracts) — no behaviour change yet.
 - [ ] **R.A.3** Update `AppGraph` to expose each interface separately (`val tracks: TrackSource = libraryRepository`, etc.). Mark `libraryRepository` `@Deprecated` to flag remaining direct uses.
 - [ ] **R.A.4** Migrate UI call sites to take the narrow interface: tab dispatchers → `TrackSource`/`AlbumSource`/etc.; `PlaylistTile` → just the playlist-cover Flow (function-typed param). Audit findings UI-F6, UI-F7, UI-F8 enumerate the screens.
