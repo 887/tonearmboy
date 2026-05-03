@@ -45,14 +45,12 @@ class BaseThemePickerTest {
 
   @Test
   fun default_base_theme_is_default_android() = runTest {
-    val s = repo.snapshot.first()
-    assertEquals(BaseTheme.DefaultAndroid, s.baseTheme)
+    assertEquals(BaseTheme.DefaultAndroid, repo.baseTheme.flow.first())
   }
 
   @Test
   fun default_album_art_tint_is_enabled() = runTest {
-    val s = repo.snapshot.first()
-    assertEquals(true, s.albumArtTintEnabled)
+    assertEquals(true, repo.albumArtTintEnabled.flow.first())
   }
 
   @Test
@@ -65,36 +63,33 @@ class BaseThemePickerTest {
     )
     values.forEach { value ->
       repo.setBaseTheme(value)
-      assertEquals(value, repo.snapshot.first().baseTheme)
+      assertEquals(value, repo.baseTheme.flow.first())
     }
   }
 
   @Test
   fun album_art_tint_round_trips() = runTest {
     repo.setAlbumArtTintEnabled(false)
-    assertEquals(false, repo.snapshot.first().albumArtTintEnabled)
+    assertEquals(false, repo.albumArtTintEnabled.flow.first())
     repo.setAlbumArtTintEnabled(true)
-    assertEquals(true, repo.snapshot.first().albumArtTintEnabled)
+    assertEquals(true, repo.albumArtTintEnabled.flow.first())
   }
 
   @Test
   fun base_theme_and_tint_are_independent() = runTest {
     repo.setBaseTheme(BaseTheme.PureBlack)
     repo.setAlbumArtTintEnabled(false)
-    val s1 = repo.snapshot.first()
-    assertEquals(BaseTheme.PureBlack, s1.baseTheme)
-    assertEquals(false, s1.albumArtTintEnabled)
+    assertEquals(BaseTheme.PureBlack, repo.baseTheme.flow.first())
+    assertEquals(false, repo.albumArtTintEnabled.flow.first())
 
     // Toggling one MUST NOT reset the other.
     repo.setAlbumArtTintEnabled(true)
-    val s2 = repo.snapshot.first()
-    assertEquals(BaseTheme.PureBlack, s2.baseTheme)
-    assertEquals(true, s2.albumArtTintEnabled)
+    assertEquals(BaseTheme.PureBlack, repo.baseTheme.flow.first())
+    assertEquals(true, repo.albumArtTintEnabled.flow.first())
 
     repo.setBaseTheme(BaseTheme.DefaultColors)
-    val s3 = repo.snapshot.first()
-    assertEquals(BaseTheme.DefaultColors, s3.baseTheme)
-    assertEquals(true, s3.albumArtTintEnabled)
+    assertEquals(BaseTheme.DefaultColors, repo.baseTheme.flow.first())
+    assertEquals(true, repo.albumArtTintEnabled.flow.first())
   }
 
   @Test

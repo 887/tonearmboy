@@ -30,7 +30,11 @@ import com.eight87.tonearm.ui.playing.MiniPlayer
 import com.eight87.tonearm.ui.playing.NowPlayingScreen
 import com.eight87.tonearm.data.model.Track
 import com.eight87.tonearm.ui.search.SearchScreen
-import com.eight87.tonearm.ui.settings.SettingsSnapshot
+import com.eight87.tonearm.ui.settings.AlbumCoversMode
+import com.eight87.tonearm.ui.settings.CustomBarAction
+import com.eight87.tonearm.ui.settings.PlayFromItemDetails
+import com.eight87.tonearm.ui.settings.PlayFromLibrary
+import com.eight87.tonearm.ui.settings.ReplayGainStrategy
 import com.eight87.tonearm.ui.settings.SettingsAudioScreen
 import com.eight87.tonearm.ui.settings.SettingsContentScreen
 import com.eight87.tonearm.ui.settings.AboutScreen
@@ -89,8 +93,23 @@ fun TonearmApp(
 
   val playback = graph.playbackUiController
   val playbackState by playback.state.collectAsStateWithLifecycle()
-  val settingsSnapshot by graph.settingsRepository.snapshot
-    .collectAsStateWithLifecycle(initialValue = SettingsSnapshot.Default)
+  // R.B.5 — per-key Flow reads via the facets the repository implements.
+  // Each Compose subscription is its own Flow; toggling a setting only
+  // recomposes screens that read that specific key.
+  val pauseOnRepeat by graph.settingsRepository.pauseOnRepeat.flow
+    .collectAsStateWithLifecycle(initialValue = false)
+  val replayGainStrategy by graph.settingsRepository.replayGainStrategy.flow
+    .collectAsStateWithLifecycle(initialValue = ReplayGainStrategy.Default)
+  val replayGainPreampDb by graph.settingsRepository.replayGainPreampDb.flow
+    .collectAsStateWithLifecycle(initialValue = 0f)
+  val customBarAction by graph.settingsRepository.customBarAction.flow
+    .collectAsStateWithLifecycle(initialValue = CustomBarAction.Default)
+  val albumCoversMode by graph.settingsRepository.albumCoversMode.flow
+    .collectAsStateWithLifecycle(initialValue = AlbumCoversMode.Default)
+  val playFromLibrary by graph.settingsRepository.playFromLibrary.flow
+    .collectAsStateWithLifecycle(initialValue = PlayFromLibrary.Default)
+  val playFromItemDetails by graph.settingsRepository.playFromItemDetails.flow
+    .collectAsStateWithLifecycle(initialValue = PlayFromItemDetails.Default)
   val snackbarHostState = remember { SnackbarHostState() }
 
   // Phase F — file-deletion entry. Hosting the launcher at the app
@@ -123,17 +142,17 @@ fun TonearmApp(
 
   // D.9a.3 — keep the playback controller's pause-on-repeat flag in
   // sync with the user's setting.
-  LaunchedEffect(settingsSnapshot.pauseOnRepeat) {
-    playback.setPauseOnRepeat(settingsSnapshot.pauseOnRepeat)
+  LaunchedEffect(pauseOnRepeat) {
+    playback.setPauseOnRepeat(pauseOnRepeat)
   }
 
   // D.9b.1 / D.9b.2 — push ReplayGain strategy + pre-amp into the
   // controller. The controller re-applies the volume immediately and
   // on every subsequent track transition.
-  LaunchedEffect(settingsSnapshot.replayGainStrategy, settingsSnapshot.replayGainPreampDb) {
+  LaunchedEffect(replayGainStrategy, replayGainPreampDb) {
     playback.setReplayGain(
-      settingsSnapshot.replayGainStrategy,
-      settingsSnapshot.replayGainPreampDb,
+      replayGainStrategy,
+      replayGainPreampDb,
     )
   }
 
@@ -287,12 +306,12 @@ fun TonearmApp(
           onSkipNext = playback::seekToNext,
           onSkipPrevious = playback::seekToPrevious,
           onPlayButtonLongPress = {
-            playback.performCustomBarAction(settingsSnapshot.customBarAction)
+            playback.performCustomBarAction(customBarAction)
           },
           onToggleShuffle = playback::toggleShuffle,
           onCycleRepeat = playback::cycleRepeatMode,
           onSeekTo = playback::seekTo,
-          albumCoversMode = settingsSnapshot.albumCoversMode,
+          albumCoversMode = albumCoversMode,
         )
       }
     },
@@ -320,7 +339,7 @@ fun TonearmApp(
               playback.playFromLibrary(
                 surroundingList = tracks,
                 tappedIndex = index,
-                strategy = settingsSnapshot.playFromLibrary,
+                strategy = playFromLibrary,
               )
               backStack.push(NowPlaying)
             },
@@ -382,12 +401,12 @@ fun TonearmApp(
             albumSource = graph.albums,
             albumName = key.name,
             albumArtist = key.albumArtist,
-            albumCoversMode = settingsSnapshot.albumCoversMode,
+            albumCoversMode = albumCoversMode,
             onTrackClick = { tracks, index ->
               playback.playFromDetail(
                 surroundingList = tracks,
                 tappedIndex = index,
-                strategy = settingsSnapshot.playFromItemDetails,
+                strategy = playFromItemDetails,
               )
               backStack.push(NowPlaying)
             },
@@ -411,12 +430,12 @@ fun TonearmApp(
             trackSource = graph.tracks,
             albumSource = graph.albums,
             artistName = key.name,
-            albumCoversMode = settingsSnapshot.albumCoversMode,
+            albumCoversMode = albumCoversMode,
             onTrackClick = { tracks, index ->
               playback.playFromDetail(
                 surroundingList = tracks,
                 tappedIndex = index,
-                strategy = settingsSnapshot.playFromItemDetails,
+                strategy = playFromItemDetails,
               )
               backStack.push(NowPlaying)
             },
@@ -444,7 +463,7 @@ fun TonearmApp(
               playback.playFromDetail(
                 surroundingList = tracks,
                 tappedIndex = index,
-                strategy = settingsSnapshot.playFromItemDetails,
+                strategy = playFromItemDetails,
               )
               backStack.push(NowPlaying)
             },
@@ -479,7 +498,7 @@ fun TonearmApp(
           NowPlayingScreen(
             playback = playback,
             onBack = { backStack.pop() },
-            albumCoversMode = settingsSnapshot.albumCoversMode,
+            albumCoversMode = albumCoversMode,
             onSaveQueueAsPlaylist = { mediaIds ->
               // D.29.1 — feed the queue's track ids into the same bulk
               // playlist-picker overlay multi-select uses, so the user
@@ -500,7 +519,7 @@ fun TonearmApp(
               playback.playFromDetail(
                 surroundingList = tracks,
                 tappedIndex = index,
-                strategy = settingsSnapshot.playFromItemDetails,
+                strategy = playFromItemDetails,
               )
               backStack.push(NowPlaying)
             },
@@ -587,7 +606,7 @@ fun TonearmApp(
         entry<SettingsLookAndFeel> {
           LaunchedEffect(Unit) { sectionTitle.value = "Look and Feel" }
           SettingsLookAndFeelScreen(
-            repository = graph.settingsRepository,
+            theme = graph.settingsRepository,
             onBack = { backStack.pop() },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,
@@ -596,7 +615,8 @@ fun TonearmApp(
         entry<SettingsPersonalize> {
           LaunchedEffect(Unit) { sectionTitle.value = "Personalize" }
           SettingsPersonalizeScreen(
-            repository = graph.settingsRepository,
+            playback = graph.settingsRepository,
+            tabs = graph.settingsRepository,
             customTabStore = graph.customTabs,
             onBack = { backStack.pop() },
             onOpenCustomTabEditor = { id -> backStack.push(CustomTabEditor(id)) },
@@ -653,7 +673,7 @@ fun TonearmApp(
         entry<SettingsContent> {
           LaunchedEffect(Unit) { sectionTitle.value = "Content" }
           SettingsContentScreen(
-            repository = graph.settingsRepository,
+            library = graph.settingsRepository,
             onBack = { backStack.pop() },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,
@@ -674,7 +694,7 @@ fun TonearmApp(
         entry<SettingsAudio> {
           LaunchedEffect(Unit) { sectionTitle.value = "Audio" }
           SettingsAudioScreen(
-            repository = graph.settingsRepository,
+            settings = graph.settingsRepository,
             onBack = { backStack.pop() },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,

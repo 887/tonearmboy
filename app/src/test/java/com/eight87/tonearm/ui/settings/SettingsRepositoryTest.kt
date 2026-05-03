@@ -64,9 +64,35 @@ class SettingsRepositoryTest {
   }
 
   @Test
-  fun defaults_match_documented_snapshot() = runTest {
-    val s = repo.snapshot.first()
-    assertEquals(SettingsSnapshot.Default, s)
+  fun defaults_match_documented_per_setting() = runTest {
+    // R.B.5 — SettingsSnapshot is gone; assert each Setting<T> emits
+    // its documented default when no key has been written.
+    assertEquals(ThemePreference.Default, repo.theme.flow.first())
+    assertEquals(ColorScheme.Default, repo.colorScheme.flow.first())
+    assertEquals(false, repo.blackTheme.flow.first())
+    assertEquals(false, repo.rememberShuffle.flow.first())
+    assertEquals(LibraryTab.DefaultOrder, repo.libraryTabs.flow.first())
+    assertEquals(true, repo.intelligentSorting.flow.first())
+    assertEquals(false, repo.forceSquareCovers.flow.first())
+    assertEquals(false, repo.headsetAutoplay.flow.first())
+    assertEquals(true, repo.rewindBeforeSkipBack.flow.first())
+    assertEquals(false, repo.rememberPause.flow.first())
+    assertEquals(false, repo.autoDiscoverAlbumArt.flow.first())
+    assertEquals(CustomBarAction.Default, repo.customBarAction.flow.first())
+    assertEquals(CustomNotificationAction.Default, repo.customNotificationAction.flow.first())
+    assertEquals(false, repo.pauseOnRepeat.flow.first())
+    assertEquals(PlayFromLibrary.Default, repo.playFromLibrary.flow.first())
+    assertEquals(PlayFromItemDetails.Default, repo.playFromItemDetails.flow.first())
+    assertEquals(false, repo.hideCollaborators.flow.first())
+    assertEquals(ReplayGainStrategy.Default, repo.replayGainStrategy.flow.first())
+    assertEquals(0f, repo.replayGainPreampDb.flow.first())
+    assertEquals(AlbumCoversMode.Default, repo.albumCoversMode.flow.first())
+    assertEquals(MultiValueSeparator.Default, repo.multiValueSeparators.flow.first())
+    assertEquals(emptySet<String>(), repo.musicSourceUris.flow.first())
+    assertEquals(MusicSourceMode.Default, repo.musicSourceMode.flow.first())
+    assertEquals(false, repo.automaticReloading.flow.first())
+    assertEquals(BaseTheme.Default, repo.baseTheme.flow.first())
+    assertEquals(true, repo.albumArtTintEnabled.flow.first())
   }
 
   @Test
@@ -75,11 +101,10 @@ class SettingsRepositoryTest {
     repo.setForceSquareCovers(true)
     repo.setBlackTheme(true)
     repo.setHeadsetAutoplay(true)
-    val s = repo.snapshot.first()
-    assertEquals(false, s.intelligentSorting)
-    assertEquals(true, s.forceSquareCovers)
-    assertEquals(true, s.blackTheme)
-    assertEquals(true, s.headsetAutoplay)
+    assertEquals(false, repo.intelligentSorting.flow.first())
+    assertEquals(true, repo.forceSquareCovers.flow.first())
+    assertEquals(true, repo.blackTheme.flow.first())
+    assertEquals(true, repo.headsetAutoplay.flow.first())
   }
 
   @Test
@@ -98,7 +123,7 @@ class SettingsRepositoryTest {
   @Test
   fun libraryTabsOrder_roundTrips_andTolerates_partial() = runTest {
     repo.setLibraryTabs(listOf(LibraryTab.Albums, LibraryTab.Songs))
-    val order = repo.snapshot.first().libraryTabs
+    val order = repo.libraryTabs.flow.first()
     // Visible tabs come first in order, missing tabs are appended.
     assertEquals(LibraryTab.Albums, order[0])
     assertEquals(LibraryTab.Songs, order[1])
@@ -107,22 +132,22 @@ class SettingsRepositoryTest {
 
   @Test
   fun autoDiscoverAlbumArt_defaultsOff_andRoundTrips() = runTest {
-    val before = repo.snapshot.first()
-    assertEquals(false, before.autoDiscoverAlbumArt)
+    assertEquals(false, repo.autoDiscoverAlbumArt.flow.first())
     repo.setAutoDiscoverAlbumArt(true)
-    val after = repo.snapshot.first()
-    assertEquals(true, after.autoDiscoverAlbumArt)
+    assertEquals(true, repo.autoDiscoverAlbumArt.flow.first())
   }
 
   @Test
   fun zz_d9a_pickers_and_toggles_default_correctly_and_round_trip() = runTest {
-    val before = repo.snapshot.first()
-    assertEquals(CustomBarAction.SkipNext, before.customBarAction)
-    assertEquals(CustomNotificationAction.RepeatMode, before.customNotificationAction)
-    assertEquals(false, before.pauseOnRepeat)
-    assertEquals(PlayFromLibrary.AllSongs, before.playFromLibrary)
-    assertEquals(PlayFromItemDetails.ShownItem, before.playFromItemDetails)
-    assertEquals(false, before.hideCollaborators)
+    assertEquals(CustomBarAction.SkipNext, repo.customBarAction.flow.first())
+    assertEquals(
+      CustomNotificationAction.RepeatMode,
+      repo.customNotificationAction.flow.first(),
+    )
+    assertEquals(false, repo.pauseOnRepeat.flow.first())
+    assertEquals(PlayFromLibrary.AllSongs, repo.playFromLibrary.flow.first())
+    assertEquals(PlayFromItemDetails.ShownItem, repo.playFromItemDetails.flow.first())
+    assertEquals(false, repo.hideCollaborators.flow.first())
 
     repo.setCustomBarAction(CustomBarAction.ShuffleToggle)
     repo.setCustomNotificationAction(CustomNotificationAction.Shuffle)
@@ -131,25 +156,24 @@ class SettingsRepositoryTest {
     repo.setPlayFromItemDetails(PlayFromItemDetails.Album)
     repo.setHideCollaborators(true)
 
-    val after = repo.snapshot.first()
-    assertEquals(CustomBarAction.ShuffleToggle, after.customBarAction)
-    assertEquals(CustomNotificationAction.Shuffle, after.customNotificationAction)
-    assertEquals(true, after.pauseOnRepeat)
-    assertEquals(PlayFromLibrary.ItemOnly, after.playFromLibrary)
-    assertEquals(PlayFromItemDetails.Album, after.playFromItemDetails)
-    assertEquals(true, after.hideCollaborators)
+    assertEquals(CustomBarAction.ShuffleToggle, repo.customBarAction.flow.first())
+    assertEquals(CustomNotificationAction.Shuffle, repo.customNotificationAction.flow.first())
+    assertEquals(true, repo.pauseOnRepeat.flow.first())
+    assertEquals(PlayFromLibrary.ItemOnly, repo.playFromLibrary.flow.first())
+    assertEquals(PlayFromItemDetails.Album, repo.playFromItemDetails.flow.first())
+    assertEquals(true, repo.hideCollaborators.flow.first())
   }
 
   @Test
   fun zz_hideCollaborators_flow_emits_independently() = runTest {
-    assertEquals(false, repo.hideCollaborators.first())
+    assertEquals(false, repo.hideCollaborators.flow.first())
     repo.setHideCollaborators(true)
-    assertEquals(true, repo.hideCollaborators.first())
+    assertEquals(true, repo.hideCollaborators.flow.first())
   }
 
   @Test
   fun libraryTabsParser_handlesUnknownToken() {
-    val parsed = SettingsRepository.parseLibraryTabs("Albums,Garbage,Songs")
+    val parsed = LibraryTabOrder.fromStored("Albums,Garbage,Songs")
     assertEquals(LibraryTab.Albums, parsed[0])
     assertEquals(LibraryTab.Songs, parsed[1])
     assertTrue(parsed.containsAll(LibraryTab.entries))
@@ -157,7 +181,7 @@ class SettingsRepositoryTest {
 
   @Test
   fun zz_multiValueSeparators_default_is_semicolon_and_slash() = runTest {
-    val initial = repo.multiValueSeparators.first()
+    val initial = repo.multiValueSeparators.flow.first()
     assertEquals(MultiValueSeparator.Default, initial)
     assertEquals(setOf(MultiValueSeparator.Semicolon, MultiValueSeparator.Slash), initial)
   }
@@ -170,13 +194,34 @@ class SettingsRepositoryTest {
       MultiValueSeparator.Feat,
     )
     repo.setMultiValueSeparators(picked)
-    assertEquals(picked, repo.multiValueSeparators.first())
-    assertEquals(picked, repo.snapshot.first().multiValueSeparators)
+    assertEquals(picked, repo.multiValueSeparators.flow.first())
   }
 
   @Test
   fun zz_multiValueSeparators_empty_set_disables_all_splitting() = runTest {
     repo.setMultiValueSeparators(emptySet())
-    assertEquals(emptySet<MultiValueSeparator>(), repo.multiValueSeparators.first())
+    assertEquals(emptySet<MultiValueSeparator>(), repo.multiValueSeparators.flow.first())
+  }
+
+  // R.B.1 — smoke tests for Setting<T>: prove the abstraction shares
+  // storage with the legacy mutators (writes either way are visible
+  // from the other side) and survives the round trip.
+
+  @Test
+  fun zz_blackThemeSetting_round_trips_and_shares_storage_with_legacy() = runTest {
+    assertEquals(false, repo.blackTheme.flow.first())
+    repo.blackTheme.set(true)
+    assertEquals(true, repo.blackTheme.flow.first())
+    repo.setBlackTheme(false)
+    assertEquals(false, repo.blackTheme.flow.first())
+  }
+
+  @Test
+  fun zz_colorSchemeSetting_round_trips_and_shares_storage_with_legacy() = runTest {
+    assertEquals(ColorScheme.Default, repo.colorScheme.flow.first())
+    repo.colorScheme.set(ColorScheme.Brand)
+    assertEquals(ColorScheme.Brand, repo.colorScheme.flow.first())
+    repo.setColorScheme(ColorScheme.Dynamic)
+    assertEquals(ColorScheme.Dynamic, repo.colorScheme.flow.first())
   }
 }

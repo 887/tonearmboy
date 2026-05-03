@@ -33,20 +33,20 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 ---
 
-## Phase R.B — settings: facets + `Setting<T>` + kill `SettingsSnapshot`
+## Phase R.B — settings: facets + `Setting<T>` + kill `SettingsSnapshot` — shipped in commits `43a142b..680907f` (R.B.7 verified on AVD this commit)
 
 **Why:** `SettingsRepository` (826 LOC) reads/writes 25+ preferences via a hand-rolled quartet (`stringPreferencesKey` + `Flow` + setter + snapshot field), then projects them into a 27-field `SettingsSnapshot` that every sub-page eagerly subscribes to — so toggling theme recomposes the audio screen. Sub-pages take the concrete repo (DIP miss). Splitting into facets compresses ~300 LOC of boilerplate and stops the cross-screen recomposition.
 
 **How to apply:** Keep one DataStore on disk (no migration). Introduce a `Setting<T>(key, default, encode, decode)` value type with `flow(store)` + `set(store, value)` extensions. Group settings into facets that each sub-page can take in isolation.
 
-- [ ] **R.B.1** Introduce `Setting<T>` + `EnumSetting<E>` in `data/settings/`. Express two existing keys via the new abstraction as a smoke test.
-- [ ] **R.B.2** Migrate the rest of `SettingsRepository`'s keys to `Setting<T>` declarations (~25 keys). Hand-rolled boilerplate gone; on-disk keys unchanged.
-- [ ] **R.B.3** Define facet interfaces: `ThemeSettings`, `PlaybackSettings`, `LibrarySettings`, `MusicSourcesSettings`, `TabLayoutSettings`. `SettingsRepository` implements all five (mirror of R.A.2).
-- [ ] **R.B.4** Sub-pages take only the facet they need: `SettingsLookAndFeelScreen(theme: ThemeSettings)`, `SettingsAudioScreen(playback: PlaybackSettings)`, etc. Drop the `SettingsRepository`-wholesale parameter (Settings-F4).
-- [ ] **R.B.5** Delete `SettingsSnapshot` and the `combine` that builds it (Settings-F3). Each consumer reads its narrow `Flow<T>` directly via `collectAsStateWithLifecycle`.
-- [ ] **R.B.6** Move UI-only helpers out of the repo: `BaseTheme.pickerOptions` + `baseThemeMatch` → `ui/settings/BaseThemeUi.kt` (Settings-F11). `parseLibraryTabs` → `LibraryTabOrder` value type (Settings-F12).
-- [ ] **R.B.7** Verify: tests + AVD round-trip every settings sub-page, confirm nothing recomposes-on-unrelated-key any more (rough check via logcat).
-- [ ] **R.B.8** Ship + tick.
+- [x] **R.B.1** Introduce `Setting<T>` + `EnumSetting<E>` in `data/settings/`. Express two existing keys via the new abstraction as a smoke test.
+- [x] **R.B.2** Migrate the rest of `SettingsRepository`'s keys to `Setting<T>` declarations (~25 keys). Hand-rolled boilerplate gone; on-disk keys unchanged.
+- [x] **R.B.3** Define facet interfaces: `ThemeSettings`, `PlaybackSettings`, `LibrarySettings`, `MusicSourcesSettings`, `TabLayoutSettings`. `SettingsRepository` implements all five (mirror of R.A.2).
+- [x] **R.B.4** Sub-pages take only the facet they need: `SettingsLookAndFeelScreen(theme: ThemeSettings)`, `SettingsAudioScreen(playback: PlaybackSettings)`, etc. Drop the `SettingsRepository`-wholesale parameter (Settings-F4).
+- [x] **R.B.5** Delete `SettingsSnapshot` and the `combine` that builds it (Settings-F3). Each consumer reads its narrow `Flow<T>` directly via `collectAsStateWithLifecycle`.
+- [x] **R.B.6** Move UI-only helpers out of the repo: `BaseTheme.pickerOptions` + `baseThemeMatch` → `ui/settings/BaseThemeUi.kt` (Settings-F11). `parseLibraryTabs` → `LibraryTabOrder` value type (Settings-F12).
+- [x] **R.B.7** Verify: tests + AVD round-trip every settings sub-page, confirm nothing recomposes-on-unrelated-key any more (rough check via logcat).
+- [x] **R.B.8** Ship + tick.
 
 **Effort:** L (1–2 days). **Risk:** low-medium — DataStore keys unchanged, but recomposition behaviour shifts (good direction; verify no screen relied on the snapshot identity for state). **Blast radius:** every settings sub-page + a few `MusicSourcesDialog` / `LibraryTabsDialog` call sites.
 

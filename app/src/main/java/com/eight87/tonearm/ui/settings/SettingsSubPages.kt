@@ -96,12 +96,16 @@ private fun SettingsSubScaffold(
 
 @Composable
 fun SettingsLookAndFeelScreen(
-  repository: SettingsRepository,
+  theme: ThemeSettings,
   onBack: () -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
 ) {
-  val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
+  val themePref by theme.theme.flow.collectAsState(initial = ThemePreference.Default)
+  val baseTheme by theme.baseTheme.flow.collectAsState(initial = BaseTheme.Default)
+  val albumArtTintEnabled by theme.albumArtTintEnabled.flow.collectAsState(
+    initial = true,
+  )
   val scope = rememberCoroutineScope()
   var themePicker by remember { mutableStateOf(false) }
   var baseThemePicker by remember { mutableStateOf(false) }
@@ -110,7 +114,7 @@ fun SettingsLookAndFeelScreen(
   // D.25.1 — when Custom is the active base theme, render a coloured
   // swatch trailing the row so the user sees what they picked at a
   // glance. Uses the seed RGB straight, alpha 1.
-  val customSwatch: (@Composable () -> Unit)? = (snapshot.baseTheme as? BaseTheme.Custom)?.let { custom ->
+  val customSwatch: (@Composable () -> Unit)? = (baseTheme as? BaseTheme.Custom)?.let { custom ->
     {
       Box(
         modifier = Modifier
@@ -125,7 +129,7 @@ fun SettingsLookAndFeelScreen(
   val bindings = listOf(
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_THEME,
-      currentLabel = themeLabel(snapshot.theme),
+      currentLabel = themeLabel(themePref),
       onClick = { themePicker = true },
     ),
     // D.20.4 / D.25.1 — base-theme picker. Custom-color is a fourth
@@ -133,14 +137,14 @@ fun SettingsLookAndFeelScreen(
     // surfaces the picked seed when Custom is active.
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_BASE_THEME,
-      currentLabel = baseThemeLabel(snapshot.baseTheme),
+      currentLabel = baseThemeLabel(baseTheme),
       onClick = { baseThemePicker = true },
       trailing = customSwatch,
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_ALBUM_ART_TINT,
-      checked = snapshot.albumArtTintEnabled,
-      onCheckedChange = { scope.launch { repository.setAlbumArtTintEnabled(it) } },
+      checked = albumArtTintEnabled,
+      onCheckedChange = { scope.launch { theme.albumArtTintEnabled.set(it) } },
     ),
   )
 
@@ -158,8 +162,8 @@ fun SettingsLookAndFeelScreen(
       title = "Theme",
       options = ThemePreference.entries,
       label = ::themeLabel,
-      current = snapshot.theme,
-      onPick = { scope.launch { repository.setTheme(it) }; themePicker = false },
+      current = themePref,
+      onPick = { scope.launch { theme.theme.set(it) }; themePicker = false },
       onDismiss = { themePicker = false },
     )
   }
@@ -169,19 +173,19 @@ fun SettingsLookAndFeelScreen(
     // commit immediately like before.
     RadioPicker(
       title = "Base theme",
-      options = BaseTheme.pickerOptions,
+      options = baseThemePickerOptions,
       label = ::baseThemeLabel,
       // Match by *kind* — the radio dialog's Custom sentinel carries
-      // a placeholder seed, but the snapshot's Custom carries the
+      // a placeholder seed, but the live state's Custom carries the
       // user's saved seed. We still want the bullet to land on Custom
       // when the user has previously picked one.
-      current = baseThemeMatch(snapshot.baseTheme),
+      current = baseThemeMatch(baseTheme),
       onPick = { picked ->
         baseThemePicker = false
         if (picked is BaseTheme.Custom) {
           colorPicker = true
         } else {
-          scope.launch { repository.setBaseTheme(picked) }
+          scope.launch { theme.baseTheme.set(picked) }
         }
       },
       onDismiss = { baseThemePicker = false },
@@ -191,29 +195,16 @@ fun SettingsLookAndFeelScreen(
     // Re-open from the saved seed when the user already had Custom
     // selected; otherwise fall back to the placeholder Material 3
     // purple so the picker has a sensible starting point.
-    val initialSeed = (snapshot.baseTheme as? BaseTheme.Custom)?.seedRgb ?: 0x6750A4L
+    val initialSeed = (baseTheme as? BaseTheme.Custom)?.seedRgb ?: 0x6750A4L
     ColorPickerDialog(
       initialRgb = initialSeed,
       onConfirm = { rgb ->
-        scope.launch { repository.setBaseTheme(BaseTheme.Custom(rgb)) }
+        scope.launch { theme.baseTheme.set(BaseTheme.Custom(rgb)) }
         colorPicker = false
       },
       onDismiss = { colorPicker = false },
     )
   }
-}
-
-/**
- * D.25.1 — collapse a stored [BaseTheme] onto one of the four picker
- * options so the radio dialog can highlight the active row. Any
- * `Custom(...)` value (whatever the seed) maps to the picker's
- * `Custom` sentinel.
- */
-private fun baseThemeMatch(stored: BaseTheme): BaseTheme = when (stored) {
-  is BaseTheme.DefaultAndroid -> BaseTheme.DefaultAndroid
-  is BaseTheme.DefaultColors -> BaseTheme.DefaultColors
-  is BaseTheme.PureBlack -> BaseTheme.PureBlack
-  is BaseTheme.Custom -> BaseTheme.pickerOptions.last()
 }
 
 private fun themeLabel(p: ThemePreference): String = when (p) {
@@ -235,7 +226,8 @@ internal fun baseThemeLabel(b: BaseTheme): String = when (b) {
 
 @Composable
 fun SettingsPersonalizeScreen(
-  repository: SettingsRepository,
+  playback: PlaybackSettings,
+  tabs: TabLayoutSettings,
   customTabStore: com.eight87.tonearm.data.CustomTabStore,
   onBack: () -> Unit,
   /**
@@ -247,7 +239,22 @@ fun SettingsPersonalizeScreen(
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
 ) {
-  val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
+  val libraryTabs by tabs.libraryTabs.flow.collectAsState(initial = LibraryTab.DefaultOrder)
+  val customBarAction by playback.customBarAction.flow.collectAsState(
+    initial = CustomBarAction.Default,
+  )
+  val customNotificationAction by playback.customNotificationAction.flow.collectAsState(
+    initial = CustomNotificationAction.Default,
+  )
+  val playFromLibrary by playback.playFromLibrary.flow.collectAsState(
+    initial = PlayFromLibrary.Default,
+  )
+  val playFromItemDetails by playback.playFromItemDetails.flow.collectAsState(
+    initial = PlayFromItemDetails.Default,
+  )
+  val rememberShuffle by playback.rememberShuffle.flow.collectAsState(
+    initial = false,
+  )
   val scope = rememberCoroutineScope()
   var showLibraryTabs by remember { mutableStateOf(false) }
   var customBarPicker by remember { mutableStateOf(false) }
@@ -258,33 +265,33 @@ fun SettingsPersonalizeScreen(
   val bindings = listOf(
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_LIBRARY_TABS,
-      currentLabel = describeLibraryTabs(snapshot.libraryTabs),
+      currentLabel = describeLibraryTabs(libraryTabs),
       onClick = { showLibraryTabs = true },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_CUSTOM_PLAYBACK_BAR_ACTION,
-      currentLabel = customBarActionLabel(snapshot.customBarAction),
+      currentLabel = customBarActionLabel(customBarAction),
       onClick = { customBarPicker = true },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_CUSTOM_NOTIFICATION_ACTION,
-      currentLabel = customNotificationActionLabel(snapshot.customNotificationAction),
+      currentLabel = customNotificationActionLabel(customNotificationAction),
       onClick = { customNotifPicker = true },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_PLAY_FROM_LIBRARY,
-      currentLabel = playFromLibraryLabel(snapshot.playFromLibrary),
+      currentLabel = playFromLibraryLabel(playFromLibrary),
       onClick = { playFromLibPicker = true },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_PLAY_FROM_ITEM_DETAILS,
-      currentLabel = playFromItemDetailsLabel(snapshot.playFromItemDetails),
+      currentLabel = playFromItemDetailsLabel(playFromItemDetails),
       onClick = { playFromDetailPicker = true },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_REMEMBER_SHUFFLE,
-      checked = snapshot.rememberShuffle,
-      onCheckedChange = { scope.launch { repository.setRememberShuffle(it) } },
+      checked = rememberShuffle,
+      onCheckedChange = { scope.launch { playback.rememberShuffle.set(it) } },
     ),
   )
 
@@ -302,23 +309,23 @@ fun SettingsPersonalizeScreen(
     LibraryTabsDialog(
       model = LibraryTabsDialogModel(
         builtIns = LibraryTab.entries.toList(),
-        visibleSet = snapshot.libraryTabs.toSet(),
+        visibleSet = libraryTabs.toSet(),
         customTabs = customTabs,
       ),
       onDismiss = { showLibraryTabs = false },
       onSetBuiltInVisibility = { tab, visible ->
-        // Reflect visibility into snapshot.libraryTabs while keeping
-        // the saved order. Add to / remove from the persisted list.
-        val current = snapshot.libraryTabs.toMutableList()
+        // Reflect visibility into the persisted libraryTabs while
+        // keeping the saved order. Add to / remove from the list.
+        val current = libraryTabs.toMutableList()
         if (visible) {
           if (tab !in current) current.add(tab)
         } else {
           current.remove(tab)
         }
-        scope.launch { repository.setLibraryTabs(current) }
+        scope.launch { tabs.libraryTabs.set(current) }
       },
       onReorderBuiltIns = { newOrder ->
-        scope.launch { repository.setLibraryTabs(newOrder) }
+        scope.launch { tabs.libraryTabs.set(newOrder) }
       },
       onReorderCustomTabs = { orderedIds ->
         scope.launch { customTabStore.reorderCustomTabs(orderedIds) }
@@ -345,8 +352,8 @@ fun SettingsPersonalizeScreen(
       title = "Custom playback bar action",
       options = CustomBarAction.entries,
       label = ::customBarActionLabel,
-      current = snapshot.customBarAction,
-      onPick = { scope.launch { repository.setCustomBarAction(it) }; customBarPicker = false },
+      current = customBarAction,
+      onPick = { scope.launch { playback.customBarAction.set(it) }; customBarPicker = false },
       onDismiss = { customBarPicker = false },
     )
   }
@@ -355,8 +362,11 @@ fun SettingsPersonalizeScreen(
       title = "Custom notification action",
       options = CustomNotificationAction.entries,
       label = ::customNotificationActionLabel,
-      current = snapshot.customNotificationAction,
-      onPick = { scope.launch { repository.setCustomNotificationAction(it) }; customNotifPicker = false },
+      current = customNotificationAction,
+      onPick = {
+        scope.launch { playback.customNotificationAction.set(it) }
+        customNotifPicker = false
+      },
       onDismiss = { customNotifPicker = false },
     )
   }
@@ -365,8 +375,8 @@ fun SettingsPersonalizeScreen(
       title = "When playing from the library",
       options = PlayFromLibrary.entries,
       label = ::playFromLibraryLabel,
-      current = snapshot.playFromLibrary,
-      onPick = { scope.launch { repository.setPlayFromLibrary(it) }; playFromLibPicker = false },
+      current = playFromLibrary,
+      onPick = { scope.launch { playback.playFromLibrary.set(it) }; playFromLibPicker = false },
       onDismiss = { playFromLibPicker = false },
     )
   }
@@ -375,8 +385,11 @@ fun SettingsPersonalizeScreen(
       title = "When playing from item details",
       options = PlayFromItemDetails.entries,
       label = ::playFromItemDetailsLabel,
-      current = snapshot.playFromItemDetails,
-      onPick = { scope.launch { repository.setPlayFromItemDetails(it) }; playFromDetailPicker = false },
+      current = playFromItemDetails,
+      onPick = {
+        scope.launch { playback.playFromItemDetails.set(it) }
+        playFromDetailPicker = false
+      },
       onDismiss = { playFromDetailPicker = false },
     )
   }
@@ -423,12 +436,32 @@ private fun describeLibraryTabs(tabs: List<LibraryTab>): String {
 @OptIn(UnstableApi::class)
 @Composable
 fun SettingsContentScreen(
-  repository: SettingsRepository,
+  library: LibrarySettings,
   onBack: () -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
 ) {
-  val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
+  val automaticReloading by library.automaticReloading.flow.collectAsState(
+    initial = false,
+  )
+  val multiValueSeparators by library.multiValueSeparators.flow.collectAsState(
+    initial = MultiValueSeparator.Default,
+  )
+  val intelligentSorting by library.intelligentSorting.flow.collectAsState(
+    initial = true,
+  )
+  val hideCollaborators by library.hideCollaborators.flow.collectAsState(
+    initial = false,
+  )
+  val autoDiscoverAlbumArt by library.autoDiscoverAlbumArt.flow.collectAsState(
+    initial = false,
+  )
+  val albumCoversMode by library.albumCoversMode.flow.collectAsState(
+    initial = AlbumCoversMode.Default,
+  )
+  val forceSquareCovers by library.forceSquareCovers.flow.collectAsState(
+    initial = false,
+  )
   val scope = rememberCoroutineScope()
   var albumCoversPicker by remember { mutableStateOf(false) }
   var separatorsPicker by remember { mutableStateOf(false) }
@@ -440,9 +473,9 @@ fun SettingsContentScreen(
     // so the user sees the sticky notification appear within ~1 frame.
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_AUTOMATIC_RELOADING,
-      checked = snapshot.automaticReloading,
+      checked = automaticReloading,
       onCheckedChange = { value ->
-        scope.launch { repository.setAutomaticReloading(value) }
+        scope.launch { library.automaticReloading.set(value) }
         if (value) {
           LibraryWatcherService.start(context)
         } else {
@@ -452,24 +485,24 @@ fun SettingsContentScreen(
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_MULTI_VALUE_SEPARATORS,
-      currentLabel = multiValueSeparatorsLabel(snapshot.multiValueSeparators),
+      currentLabel = multiValueSeparatorsLabel(multiValueSeparators),
       onClick = { separatorsPicker = true },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_INTELLIGENT_SORTING,
-      checked = snapshot.intelligentSorting,
-      onCheckedChange = { scope.launch { repository.setIntelligentSorting(it) } },
+      checked = intelligentSorting,
+      onCheckedChange = { scope.launch { library.intelligentSorting.set(it) } },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_HIDE_COLLABORATORS,
-      checked = snapshot.hideCollaborators,
-      onCheckedChange = { scope.launch { repository.setHideCollaborators(it) } },
+      checked = hideCollaborators,
+      onCheckedChange = { scope.launch { library.hideCollaborators.set(it) } },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
-      checked = snapshot.autoDiscoverAlbumArt,
+      checked = autoDiscoverAlbumArt,
       onCheckedChange = { value ->
-        scope.launch { repository.setAutoDiscoverAlbumArt(value) }
+        scope.launch { library.autoDiscoverAlbumArt.set(value) }
         scope.launch {
           snackbarHostState.showSnackbar(
             "Coming in v1.1 — for now, manual cover-art import only.",
@@ -479,13 +512,13 @@ fun SettingsContentScreen(
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_ALBUM_COVERS,
-      currentLabel = albumCoversLabel(snapshot.albumCoversMode),
+      currentLabel = albumCoversLabel(albumCoversMode),
       onClick = { albumCoversPicker = true },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_FORCE_SQUARE_COVERS,
-      checked = snapshot.forceSquareCovers,
-      onCheckedChange = { scope.launch { repository.setForceSquareCovers(it) } },
+      checked = forceSquareCovers,
+      onCheckedChange = { scope.launch { library.forceSquareCovers.set(it) } },
     ),
   )
 
@@ -503,9 +536,9 @@ fun SettingsContentScreen(
       title = "Album covers",
       options = AlbumCoversMode.entries,
       label = ::albumCoversLabel,
-      current = snapshot.albumCoversMode,
+      current = albumCoversMode,
       onPick = {
-        scope.launch { repository.setAlbumCoversMode(it) }
+        scope.launch { library.albumCoversMode.set(it) }
         albumCoversPicker = false
       },
       onDismiss = { albumCoversPicker = false },
@@ -517,11 +550,11 @@ fun SettingsContentScreen(
       title = "Multi-value separators",
       options = MultiValueSeparator.entries,
       label = ::multiValueSeparatorOptionLabel,
-      currentSelection = snapshot.multiValueSeparators,
+      currentSelection = multiValueSeparators,
       onSave = { newSelection ->
-        scope.launch { repository.setMultiValueSeparators(newSelection) }
+        scope.launch { library.multiValueSeparators.set(newSelection) }
         separatorsPicker = false
-        if (newSelection != snapshot.multiValueSeparators) {
+        if (newSelection != multiValueSeparators) {
           scope.launch {
             snackbarHostState.showSnackbar(
               "Multi-value separator change applied. Run Settings > Library > " +
@@ -564,7 +597,7 @@ internal fun albumCoversLabel(mode: AlbumCoversMode): String = when (mode) {
 @OptIn(UnstableApi::class)
 @Composable
 fun SettingsAudioScreen(
-  repository: SettingsRepository,
+  settings: PlaybackSettings,
   onBack: () -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
@@ -575,7 +608,24 @@ fun SettingsAudioScreen(
   // 'Coming in v1.1' style snackbar".
   playback: com.eight87.tonearm.playback.PlaybackUiController? = null,
 ) {
-  val snapshot by repository.snapshot.collectAsState(initial = SettingsSnapshot.Default)
+  val headsetAutoplay by settings.headsetAutoplay.flow.collectAsState(
+    initial = false,
+  )
+  val rewindBeforeSkipBack by settings.rewindBeforeSkipBack.flow.collectAsState(
+    initial = true,
+  )
+  val pauseOnRepeat by settings.pauseOnRepeat.flow.collectAsState(
+    initial = false,
+  )
+  val rememberPause by settings.rememberPause.flow.collectAsState(
+    initial = false,
+  )
+  val replayGainStrategy by settings.replayGainStrategy.flow.collectAsState(
+    initial = ReplayGainStrategy.Default,
+  )
+  val replayGainPreampDb by settings.replayGainPreampDb.flow.collectAsState(
+    initial = 0f,
+  )
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
   var rgStrategyPicker by remember { mutableStateOf(false) }
@@ -603,23 +653,23 @@ fun SettingsAudioScreen(
   val bindings = listOf(
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_HEADSET_AUTOPLAY,
-      checked = snapshot.headsetAutoplay,
-      onCheckedChange = { scope.launch { repository.setHeadsetAutoplay(it) } },
+      checked = headsetAutoplay,
+      onCheckedChange = { scope.launch { settings.headsetAutoplay.set(it) } },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_REWIND_BEFORE_SKIP,
-      checked = snapshot.rewindBeforeSkipBack,
-      onCheckedChange = { scope.launch { repository.setRewindBeforeSkipBack(it) } },
+      checked = rewindBeforeSkipBack,
+      onCheckedChange = { scope.launch { settings.rewindBeforeSkipBack.set(it) } },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_PAUSE_ON_REPEAT,
-      checked = snapshot.pauseOnRepeat,
-      onCheckedChange = { scope.launch { repository.setPauseOnRepeat(it) } },
+      checked = pauseOnRepeat,
+      onCheckedChange = { scope.launch { settings.pauseOnRepeat.set(it) } },
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_REMEMBER_PAUSE,
-      checked = snapshot.rememberPause,
-      onCheckedChange = { scope.launch { repository.setRememberPause(it) } },
+      checked = rememberPause,
+      onCheckedChange = { scope.launch { settings.rememberPause.set(it) } },
     ),
     // Phase H.3 — sleep timer row.
     SettingsRowBinding.Picker(
@@ -629,12 +679,12 @@ fun SettingsAudioScreen(
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
-      currentLabel = replayGainStrategyLabel(snapshot.replayGainStrategy),
+      currentLabel = replayGainStrategyLabel(replayGainStrategy),
       onClick = { rgStrategyPicker = true },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_REPLAYGAIN_PREAMP,
-      currentLabel = formatPreampDb(snapshot.replayGainPreampDb),
+      currentLabel = formatPreampDb(replayGainPreampDb),
       onClick = { rgPreampDialog = true },
     ),
     // Phase H.4 — system equalizer row.
@@ -696,9 +746,9 @@ fun SettingsAudioScreen(
       title = "ReplayGain strategy",
       options = ReplayGainStrategy.entries,
       label = ::replayGainStrategyLabel,
-      current = snapshot.replayGainStrategy,
+      current = replayGainStrategy,
       onPick = {
-        scope.launch { repository.setReplayGainStrategy(it) }
+        scope.launch { settings.replayGainStrategy.set(it) }
         rgStrategyPicker = false
       },
       onDismiss = { rgStrategyPicker = false },
@@ -706,9 +756,9 @@ fun SettingsAudioScreen(
   }
   if (rgPreampDialog) {
     ReplayGainPreampDialog(
-      currentDb = snapshot.replayGainPreampDb,
+      currentDb = replayGainPreampDb,
       onConfirm = { newDb ->
-        scope.launch { repository.setReplayGainPreampDb(newDb) }
+        scope.launch { settings.replayGainPreampDb.set(newDb) }
         rgPreampDialog = false
       },
       onDismiss = { rgPreampDialog = false },

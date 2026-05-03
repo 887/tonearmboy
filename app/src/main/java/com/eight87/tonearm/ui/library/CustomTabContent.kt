@@ -10,8 +10,8 @@ import com.eight87.tonearm.data.TrackSource
 import com.eight87.tonearm.data.db.CustomTabContentType
 import com.eight87.tonearm.data.db.CustomTabEntity
 import com.eight87.tonearm.data.model.Track
+import com.eight87.tonearm.ui.settings.AlbumCoversMode
 import com.eight87.tonearm.ui.settings.SettingsRepository
-import com.eight87.tonearm.ui.settings.SettingsSnapshot
 import com.eight87.tonearm.ui.settings.TabSort
 import com.eight87.tonearm.ui.settings.ViewMode
 
@@ -57,7 +57,9 @@ internal fun CustomTabContent(
   genres: GenreSource,
   settingsRepository: SettingsRepository,
   sort: TabSort,
-  snapshot: SettingsSnapshot,
+  intelligentSorting: Boolean,
+  forceSquareCovers: Boolean,
+  albumCoversMode: AlbumCoversMode,
   viewMode: ViewMode,
   onTrackClick: (List<Track>, Int) -> Unit,
   onAddToQueue: (Track) -> Unit,
@@ -76,10 +78,10 @@ internal fun CustomTabContent(
     CustomTabContentType.SONGS -> TracksListScreen(
       repository = tracks,
       sort = sort,
-      intelligentSorting = snapshot.intelligentSorting,
+      intelligentSorting = intelligentSorting,
       filter = criteria,
       viewMode = viewMode,
-      albumCoversMode = snapshot.albumCoversMode,
+      albumCoversMode = albumCoversMode,
       onTrackClick = onTrackClick,
       onAddToQueue = onAddToQueue,
       onAddToPlaylist = onAddToPlaylist,
@@ -101,9 +103,9 @@ internal fun CustomTabContent(
     CustomTabContentType.ALBUMS -> AlbumsTabScreen(
       repository = albums,
       sort = sort,
-      intelligentSorting = snapshot.intelligentSorting,
-      forceSquare = snapshot.forceSquareCovers,
-      albumCoversMode = snapshot.albumCoversMode,
+      intelligentSorting = intelligentSorting,
+      forceSquare = forceSquareCovers,
+      albumCoversMode = albumCoversMode,
       viewMode = viewMode,
       filter = criteria,
       onAlbumClick = { a -> onOpenAlbum(a.name, a.artist) },
@@ -112,7 +114,7 @@ internal fun CustomTabContent(
       repository = artists,
       settingsRepository = settingsRepository,
       sort = sort,
-      intelligentSorting = snapshot.intelligentSorting,
+      intelligentSorting = intelligentSorting,
       viewMode = viewMode,
       filter = criteria,
       onArtistClick = { a -> onOpenArtist(a.name) },

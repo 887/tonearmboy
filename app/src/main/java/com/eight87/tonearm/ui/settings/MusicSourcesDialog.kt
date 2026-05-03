@@ -104,15 +104,15 @@ data class MusicSourcesDialogState(
  */
 @Composable
 fun MusicSourcesDialog(
-  settings: SettingsRepository,
+  settings: MusicSourcesSettings,
   scanner: LibraryScanner,
   onDismiss: () -> Unit,
 ) {
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
 
-  val persistedMode by settings.musicSourceMode.collectAsState(initial = MusicSourceMode.Default)
-  val persistedFolders by settings.musicSourceUris.collectAsState(initial = emptySet())
+  val persistedMode by settings.musicSourceMode.flow.collectAsState(initial = MusicSourceMode.Default)
+  val persistedFolders by settings.musicSourceUris.flow.collectAsState(initial = emptySet())
 
   // Working copy. Re-seeded any time the persisted snapshot changes
   // before Save (so opening the dialog reflects the current persisted
@@ -222,8 +222,8 @@ fun MusicSourcesDialog(
               // so the system doesn't accumulate stale grants.
               val toRelease = persistedFolders - state.folders.toSet()
               scope.launch {
-                settings.setMusicSourceMode(state.mode)
-                settings.setMusicSourceUris(state.folders.toSet())
+                settings.musicSourceMode.set(state.mode)
+                settings.musicSourceUris.set(state.folders.toSet())
                 toRelease.forEach { uri ->
                   runCatching {
                     context.contentResolver.releasePersistableUriPermission(

@@ -9,6 +9,10 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.eight87.tonearm.data.settings.EnumSetting
+import com.eight87.tonearm.data.settings.PreferencesSetting
+import com.eight87.tonearm.data.settings.Setting
+import com.eight87.tonearm.data.settings.booleanSetting
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -32,7 +36,7 @@ enum class ColorScheme {
  * it to a sealed class so `Custom(seedRgb)` can carry a user-picked
  * primary seed colour from which Material 3 derives the full
  * `ColorScheme`. The album-art tint sits *on top* of this (controlled
- * by [SettingsSnapshot.albumArtTintEnabled]).
+ * by the `albumArtTintEnabled` setting on [ThemeSettings]).
  *
  *  - [DefaultAndroid] — Material You / dynamic colour on API 31+,
  *    falls back to the static palette below on older devices.
@@ -86,19 +90,6 @@ sealed class BaseTheme {
       }
     }
 
-    /**
-     * The four base-theme variants surfaced by the picker dialog. Used
-     * in place of the old `enum.entries` since a sealed class can't
-     * enumerate its leaves automatically. The [Custom] entry here is a
-     * sentinel — the dialog displays it, and tapping opens the colour
-     * picker; the actual stored value carries the user-picked seed.
-     */
-    val pickerOptions: List<BaseTheme> = listOf(
-      DefaultAndroid,
-      DefaultColors,
-      PureBlack,
-      Custom(seedRgb = 0xFF6750A4L and 0xFFFFFFL), // Material 3 default purple
-    )
   }
 }
 
@@ -363,123 +354,34 @@ enum class ViewMode {
 }
 
 /**
- * Aggregated settings snapshot consumed by the UI. Kept as a value type
- * so a screen can render every section from one Flow without subscribing
- * to a dozen individual keys.
- */
-data class SettingsSnapshot(
-  val theme: ThemePreference,
-  val colorScheme: ColorScheme,
-  val blackTheme: Boolean,
-  val rememberShuffle: Boolean,
-  val libraryTabs: List<LibraryTab>,
-  val intelligentSorting: Boolean,
-  val forceSquareCovers: Boolean,
-  val headsetAutoplay: Boolean,
-  val rewindBeforeSkipBack: Boolean,
-  val rememberPause: Boolean,
-  val autoDiscoverAlbumArt: Boolean,
-  val customBarAction: CustomBarAction,
-  val customNotificationAction: CustomNotificationAction,
-  val pauseOnRepeat: Boolean,
-  val playFromLibrary: PlayFromLibrary,
-  val playFromItemDetails: PlayFromItemDetails,
-  val hideCollaborators: Boolean,
-  val replayGainStrategy: ReplayGainStrategy,
-  val replayGainPreampDb: Float,
-  val albumCoversMode: AlbumCoversMode,
-  val multiValueSeparators: Set<MultiValueSeparator>,
-  /**
-   * D.9d.1 — set of persisted SAF tree URIs the library scanner walks.
-   * Empty means "use the legacy MediaStore default scope". Stored as
-   * Strings so the snapshot stays equality-stable across emissions.
-   */
-  val musicSourceUris: Set<String>,
-  /**
-   * D.17.3.1 — chosen music-source strategy. [MusicSourceMode.System]
-   * means the scanner queries MediaStore directly with no folder
-   * scoping; [MusicSourceMode.FilePicker] means walk the persisted
-   * SAF tree URIs in [musicSourceUris]. The two are kept independent
-   * — the URI set is preserved when toggling to System so flipping
-   * back doesn't lose the user's folder choices.
-   */
-  val musicSourceMode: MusicSourceMode,
-  /**
-   * D.9d.2 — when true the [LibraryWatcherService] is running with a
-   * sticky low-priority notification, observing MediaStore and each
-   * configured source URI for changes and enqueuing a debounced
-   * `LibraryRescanWorker` on change. Default is **off** because a
-   * foreground service costs battery; the user opts in.
-   */
-  val automaticReloading: Boolean,
-  /**
-   * D.20.4 — base-theme foundation, picked in Look and Feel.
-   * Default is [BaseTheme.DefaultAndroid] (Material You).
-   */
-  val baseTheme: BaseTheme,
-  /**
-   * D.20.4 — when true, the chrome ColorScheme is biased toward the
-   * playing track's `darkMutedSwatch` (or `darkVibrantSwatch` if
-   * muted is null). Default is **on** because the visual is the
-   * point of D.8b. Sits on top of [baseTheme]; turning it off
-   * collapses to the foundation.
-   */
-  val albumArtTintEnabled: Boolean,
-) {
-  companion object {
-    val Default: SettingsSnapshot = SettingsSnapshot(
-      theme = ThemePreference.Default,
-      colorScheme = ColorScheme.Default,
-      blackTheme = false,
-      rememberShuffle = false,
-      libraryTabs = LibraryTab.DefaultOrder,
-      intelligentSorting = true,
-      forceSquareCovers = false,
-      headsetAutoplay = false,
-      rewindBeforeSkipBack = true,
-      rememberPause = false,
-      autoDiscoverAlbumArt = false,
-      customBarAction = CustomBarAction.Default,
-      customNotificationAction = CustomNotificationAction.Default,
-      pauseOnRepeat = false,
-      playFromLibrary = PlayFromLibrary.Default,
-      playFromItemDetails = PlayFromItemDetails.Default,
-      hideCollaborators = false,
-      replayGainStrategy = ReplayGainStrategy.Default,
-      replayGainPreampDb = 0f,
-      albumCoversMode = AlbumCoversMode.Default,
-      multiValueSeparators = MultiValueSeparator.Default,
-      musicSourceUris = emptySet(),
-      musicSourceMode = MusicSourceMode.Default,
-      automaticReloading = false,
-      baseTheme = BaseTheme.Default,
-      albumArtTintEnabled = true,
-    )
-  }
-}
-
-/**
  * Single source of truth for user-configurable settings. Backed by the
  * shared `Context.tonearmDataStore` Preferences file so [ThemePreferenceStore]
  * and this repository read/write the same on-disk state.
  *
- * The intent: each screen subscribes once to [snapshot] and writes via
- * the `set*` mutators. Per-tab sort state lives in its own [tabSort] /
- * [setTabSort] pair because the value depends on a tab key.
+ * The intent: each screen takes the narrow facet it needs
+ * ([ThemeSettings], [PlaybackSettings], [LibrarySettings],
+ * [MusicSourcesSettings], [TabLayoutSettings]) and reads / writes
+ * one [com.eight87.tonearm.data.settings.Setting] handle per key it
+ * actually consumes.
  */
 class SettingsRepository(private val context: Context) :
-  com.eight87.tonearm.data.ScanConfigSource {
+  com.eight87.tonearm.data.ScanConfigSource,
+  ThemeSettings,
+  PlaybackSettings,
+  LibrarySettings,
+  MusicSourcesSettings,
+  TabLayoutSettings {
 
   // R.A.5 — implement ScanConfigSource so the data layer's
   // LibraryRepository can depend on the neutral interface (defined in
-  // `data/`) rather than reaching back into `ui.settings`. The two
-  // properties just project the existing Flows into the data-layer
-  // shape; storage is unchanged.
+  // `data/`) rather than reaching back into `ui.settings`. Both
+  // properties project facet Flows into the data-layer shape;
+  // storage is unchanged.
   override val multiValueSeparatorTokens: kotlinx.coroutines.flow.Flow<Set<String>>
-    get() = multiValueSeparators.map { set -> set.map { it.token }.toSet() }
+    get() = multiValueSeparators.flow.map { set -> set.map { it.token }.toSet() }
 
   override val musicSourceScope: kotlinx.coroutines.flow.Flow<com.eight87.tonearm.data.MusicSourceScope>
-    get() = kotlinx.coroutines.flow.combine(musicSourceMode, musicSourceUris) { mode, uris ->
+    get() = kotlinx.coroutines.flow.combine(musicSourceMode.flow, musicSourceUris.flow) { mode, uris ->
       com.eight87.tonearm.data.MusicSourceScope(
         useFilePicker = mode == MusicSourceMode.FilePicker,
         treeUris = uris,
@@ -489,130 +391,226 @@ class SettingsRepository(private val context: Context) :
 
   private val store: DataStore<Preferences> = context.tonearmDataStore
 
-  val snapshot: Flow<SettingsSnapshot> = store.data.map { prefs -> prefs.toSnapshot() }
+  // R.B.2 — every flat key expressed as a Setting<T>. R.B.3 marked
+  // them `override` to satisfy the five facet interfaces. R.B.5
+  // retired the cross-cutting `Flow<SettingsSnapshot>` projection;
+  // each consumer now subscribes to the narrow Setting<T>.flow it
+  // actually needs.
+  //
+  // Per-key default fallbacks live alongside each Setting's `read`
+  // transform — that's the single source of truth for "what value
+  // should consumers see when no key has been written yet."
+
+  // R.B.3 — facet members. Each Setting<T> handle satisfies one
+  // facet property; SettingsRepository implements all five facets so
+  // a consumer can take the narrow surface they need.
+
+  // --- ThemeSettings ---
+  override val theme: Setting<ThemePreference> = EnumSetting(
+    store, ThemePreferenceStore.KEY_THEME_MODE, ThemePreference.Companion::fromStored,
+  )
+  override val colorScheme: Setting<ColorScheme> = EnumSetting(
+    store, KEY_COLOR_SCHEME, ColorScheme.Companion::fromStored,
+  )
+  override val blackTheme: Setting<Boolean> = booleanSetting(
+    store, KEY_BLACK_THEME, false,
+  )
+  override val baseTheme: Setting<BaseTheme> = PreferencesSetting(
+    store, KEY_BASE_THEME,
+    read = { BaseTheme.fromStored(it) },
+    write = { it.toStored() },
+  )
+  override val albumArtTintEnabled: Setting<Boolean> = booleanSetting(
+    store, KEY_ALBUM_ART_TINT_ENABLED, true,
+  )
+
+  // --- PlaybackSettings ---
+  override val rememberShuffle: Setting<Boolean> = booleanSetting(
+    store, KEY_REMEMBER_SHUFFLE, false,
+  )
+  override val headsetAutoplay: Setting<Boolean> = booleanSetting(
+    store, KEY_HEADSET_AUTOPLAY, false,
+  )
+  override val rewindBeforeSkipBack: Setting<Boolean> = booleanSetting(
+    store, KEY_REWIND_BEFORE_SKIP, true,
+  )
+  override val pauseOnRepeat: Setting<Boolean> = booleanSetting(
+    store, KEY_PAUSE_ON_REPEAT, false,
+  )
+  override val rememberPause: Setting<Boolean> = booleanSetting(
+    store, KEY_REMEMBER_PAUSE, false,
+  )
+  override val customBarAction: Setting<CustomBarAction> = EnumSetting(
+    store, KEY_CUSTOM_BAR_ACTION, CustomBarAction.Companion::fromStored,
+  )
+  override val customNotificationAction: Setting<CustomNotificationAction> = EnumSetting(
+    store, KEY_CUSTOM_NOTIFICATION_ACTION, CustomNotificationAction.Companion::fromStored,
+  )
+  override val playFromLibrary: Setting<PlayFromLibrary> = EnumSetting(
+    store, KEY_PLAY_FROM_LIBRARY, PlayFromLibrary.Companion::fromStored,
+  )
+  override val playFromItemDetails: Setting<PlayFromItemDetails> = EnumSetting(
+    store, KEY_PLAY_FROM_ITEM_DETAILS, PlayFromItemDetails.Companion::fromStored,
+  )
+  override val replayGainStrategy: Setting<ReplayGainStrategy> = EnumSetting(
+    store, KEY_REPLAYGAIN_STRATEGY, ReplayGainStrategy.Companion::fromStored,
+  )
+  /**
+   * D.9b.2 — clamping into [-15, +15] dB and snapping to 0.1 dB
+   * lives inside the `write` transform so direct writes (e.g. tests)
+   * cannot bypass it.
+   */
+  override val replayGainPreampDb: Setting<Float> = PreferencesSetting(
+    store, KEY_REPLAYGAIN_PREAMP,
+    read = { (it ?: 0f)
+      .coerceIn(REPLAYGAIN_PREAMP_MIN_DB, REPLAYGAIN_PREAMP_MAX_DB) },
+    write = { value ->
+      val clamped = value.coerceIn(REPLAYGAIN_PREAMP_MIN_DB, REPLAYGAIN_PREAMP_MAX_DB)
+      (Math.round(clamped * 10.0).toFloat()) / 10f
+    },
+  )
+
+  // --- LibrarySettings ---
+  override val automaticReloading: Setting<Boolean> = booleanSetting(
+    store, KEY_AUTOMATIC_RELOADING, false,
+  )
+  override val intelligentSorting: Setting<Boolean> = booleanSetting(
+    store, KEY_INTELLIGENT_SORTING, true,
+  )
+  override val hideCollaborators: Setting<Boolean> = booleanSetting(
+    store, KEY_HIDE_COLLABORATORS, false,
+  )
+  override val autoDiscoverAlbumArt: Setting<Boolean> = booleanSetting(
+    store, KEY_AUTO_DISCOVER_ALBUM_ART, false,
+  )
+  override val forceSquareCovers: Setting<Boolean> = booleanSetting(
+    store, KEY_FORCE_SQUARE_COVERS, false,
+  )
+  override val albumCoversMode: Setting<AlbumCoversMode> = EnumSetting(
+    store, KEY_ALBUM_COVERS_MODE, AlbumCoversMode.Companion::fromStored,
+  )
+  /**
+   * D.9c.1 — empty set is a legal value (user disables all
+   * splitting) and is encoded as the empty string; a missing key
+   * falls back to [MultiValueSeparator.Default].
+   */
+  override val multiValueSeparators: Setting<Set<MultiValueSeparator>> = PreferencesSetting(
+    store, KEY_MULTI_VALUE_SEPARATORS,
+    read = { MultiValueSeparator.fromStored(it) },
+    write = { MultiValueSeparator.toStored(it) },
+  )
+
+  // --- MusicSourcesSettings ---
+  override val musicSourceMode: Setting<MusicSourceMode> = EnumSetting(
+    store, KEY_MUSIC_SOURCE_MODE, MusicSourceMode.Companion::fromStored,
+  )
+  override val musicSourceUris: Setting<Set<String>> = PreferencesSetting(
+    store, KEY_MUSIC_SOURCE_URIS,
+    read = { it ?: emptySet() },
+    write = { it },
+  )
+
+  // --- TabLayoutSettings ---
+  override val libraryTabs: Setting<List<LibraryTab>> = PreferencesSetting(
+    store, KEY_LIBRARY_TABS,
+    read = { LibraryTabOrder.fromStored(it) },
+    write = { LibraryTabOrder.toStored(it) },
+  )
+  /** R.B.3 — Per-tab `TabSort` is a composite of two Preferences keys. */
+  override fun tabSortSetting(tab: LibraryTab): Setting<TabSort> = object : Setting<TabSort> {
+    override val flow: Flow<TabSort> = store.data.map { prefs ->
+      TabSort(
+        key = SortKey.fromStored(prefs[sortKeyFor(tab)]),
+        direction = SortDirection.fromStored(prefs[sortDirFor(tab)]),
+      )
+    }
+    override suspend fun set(value: TabSort) {
+      store.edit {
+        it[sortKeyFor(tab)] = value.key.name
+        it[sortDirFor(tab)] = value.direction.name
+      }
+    }
+  }
+  /** R.B.3 — Per-tab view-mode falls back to the tab's pre-D.28 default. */
+  override fun viewModeSetting(tab: LibraryTab): Setting<ViewMode> = PreferencesSetting(
+    store = store,
+    key = viewModeKeyFor(tab),
+    read = { ViewMode.fromStored(it) ?: ViewMode.defaultFor(tab) },
+    write = { it.name },
+  )
+  /** R.B.3 — Per-custom-tab view mode; default supplied by the caller. */
+  override fun customTabViewModeSetting(id: Long, default: ViewMode): Setting<ViewMode> =
+    PreferencesSetting(
+      store = store,
+      key = customTabViewModeKey(id),
+      read = { ViewMode.fromStored(it) ?: default },
+      write = { it.name },
+    )
 
   // --- mutators -------------------------------------------------------------
+  // R.B.2 — every flat setter delegates to the matching Setting<T> handle
+  // declared above. The hand-rolled `store.edit { it[KEY] = encode(v) }`
+  // boilerplate now lives once inside PreferencesSetting / EnumSetting.
 
-  suspend fun setTheme(value: ThemePreference) {
-    store.edit { it[ThemePreferenceStore.KEY_THEME_MODE] = value.name }
-  }
+  suspend fun setTheme(value: ThemePreference) = theme.set(value)
+  suspend fun setColorScheme(value: ColorScheme) = colorScheme.set(value)
+  suspend fun setBlackTheme(value: Boolean) = blackTheme.set(value)
+  suspend fun setRememberShuffle(value: Boolean) = rememberShuffle.set(value)
+  suspend fun setLibraryTabs(value: List<LibraryTab>) = libraryTabs.set(value)
+  suspend fun setIntelligentSorting(value: Boolean) = intelligentSorting.set(value)
+  suspend fun setForceSquareCovers(value: Boolean) = forceSquareCovers.set(value)
+  suspend fun setHeadsetAutoplay(value: Boolean) = headsetAutoplay.set(value)
+  suspend fun setRewindBeforeSkipBack(value: Boolean) = rewindBeforeSkipBack.set(value)
+  suspend fun setRememberPause(value: Boolean) = rememberPause.set(value)
+  suspend fun setAutoDiscoverAlbumArt(value: Boolean) = autoDiscoverAlbumArt.set(value)
+  suspend fun setCustomBarAction(value: CustomBarAction) = customBarAction.set(value)
+  suspend fun setCustomNotificationAction(value: CustomNotificationAction) =
+    customNotificationAction.set(value)
+  suspend fun setPauseOnRepeat(value: Boolean) = pauseOnRepeat.set(value)
+  suspend fun setPlayFromLibrary(value: PlayFromLibrary) = playFromLibrary.set(value)
+  suspend fun setPlayFromItemDetails(value: PlayFromItemDetails) = playFromItemDetails.set(value)
+  suspend fun setHideCollaborators(value: Boolean) = hideCollaborators.set(value)
+  suspend fun setReplayGainStrategy(value: ReplayGainStrategy) = replayGainStrategy.set(value)
+  suspend fun setReplayGainPreampDb(value: Float) = replayGainPreampDb.set(value)
+  suspend fun setAlbumCoversMode(value: AlbumCoversMode) = albumCoversMode.set(value)
+  suspend fun setMultiValueSeparators(value: Set<MultiValueSeparator>) =
+    multiValueSeparators.set(value)
+  suspend fun setMusicSourceMode(value: MusicSourceMode) = musicSourceMode.set(value)
+  suspend fun setAutomaticReloading(value: Boolean) = automaticReloading.set(value)
+  suspend fun setBaseTheme(value: BaseTheme) = baseTheme.set(value)
+  suspend fun setAlbumArtTintEnabled(value: Boolean) = albumArtTintEnabled.set(value)
+  suspend fun setTabSort(tab: LibraryTab, value: TabSort) = tabSortSetting(tab).set(value)
+  suspend fun setViewModeFor(tab: LibraryTab, mode: ViewMode) = viewModeSetting(tab).set(mode)
+  suspend fun setCustomTabViewMode(id: Long, mode: ViewMode) =
+    customTabViewModeSetting(id, ViewMode.List).set(mode)
 
-  suspend fun setColorScheme(value: ColorScheme) {
-    store.edit { it[KEY_COLOR_SCHEME] = value.name }
-  }
-
-  suspend fun setBlackTheme(value: Boolean) {
-    store.edit { it[KEY_BLACK_THEME] = value }
-  }
-
-  suspend fun setRememberShuffle(value: Boolean) {
-    store.edit { it[KEY_REMEMBER_SHUFFLE] = value }
-  }
-
-  suspend fun setLibraryTabs(value: List<LibraryTab>) {
-    store.edit { it[KEY_LIBRARY_TABS] = value.joinToString(",") { tab -> tab.name } }
-  }
-
-  suspend fun setIntelligentSorting(value: Boolean) {
-    store.edit { it[KEY_INTELLIGENT_SORTING] = value }
-  }
-
-  suspend fun setForceSquareCovers(value: Boolean) {
-    store.edit { it[KEY_FORCE_SQUARE_COVERS] = value }
-  }
-
-  suspend fun setHeadsetAutoplay(value: Boolean) {
-    store.edit { it[KEY_HEADSET_AUTOPLAY] = value }
-  }
-
-  suspend fun setRewindBeforeSkipBack(value: Boolean) {
-    store.edit { it[KEY_REWIND_BEFORE_SKIP] = value }
-  }
-
-  suspend fun setRememberPause(value: Boolean) {
-    store.edit { it[KEY_REMEMBER_PAUSE] = value }
-  }
-
-  suspend fun setAutoDiscoverAlbumArt(value: Boolean) {
-    store.edit { it[KEY_AUTO_DISCOVER_ALBUM_ART] = value }
-  }
-
-  suspend fun setCustomBarAction(value: CustomBarAction) {
-    store.edit { it[KEY_CUSTOM_BAR_ACTION] = value.name }
-  }
-
-  suspend fun setCustomNotificationAction(value: CustomNotificationAction) {
-    store.edit { it[KEY_CUSTOM_NOTIFICATION_ACTION] = value.name }
-  }
-
-  suspend fun setPauseOnRepeat(value: Boolean) {
-    store.edit { it[KEY_PAUSE_ON_REPEAT] = value }
-  }
-
-  suspend fun setPlayFromLibrary(value: PlayFromLibrary) {
-    store.edit { it[KEY_PLAY_FROM_LIBRARY] = value.name }
-  }
-
-  suspend fun setPlayFromItemDetails(value: PlayFromItemDetails) {
-    store.edit { it[KEY_PLAY_FROM_ITEM_DETAILS] = value.name }
-  }
-
-  suspend fun setHideCollaborators(value: Boolean) {
-    store.edit { it[KEY_HIDE_COLLABORATORS] = value }
-  }
-
-  suspend fun setReplayGainStrategy(value: ReplayGainStrategy) {
-    store.edit { it[KEY_REPLAYGAIN_STRATEGY] = value.name }
-  }
-
+  // --- TabLayoutSettings: whole-map projection + legacy Flow factories ----
   /**
-   * D.9b.2 — clamp into [-15, +15] dB and round to the nearest 0.1 dB
-   * step before persisting, so the slider can use the same step grid
-   * without a separate normalization pass.
+   * Hot Flow of every tab's resolved view mode. Tabs without a stored
+   * preference fall back to [ViewMode.defaultFor]. Emitted as a `Map`
+   * so subscribers can switch tabs without re-subscribing per-tab.
+   * Backed by raw store access because the projection depends on the
+   * full [LibraryTab.entries] enumeration; the per-tab fallback
+   * already lives in [viewModeSetting].
    */
-  suspend fun setReplayGainPreampDb(value: Float) {
-    val clamped = value.coerceIn(REPLAYGAIN_PREAMP_MIN_DB, REPLAYGAIN_PREAMP_MAX_DB)
-    val snapped = (Math.round(clamped * 10.0).toFloat()) / 10f
-    store.edit { it[KEY_REPLAYGAIN_PREAMP] = snapped }
+  override val viewModes: Flow<Map<LibraryTab, ViewMode>> = store.data.map { prefs ->
+    LibraryTab.entries.associateWith { tab ->
+      ViewMode.fromStored(prefs[viewModeKeyFor(tab)]) ?: ViewMode.defaultFor(tab)
+    }
   }
 
-  suspend fun setAlbumCoversMode(value: AlbumCoversMode) {
-    store.edit { it[KEY_ALBUM_COVERS_MODE] = value.name }
-  }
+  // R.B.3 — legacy Flow factories kept for the LibraryScreen consumers
+  // R.B.4 will migrate. Deleted once every caller takes the
+  // TabLayoutSettings facet directly.
+  fun tabSort(tab: LibraryTab): Flow<TabSort> = tabSortSetting(tab).flow
+  fun viewModeFor(tab: LibraryTab): Flow<ViewMode> = viewModeSetting(tab).flow
+  fun customTabViewMode(id: Long, default: ViewMode): Flow<ViewMode> =
+    customTabViewModeSetting(id, default).flow
 
-  /**
-   * D.9c.1 — persist the selected separator set. The empty set is a
-   * legal value (user disables all splitting) and is encoded as the
-   * empty string; a missing key falls back to [MultiValueSeparator.Default].
-   */
-  suspend fun setMultiValueSeparators(value: Set<MultiValueSeparator>) {
-    store.edit { it[KEY_MULTI_VALUE_SEPARATORS] = MultiValueSeparator.toStored(value) }
-  }
-
-  /**
-   * Hot Flow of the separator set. Used by [com.eight87.tonearm.data.LibraryRepository]
-   * during a scan; the scan reads the latest value once, splits, then
-   * persists. Toggling at runtime does *not* auto-rescan — the UI
-   * surfaces a snackbar prompting the user to run "Rescan music".
-   */
-  val multiValueSeparators: Flow<Set<MultiValueSeparator>> = store.data.map {
-    MultiValueSeparator.fromStored(it[KEY_MULTI_VALUE_SEPARATORS])
-  }
-
-  // --- D.9d.1: music sources -----------------------------------------------
-
-  /**
-   * Hot Flow of the configured tree URIs (as Strings). The scanner reads
-   * this on every scan; subscribers in the UI render the list of rows.
-   * An empty set means "scan MediaStore using the legacy default" (the
-   * existing behaviour, preserved for backward compatibility).
-   */
-  val musicSourceUris: Flow<Set<String>> = store.data.map {
-    it[KEY_MUSIC_SOURCE_URIS] ?: emptySet()
-  }
+  // --- MusicSourcesSettings: helpers ---------------------------------------
 
   /** Append a tree URI. Idempotent — no-op when the URI is already in the set. */
-  suspend fun addMusicSourceUri(uri: String) {
+  override suspend fun addMusicSourceUri(uri: String) {
     store.edit { prefs ->
       val current = prefs[KEY_MUSIC_SOURCE_URIS] ?: emptySet()
       prefs[KEY_MUSIC_SOURCE_URIS] = current + uri
@@ -620,7 +618,7 @@ class SettingsRepository(private val context: Context) :
   }
 
   /** Remove a tree URI. No-op when missing. */
-  suspend fun removeMusicSourceUri(uri: String) {
+  override suspend fun removeMusicSourceUri(uri: String) {
     store.edit { prefs ->
       val current = prefs[KEY_MUSIC_SOURCE_URIS] ?: emptySet()
       prefs[KEY_MUSIC_SOURCE_URIS] = current - uri
@@ -628,25 +626,7 @@ class SettingsRepository(private val context: Context) :
   }
 
   /** Replace the full set. Used by tests and the deduplicating helper. */
-  suspend fun setMusicSourceUris(value: Set<String>) {
-    store.edit { it[KEY_MUSIC_SOURCE_URIS] = value }
-  }
-
-  // --- D.17.3.1: music-source mode (System vs FilePicker) ------------------
-
-  /**
-   * Hot Flow of the persisted [MusicSourceMode]. A missing key returns
-   * [MusicSourceMode.Default] — the [firstLaunchInitialise] hook
-   * normally writes the default on first start so this fallback only
-   * matters for tests / repos that bypass the activity.
-   */
-  val musicSourceMode: Flow<MusicSourceMode> = store.data.map {
-    MusicSourceMode.fromStored(it[KEY_MUSIC_SOURCE_MODE])
-  }
-
-  suspend fun setMusicSourceMode(value: MusicSourceMode) {
-    store.edit { it[KEY_MUSIC_SOURCE_MODE] = value.name }
-  }
+  suspend fun setMusicSourceUris(value: Set<String>) = musicSourceUris.set(value)
 
   /**
    * D.17.3.6 — first-launch normalisation. Runs once per process
@@ -654,128 +634,16 @@ class SettingsRepository(private val context: Context) :
    * absent). The user-facing intent: never show an empty library on a
    * fresh install. By writing [MusicSourceMode.System] explicitly we
    * also avoid the subtle bug where a future code change to the enum
-   * default would silently shift existing users.
+   * default would silently shift existing users. Stays as raw store
+   * access because `Setting.set` always writes.
    */
-  suspend fun firstLaunchInitialise() {
+  override suspend fun firstLaunchInitialise() {
     store.edit { prefs ->
       if (prefs[KEY_MUSIC_SOURCE_MODE] == null) {
         prefs[KEY_MUSIC_SOURCE_MODE] = MusicSourceMode.Default.name
       }
     }
   }
-
-  // --- D.9d.2: automatic reloading toggle ----------------------------------
-
-  val automaticReloading: Flow<Boolean> = store.data.map {
-    it[KEY_AUTOMATIC_RELOADING] ?: SettingsSnapshot.Default.automaticReloading
-  }
-
-  suspend fun setAutomaticReloading(value: Boolean) {
-    store.edit { it[KEY_AUTOMATIC_RELOADING] = value }
-  }
-
-  // --- D.20.4: base theme + album-art tint --------------------------------
-
-  suspend fun setBaseTheme(value: BaseTheme) {
-    store.edit { it[KEY_BASE_THEME] = value.toStored() }
-  }
-
-  suspend fun setAlbumArtTintEnabled(value: Boolean) {
-    store.edit { it[KEY_ALBUM_ART_TINT_ENABLED] = value }
-  }
-
-  /**
-   * Hot Flow of [SettingsSnapshot.hideCollaborators]; used by
-   * [com.eight87.tonearm.data.LibraryRepository] to filter the artists
-   * Flow without re-scanning the library when the user flips the toggle.
-   */
-  val hideCollaborators: Flow<Boolean> = store.data.map {
-    it[KEY_HIDE_COLLABORATORS] ?: SettingsSnapshot.Default.hideCollaborators
-  }
-
-  // --- per-tab sort ---------------------------------------------------------
-
-  fun tabSort(tab: LibraryTab): Flow<TabSort> = store.data.map { prefs ->
-    TabSort(
-      key = SortKey.fromStored(prefs[sortKeyFor(tab)]),
-      direction = SortDirection.fromStored(prefs[sortDirFor(tab)]),
-    )
-  }
-
-  suspend fun setTabSort(tab: LibraryTab, value: TabSort) {
-    store.edit {
-      it[sortKeyFor(tab)] = value.key.name
-      it[sortDirFor(tab)] = value.direction.name
-    }
-  }
-
-  // --- D.28.1: per-tab view mode (list ↔ tile) -----------------------------
-
-  /**
-   * Hot Flow of every tab's resolved view mode. Tabs without a stored
-   * preference fall back to [ViewMode.defaultFor]. Emitted as a `Map`
-   * so subscribers can switch tabs without re-subscribing per-tab.
-   */
-  val viewModes: Flow<Map<LibraryTab, ViewMode>> = store.data.map { prefs ->
-    LibraryTab.entries.associateWith { tab ->
-      ViewMode.fromStored(prefs[viewModeKeyFor(tab)]) ?: ViewMode.defaultFor(tab)
-    }
-  }
-
-  /** Convenience reader for a single tab. */
-  fun viewModeFor(tab: LibraryTab): Flow<ViewMode> = store.data.map { prefs ->
-    ViewMode.fromStored(prefs[viewModeKeyFor(tab)]) ?: ViewMode.defaultFor(tab)
-  }
-
-  suspend fun setViewModeFor(tab: LibraryTab, mode: ViewMode) {
-    store.edit { it[viewModeKeyFor(tab)] = mode.name }
-  }
-
-  /**
-   * Per-custom-tab view mode, keyed by [CustomTabEntity.id]. Caller
-   * supplies the [default] (typically `Tile` for ALBUMS-content custom
-   * tabs, `List` otherwise) since [SettingsRepository] doesn't depend on
-   * the data layer's `CustomTabContentType` enum.
-   */
-  fun customTabViewMode(id: Long, default: ViewMode): Flow<ViewMode> = store.data.map { prefs ->
-    ViewMode.fromStored(prefs[customTabViewModeKey(id)]) ?: default
-  }
-
-  suspend fun setCustomTabViewMode(id: Long, mode: ViewMode) {
-    store.edit { it[customTabViewModeKey(id)] = mode.name }
-  }
-
-  // --- internals ------------------------------------------------------------
-
-  private fun Preferences.toSnapshot(): SettingsSnapshot = SettingsSnapshot(
-    theme = ThemePreference.fromStored(this[ThemePreferenceStore.KEY_THEME_MODE]),
-    colorScheme = ColorScheme.fromStored(this[KEY_COLOR_SCHEME]),
-    blackTheme = this[KEY_BLACK_THEME] ?: SettingsSnapshot.Default.blackTheme,
-    rememberShuffle = this[KEY_REMEMBER_SHUFFLE] ?: SettingsSnapshot.Default.rememberShuffle,
-    libraryTabs = parseLibraryTabs(this[KEY_LIBRARY_TABS]),
-    intelligentSorting = this[KEY_INTELLIGENT_SORTING] ?: SettingsSnapshot.Default.intelligentSorting,
-    forceSquareCovers = this[KEY_FORCE_SQUARE_COVERS] ?: SettingsSnapshot.Default.forceSquareCovers,
-    headsetAutoplay = this[KEY_HEADSET_AUTOPLAY] ?: SettingsSnapshot.Default.headsetAutoplay,
-    rewindBeforeSkipBack = this[KEY_REWIND_BEFORE_SKIP] ?: SettingsSnapshot.Default.rewindBeforeSkipBack,
-    rememberPause = this[KEY_REMEMBER_PAUSE] ?: SettingsSnapshot.Default.rememberPause,
-    autoDiscoverAlbumArt = this[KEY_AUTO_DISCOVER_ALBUM_ART] ?: SettingsSnapshot.Default.autoDiscoverAlbumArt,
-    customBarAction = CustomBarAction.fromStored(this[KEY_CUSTOM_BAR_ACTION]),
-    customNotificationAction = CustomNotificationAction.fromStored(this[KEY_CUSTOM_NOTIFICATION_ACTION]),
-    pauseOnRepeat = this[KEY_PAUSE_ON_REPEAT] ?: SettingsSnapshot.Default.pauseOnRepeat,
-    playFromLibrary = PlayFromLibrary.fromStored(this[KEY_PLAY_FROM_LIBRARY]),
-    playFromItemDetails = PlayFromItemDetails.fromStored(this[KEY_PLAY_FROM_ITEM_DETAILS]),
-    hideCollaborators = this[KEY_HIDE_COLLABORATORS] ?: SettingsSnapshot.Default.hideCollaborators,
-    replayGainStrategy = ReplayGainStrategy.fromStored(this[KEY_REPLAYGAIN_STRATEGY]),
-    replayGainPreampDb = (this[KEY_REPLAYGAIN_PREAMP] ?: SettingsSnapshot.Default.replayGainPreampDb)
-      .coerceIn(REPLAYGAIN_PREAMP_MIN_DB, REPLAYGAIN_PREAMP_MAX_DB),
-    albumCoversMode = AlbumCoversMode.fromStored(this[KEY_ALBUM_COVERS_MODE]),
-    multiValueSeparators = MultiValueSeparator.fromStored(this[KEY_MULTI_VALUE_SEPARATORS]),
-    musicSourceUris = this[KEY_MUSIC_SOURCE_URIS] ?: emptySet(),
-    musicSourceMode = MusicSourceMode.fromStored(this[KEY_MUSIC_SOURCE_MODE]),
-    automaticReloading = this[KEY_AUTOMATIC_RELOADING] ?: SettingsSnapshot.Default.automaticReloading,
-    baseTheme = BaseTheme.fromStored(this[KEY_BASE_THEME]),
-    albumArtTintEnabled = this[KEY_ALBUM_ART_TINT_ENABLED] ?: SettingsSnapshot.Default.albumArtTintEnabled,
-  )
 
   companion object {
     internal val KEY_COLOR_SCHEME = stringPreferencesKey("color_scheme")
@@ -814,31 +682,5 @@ class SettingsRepository(private val context: Context) :
     internal fun sortDirFor(tab: LibraryTab) = stringPreferencesKey("sort_dir_${tab.name}")
     internal fun viewModeKeyFor(tab: LibraryTab) = stringPreferencesKey("view_mode_${tab.name}")
     internal fun customTabViewModeKey(id: Long) = stringPreferencesKey("view_mode_custom_$id")
-
-    /**
-     * Parse the persisted library-tab order. Always returns a list that
-     * contains every [LibraryTab] entry exactly once: persisted
-     * (visible-and-ordered) entries first, then any new tabs that
-     * weren't yet in storage. The visible subset is encoded by the
-     * `_hidden_` token — anything after that prefix is hidden.
-     *
-     * Storage format example:
-     *   "Songs,Albums,Artists,_hidden_,Genres,Playlists"
-     */
-    internal fun parseLibraryTabs(raw: String?): List<LibraryTab> {
-      if (raw.isNullOrBlank()) return LibraryTab.DefaultOrder
-      val parts = raw.split(",")
-      val resolved = parts.mapNotNull { p ->
-        if (p == HIDDEN_MARKER) null
-        else LibraryTab.entries.firstOrNull { it.name == p }
-      }
-      // append unknown / new entries at the end so a future tab
-      // doesn't disappear when the user upgrades.
-      val seen = resolved.toSet()
-      val tail = LibraryTab.entries.filter { it !in seen }
-      return resolved + tail
-    }
-
-    internal const val HIDDEN_MARKER = "_hidden_"
   }
 }
