@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -57,9 +60,10 @@ sealed class RailItem {
  *
  * Layout:
  *   - fixed 52 dp wide column on the left edge
- *   - one rotated text label per visible tab, top-to-bottom
- *   - flexible spacer
- *   - settings gear pinned at the bottom
+ *   - scrollable region containing one rotated text label per visible
+ *     tab, top-to-bottom — overflow scrolls vertically rather than
+ *     clipping
+ *   - settings gear pinned at the bottom, always on screen
  *
  * The active tab gets bold text + a 2 dp accent stripe on the right
  * edge of the rail (touching the content area). Inactive labels render
@@ -90,28 +94,39 @@ fun LibraryRail(
       modifier = Modifier.fillMaxSize(),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      Spacer(Modifier.size(8.dp))
-      tabs.forEachIndexed { index, tab ->
-        RailTabItem(
-          label = tabLabel(tab),
-          tabName = tab.name,
-          selected = index == selectedIndex,
-          onClick = { onSelect(index) },
-        )
+      // Tabs occupy whatever vertical space remains after the gear is
+      // laid out at the bottom. Wrapping them in a weighted scroll
+      // container guarantees the gear is never pushed off-screen and
+      // the tabs scroll when their natural height exceeds the rail.
+      Column(
+        modifier = Modifier
+          .weight(1f)
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
+        Spacer(Modifier.size(8.dp))
+        tabs.forEachIndexed { index, tab ->
+          RailTabItem(
+            label = tabLabel(tab),
+            tabName = tab.name,
+            selected = index == selectedIndex,
+            onClick = { onSelect(index) },
+          )
+        }
+        // D.18.5 — render any user-defined custom tabs after the
+        // built-ins. Selection indices `tabs.size + i` route to the
+        // i-th custom tab; the content host knows the same shape.
+        customTabs.forEachIndexed { i, custom ->
+          val railIndex = tabs.size + i
+          RailTabItem(
+            label = custom.name,
+            tabName = "custom_${custom.id}",
+            selected = railIndex == selectedIndex,
+            onClick = { onSelect(railIndex) },
+          )
+        }
       }
-      // D.18.5 — render any user-defined custom tabs after the
-      // built-ins. Selection indices `tabs.size + i` route to the
-      // i-th custom tab; the content host knows the same shape.
-      customTabs.forEachIndexed { i, custom ->
-        val railIndex = tabs.size + i
-        RailTabItem(
-          label = custom.name,
-          tabName = "custom_${custom.id}",
-          selected = railIndex == selectedIndex,
-          onClick = { onSelect(railIndex) },
-        )
-      }
-      Spacer(Modifier.weight(1f))
       IconButton(
         onClick = onOpenSettings,
         modifier = Modifier

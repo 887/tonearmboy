@@ -98,6 +98,23 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 # mobile-mcp tools take over for UI interaction
 ```
 
+### UI changes are verified on the running AVD
+
+Any change that touches Compose UI (layout, composable structure, navigation, theming, anything visible) MUST be verified by installing the rebuilt debug APK on the running headless AVD (`emulator-5554`) and inspecting the result — Robolectric unit tests do not catch real-device layout bugs (overflow, clipping, off-screen widgets, rail/scroll behaviour under the now-playing bar, etc.).
+
+Canonical loop:
+
+```bash
+JAVA_HOME=/usr/lib/jvm/java-26-openjdk ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleDebug
+adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s emulator-5554 shell am start -n com.eight87.tonearm/.MainActivity
+adb -s emulator-5554 exec-out screencap -p > /tmp/tonearm.png   # then Read the PNG
+```
+
+Prefer `mobile-mcp` tools when they're loaded in the session (they give the accessibility tree + tap-by-label, much more precise than coordinate input). When mobile-mcp isn't available, fall back to `adb exec-out screencap -p` + visual inspection of the PNG via the Read tool — it's lower-resolution evidence than the a11y tree but enough to confirm widget presence, position, and overflow behaviour.
+
+Do not report a UI task as done on the strength of unit tests + a successful build alone.
+
 Or all-in-one via Android CLI when build + run is the same step.
 
 For raw ADB inspection during dev:
