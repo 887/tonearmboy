@@ -469,6 +469,15 @@ fun TonearmApp(
             playback = playback,
             onBack = { backStack.pop() },
             albumCoversMode = settingsSnapshot.albumCoversMode,
+            onSaveQueueAsPlaylist = { mediaIds ->
+              // D.29.1 — feed the queue's track ids into the same bulk
+              // playlist-picker overlay multi-select uses, so the user
+              // can append to an existing playlist or create a new one.
+              val trackIds = mediaIds.mapNotNull { it.toLongOrNull() }
+              if (trackIds.isNotEmpty()) {
+                addingToPlaylistTrackIds = trackIds
+              }
+            },
           )
         }
         entry<PlaylistDetail> { key ->

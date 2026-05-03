@@ -2,7 +2,7 @@
 
 ## Status: ✅ DONE
 
-_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (parent-scroll suppression while dragging) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped in commit `b52d660`. D.27.10 shipped in commit `cfe6071`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
+_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (parent-scroll suppression while dragging) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped in commit `b52d660`. D.27.10 (cross-boundary drag survives reorder) shipped in commit `cfe6071`. D.29 (Save queue as playlist — top-bar action on Now Playing) shipped in commit `<PENDING>`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
 
 
 ## Stack (locked)
@@ -823,6 +823,30 @@ D.27.8 had fixed the parent-LazyColumn-eats-the-vertical-scroll problem. But the
 **Shipped in commit `cfe6071`.** Test count 623 → 624.
 
 After D.27.10 lands, restore `## Status: ✅ DONE` at the top with a fresh re-completion note.
+
+---
+
+## Phase D.29 — save queue as playlist (top-bar action on Now Playing) — shipped in commit `<PENDING>`
+
+User feedback after the D.27.10 release tag landed and the user confirmed reorder works:
+> "can you add a feature on the now playing/queue page that lets me add the current queue to a playlist or save it as a new playlist? currently in the top right there is the button that now scrolls me down to the queue, I want the button for that feature there"
+
+Today (post-D.27.10): the Now Playing top app bar's right-side action is `Icons.AutoMirrored.Filled.QueueMusic` ("Queue") which `animateScrollToItem(QUEUE_LIST_INDEX)` on the underlying LazyColumn. Since D.24.2 merged the queue inline into the same scroll surface as the now-playing card and transport row, this scroll affordance is redundant — a finger-swipe gets there. Repurpose the slot for "Save queue as playlist".
+
+- [x] **D.29.1 Replace the scroll-to-queue icon with a save-queue-to-playlist icon.** `NowPlayingScreen.kt` top-bar action: swap `Icons.AutoMirrored.Filled.QueueMusic` → `Icons.AutoMirrored.Filled.PlaylistAdd`. Test tag `now_playing_queue` → `now_playing_save_queue`. Content description "Save queue as playlist". Disabled when there's no media (`!state.hasMedia`) or the queue is empty.
+
+- [x] **D.29.2 Wire it through the existing bulk picker.** Add `onSaveQueueAsPlaylist: ((mediaIds: List<String>) -> Unit)? = null` parameter to `NowPlayingScreen`. The TonearmApp call site converts the queue's media ids to track ids (`mediaIds.mapNotNull { it.toLongOrNull() }`) and seeds the existing app-level `addingToPlaylistTrackIds` overlay state — the same `PlaylistPickerSheet` that D.27.2's library multi-select Add-to-Playlist uses. Picking an existing playlist appends; tapping "+ New playlist…" creates one and appends. Existing snackbar copy ("Added N tracks to <name>") covers both paths.
+
+- [x] **D.29.3 Cleanup unused symbols.** With the scroll-to-queue affordance gone, `NowPlayingScreen` no longer needs `rememberCoroutineScope` / `scope.launch`. `QUEUE_LIST_INDEX` stays — `NowPlayingMergedQueueTest` still asserts on it as a structural pin for the LazyColumn item layout, and the constant is cheap to keep.
+
+**Anti-scope:**
+- Do NOT add a separate "save as new" vs "add to existing" pre-dialog. The picker sheet already has both affordances inline (the "+ New playlist…" row + existing rows).
+- Do NOT customise the snackbar copy yet ("Saved queue to X" vs "Added N tracks to X"). Reuse the bulk-picker copy. If the user wants distinct wording, follow up.
+- Do NOT change the queue scroll-to behaviour from anywhere else. The `now_playing_queue` test tag was unreferenced in tests; renaming is safe.
+
+**Shipped in commit `<PENDING>`.** Verified on the headless `medium_phone` AVD: tapped the new icon at top-right of NowPlaying → `PlaylistPickerSheet` slid up showing "Add to playlist" header, "+ New playlist…" row, and the existing playlists ("Mixtape" / "Quiet Hours"). Test count unchanged at 624; no Robolectric test added because the wiring is one-line plumbing through an already-tested picker sheet.
+
+After D.29 lands, restore `## Status: ✅ DONE` at the top with a fresh re-completion note.
 
 ---
 

@@ -15,7 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
@@ -45,7 +45,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,11 +86,11 @@ fun NowPlayingScreen(
   playback: PlaybackUiController,
   onBack: () -> Unit,
   albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
+  onSaveQueueAsPlaylist: ((mediaIds: List<String>) -> Unit)? = null,
 ) {
   val state by playback.state.collectAsStateWithLifecycle()
   val queueSnapshot by playback.queue.collectAsStateWithLifecycle()
   val listState = rememberLazyListState()
-  val scope = rememberCoroutineScope()
 
   Scaffold(
     topBar = {
@@ -103,20 +102,20 @@ fun NowPlayingScreen(
           }
         },
         actions = {
-          // D.24.2 — repurpose the queue-shortcut icon as a "scroll to
-          // queue" affordance. The queue lives inline now, so there's
-          // nowhere new to navigate to — just animate to the section
-          // header within the same LazyColumn.
+          // D.29.1 — replaces D.24.2's scroll-to-queue affordance.
+          // The queue lives inline (D.24.2) so a "scroll to queue"
+          // button is redundant — a swipe gets the user there. Repurpose
+          // the slot for "Save queue as playlist", which dispatches
+          // through the existing `PlaylistPickerSheet` (the same one
+          // multi-select uses) seeded with the queue's media ids.
           IconButton(
             onClick = {
-              scope.launch {
-                listState.animateScrollToItem(QUEUE_LIST_INDEX)
-              }
+              onSaveQueueAsPlaylist?.invoke(queueSnapshot.items.map { it.mediaId })
             },
-            modifier = Modifier.semantics { testTag = "now_playing_queue" },
-            enabled = state.hasMedia,
+            modifier = Modifier.semantics { testTag = "now_playing_save_queue" },
+            enabled = state.hasMedia && queueSnapshot.items.isNotEmpty(),
           ) {
-            Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
+            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Save queue as playlist")
           }
         },
       )
