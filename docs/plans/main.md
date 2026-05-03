@@ -2,7 +2,7 @@
 
 ## Status: ✅ DONE
 
-_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (queue drag-drop suppresses parent LazyColumn scroll) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped 2026-05-03 in commit `b52d660`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
+_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 (parent-scroll suppression while dragging) shipped in commit `ec2bf1d`. D.27.9 (queue row UX — X on left + remove-confirm dialog) shipped in commit `b52d660`. D.27.10 (queue drag survives item-boundary crossings — `key(itemId)` wrap inside `DragReorderColumn`) shipped in commit `<PENDING>`. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 shipped 2026-05-02 in commit `317add6`. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03 in commit `517f097`._
 
 
 ## Stack (locked)
@@ -798,6 +798,31 @@ Today (post-D.27.8): each queue row in `QueueSection.kt` `QueueRow` lays out lef
 **D.27.9 shipped in commit `b52d660`.** `QueueRow` was promoted from `private` to `internal` so the new `QueueRowRemoveConfirmTest` can render it directly without touching the rest of `QueueSection`. The X (`IconButton` with tag `queue_remove`) now leads the row at left with 4 dp horizontal padding, ahead of the optional `GraphicEq` active-indicator. Tapping it flips a row-local `showConfirm` state which renders an `androidx.compose.material3.AlertDialog`; the dialog title carries `testTag = "queue_remove_confirm_dialog"`, the body is `"Remove '<title>' from the queue?"`, and the Confirm/Cancel buttons carry `queue_remove_confirm_button` / `queue_remove_cancel_button` tags so the test can target them without depending on string literals. Suite goes 620 → 623.
 
 After D.27.9 lands, restore `## Status: ✅ DONE` at the top with a fresh re-completion note.
+
+---
+
+## Phase D.27.10 — queue drag-drop survives item-boundary crossings — shipped in commit `<PENDING>`
+
+User-reported regression after D.27.8 + D.27.9 shipped:
+> "drag drop still doesn't work. as soon as i drag an item over the item above it the drag stops and it doesn't reorder anything. you need to test this before declaring it as done."
+
+D.27.8 had fixed the parent-LazyColumn-eats-the-vertical-scroll problem. But the actual reorder still failed mid-gesture — and the previous test only verified scroll suppression, not the drag-survives-swap path. Root cause was inside `DragReorderColumn.kt` itself, not the parent integration:
+
+`working.forEachIndexed { index, item -> Box { val handleModifier = Modifier.pointerInput(itemKey, working.size) { … } } }` — the `forEachIndexed` body is NOT wrapped in `key(itemId) { … }`, so composables are tracked by **iteration position**, not by item identity. The moment `working` reorders mid-drag (when `targetDelta = -1` fires inside `onDrag` and we run `working = swapped`), the Box at position 5 now renders item B (where it used to render item A). The pointerInput's key list `(itemKey, working.size)` flips from `itemKey(A)` to `itemKey(B)` because the Box's content changed. Compose cancels the running coroutine, the drag dies, and the user sees the row snap back / refuse to cross any boundary.
+
+- [x] **D.27.10.1 Wrap each iteration body in `key(itemId)`.** Inside `working.forEachIndexed`, wrap everything in `key(itemId) { … }` so composable identity follows the item, not the iteration position. After the swap, the same Box (with its still-running pointerInput coroutine) moves with the item to its new index instead of being thrown away and recreated under a different item.
+
+- [x] **D.27.10.2 Drop `working.size` from the pointerInput key list.** It never changes inside a single drag (the swap reorders without resizing) and including it is just a tripwire for future maintainers. The pointerInput key is now `pointerInput(itemId)`.
+
+- [x] **D.27.10.3 Resolve start index dynamically in `onDragStart`.** Use `working.indexOf(item)` instead of the captured `index`. With `key(itemId)` the pointerInput coroutine survives reorders, so a *fresh* long-press after a previous reorder would otherwise read a stale captured `index`. State reads inside the closure see the latest `working` via Compose's snapshot system.
+
+- [x] **D.27.10.4 Cross-boundary test.** New `app/src/test/java/com/eight87/tonearm/ui/common/DragReorderCrossBoundaryTest.kt` (Robolectric, sdk=34, qualifiers=w400dp-h800dp). Renders `DragReorderColumn` with five distinct string items `[A, B, C, D, E]` and asserts that performing a long-press + drag of item C upward by 1.5 row-heights produces `onReordered = [A, C, B, D, E]`. Without the `key(itemId)` fix this test fails because the pointer-input coroutine cancels at the first swap and `onReordered` never fires — the previous `QueueDragReorderParentScrollTest` was wrong-shaped to catch this because it only injected pure-vertical swipes, never crossing into a swap path.
+
+- [x] **D.27.10.5 AVD smoke verify.** Built debug APK off the fix branch, installed on the headless `medium_phone` AVD, expanded to NowPlaying with a multi-row queue, sent `cmd input touchscreen motionevent DOWN` at the row 4 drag handle (x=949, y=1865) and confirmed via `screencap -p` that after a 700 ms hold the row visually entered the lifted/dragging state (darker shaded background from the `zIndex(1f)` modifier in DragReorderColumn). Continuous-drag visual verification past the swap is impossible to capture from `cmd input` because each `motionevent` invocation creates a new pointer ID and the system doesn't link them — the unit test in D.27.10.4 is the load-bearing verification for boundary-crossing.
+
+**Shipped in commit `<PENDING>`.** Test count 623 → 624.
+
+After D.27.10 lands, restore `## Status: ✅ DONE` at the top with a fresh re-completion note.
 
 ---
 

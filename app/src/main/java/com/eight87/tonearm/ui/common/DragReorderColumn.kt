@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -86,58 +87,77 @@ fun <T : Any> DragReorderColumn(
     .fillMaxWidth()
     .semantics { testTag = "${testTagPrefix}_drag_column" }) {
     working.forEachIndexed { index, item ->
-      val isDragging = index == draggingIndex
-      val translateY = if (isDragging) dragOffsetPx else 0f
-      val key = itemKey(item)
-      Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(rowHeightDp.dp)
-          .zIndex(if (isDragging) 1f else 0f)
-          .offset { IntOffset(0, translateY.roundToInt()) }
-      ) {
-        val handleModifier = Modifier.pointerInput(key, working.size) {
-          detectDragGesturesAfterLongPress(
-            onDragStart = {
-              draggingIndex = index
-              dragOffsetPx = 0f
-              onDragStateChange?.invoke(true)
-            },
-            onDrag = { _, drag ->
-              dragOffsetPx += drag.y
-              // Snap to a target index if the drag passes the
-              // threshold of half a row.
-              val current = draggingIndex
-              if (current >= 0) {
-                val targetDelta = (dragOffsetPx / rowPx).roundToInt()
-                val target = (current + targetDelta).coerceIn(0, working.size - 1)
-                if (target != current) {
-                  val swapped = working.toMutableList()
-                  val moved = swapped.removeAt(current)
-                  swapped.add(target, moved)
-                  working = swapped
-                  draggingIndex = target
-                  // Normalize the running offset so the visual
-                  // doesn't jump after the swap.
-                  dragOffsetPx -= (target - current) * rowPx
+      val itemId = itemKey(item)
+      // D.27.10 — `key(itemId)` ties composable identity to the item,
+      // not the position in the iteration. Without it, when the user
+      // drags row A across row B and we reorder `working`, the Box at
+      // position 5 now renders item B, the row's `pointerInput` key
+      // list `(itemId, …)` flips from itemKey(A) → itemKey(B), the
+      // pointer-input coroutine cancels, and the drag dies the moment
+      // it crosses any boundary. With `key(itemId)`, the composables
+      // (and their running pointerInput coroutines) move with the item
+      // and the drag survives the swap.
+      key(itemId) {
+        val isDragging = index == draggingIndex
+        val translateY = if (isDragging) dragOffsetPx else 0f
+        Box(
+          modifier = Modifier
+            .fillMaxWidth()
+            .height(rowHeightDp.dp)
+            .zIndex(if (isDragging) 1f else 0f)
+            .offset { IntOffset(0, translateY.roundToInt()) }
+        ) {
+          val handleModifier = Modifier.pointerInput(itemId) {
+            detectDragGesturesAfterLongPress(
+              onDragStart = {
+                // Read the current index from `working` rather than
+                // the captured `index`. With `key(itemId)` the
+                // pointerInput coroutine survives reorders, so the
+                // closure's `index` would go stale across multiple
+                // drags on the same item.
+                val currentIdx = working.indexOf(item)
+                if (currentIdx >= 0) {
+                  draggingIndex = currentIdx
+                  dragOffsetPx = 0f
+                  onDragStateChange?.invoke(true)
                 }
-              }
-            },
-            onDragEnd = {
-              draggingIndex = -1
-              dragOffsetPx = 0f
-              onDragStateChange?.invoke(false)
-              if (working != items) onReordered(working)
-            },
-            onDragCancel = {
-              draggingIndex = -1
-              dragOffsetPx = 0f
-              onDragStateChange?.invoke(false)
-              working = items
-            },
-          )
+              },
+              onDrag = { _, drag ->
+                dragOffsetPx += drag.y
+                // Snap to a target index if the drag passes the
+                // threshold of half a row.
+                val current = draggingIndex
+                if (current >= 0) {
+                  val targetDelta = (dragOffsetPx / rowPx).roundToInt()
+                  val target = (current + targetDelta).coerceIn(0, working.size - 1)
+                  if (target != current) {
+                    val swapped = working.toMutableList()
+                    val moved = swapped.removeAt(current)
+                    swapped.add(target, moved)
+                    working = swapped
+                    draggingIndex = target
+                    // Normalize the running offset so the visual
+                    // doesn't jump after the swap.
+                    dragOffsetPx -= (target - current) * rowPx
+                  }
+                }
+              },
+              onDragEnd = {
+                draggingIndex = -1
+                dragOffsetPx = 0f
+                onDragStateChange?.invoke(false)
+                if (working != items) onReordered(working)
+              },
+              onDragCancel = {
+                draggingIndex = -1
+                dragOffsetPx = 0f
+                onDragStateChange?.invoke(false)
+                working = items
+              },
+            )
+          }
+          rowContent(item, handleModifier)
         }
-        rowContent(item, handleModifier)
       }
     }
   }
