@@ -92,6 +92,16 @@ fun QueueSection(
    * the section just sizes itself to N × rowHeight.
    */
   parentViewportHeight: androidx.compose.ui.unit.Dp = 0.dp,
+  /**
+   * D.27.8 — fires `true` when a queue row is lifted into drag mode,
+   * `false` when the drag releases or cancels. Forwarded to the inner
+   * [DragReorderColumn]. The host (`NowPlayingMergedSurface`) uses
+   * this to flip its outer LazyColumn's `userScrollEnabled` so the
+   * vertical drag gesture isn't consumed by parent scrolling. Default
+   * null = no plumbing (test call sites and any future non-LazyColumn
+   * host don't need it).
+   */
+  onDragStateChange: ((Boolean) -> Unit)? = null,
 ) {
   var filter by remember { mutableStateOf("") }
   val filterActive = filter.isNotBlank()
@@ -238,6 +248,7 @@ fun QueueSection(
           val (from, to) = clamped
           onMove(from, to)
         },
+        onDragStateChange = onDragStateChange,
       ) { entry, handleModifier ->
         QueueRow(
           item = entry.item,

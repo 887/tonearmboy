@@ -1,8 +1,8 @@
 # tonearm — main build plan
 
-## Status: 🔄 In progress — Phase D.27.8 (queue drag vs parent scroll) is the only remaining sub-step
+## Status: ✅ DONE
 
-_Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 (search bug, multi-select Add-to-Playlist, playlist detail empty state, single-song queue scroll, advanced filtering, playlist tile UX) shipped 2026-05-02. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03. D.27.8 (queue drag-drop cancelled by parent LazyColumn scroll) is the only remaining sub-step._
+_D.27 (round 8) + D.28 shipped 2026-05-03. D.27.8 fix (queue drag-drop suppresses parent LazyColumn scroll) landed in this round. Phases 0 + A–H shipped 2026-05-03. D.26 daily-driver polish landed 2026-05-02. D.27.1–D.27.7 (search bug, multi-select Add-to-Playlist, playlist detail empty state, single-song queue scroll, advanced filtering, playlist tile UX) shipped 2026-05-02. D.28 (per-tab list↔tile toggle, alphabet rail on every tab) shipped 2026-05-03._
 
 
 ## Stack (locked)
@@ -638,7 +638,7 @@ Five sub-steps:
 
 ---
 
-## Phase D.27 — daily-driver gaps round 8
+## Phase D.27 — daily-driver gaps round 8 — shipped (D.27.1–D.27.7 in commit `317add6`, D.27.8 in this round)
 
 Real-device feedback round 8: six discrete asks from a user who's now living in the player. User pulled praise (*"average fox. good foxes think ahead"*) — every one of these is a gap I should have caught.
 
@@ -703,7 +703,7 @@ Seven sub-steps:
   - `196-d27-playlist-tiles-grid.png`
   - `197-d27-playlist-cover-picker.png`
 
-- [ ] **D.27.8 Queue drag-drop reorder vs parent scroll.** User-reported: dragging a queue row to reorder gets cancelled because the parent `NowPlayingMergedSurface` `LazyColumn` intercepts the vertical motion and scrolls instead. Direct quote: *"can't drag drop items on the queue function because the page scrolls and that disables the drag drop."* Fix: while a drag is active inside `DragReorderColumn`, suppress parent vertical scrolling so the drag gesture isn't consumed by the LazyColumn. Two implementation options:
+- [x] **D.27.8 Queue drag-drop reorder vs parent scroll.** User-reported: dragging a queue row to reorder gets cancelled because the parent `NowPlayingMergedSurface` `LazyColumn` intercepts the vertical motion and scrolls instead. Direct quote: *"can't drag drop items on the queue function because the page scrolls and that disables the drag drop."* Fix: while a drag is active inside `DragReorderColumn`, suppress parent vertical scrolling so the drag gesture isn't consumed by the LazyColumn. Two implementation options:
   - (a) Pass an `onDragStateChange: (Boolean) -> Unit` callback up from `DragReorderColumn` through `QueueSection` to `NowPlayingMergedSurface`, which uses it to flip `LazyListState.userScrollEnabled` on the outer LazyColumn. Drag start → disable parent scroll; drag end (release / cancel) → re-enable.
   - (b) Use a `NestedScrollConnection` on the drag handle that consumes pre-scroll deltas while drag is active.
   

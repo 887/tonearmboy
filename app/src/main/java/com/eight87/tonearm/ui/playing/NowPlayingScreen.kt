@@ -40,6 +40,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.media3.common.Player
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -204,6 +205,18 @@ internal fun NowPlayingMergedSurface(
   // bug). `BoxWithConstraints` here is bounded by the parent
   // (`Modifier.fillMaxSize()` from the caller) so `maxHeight` is the
   // actual viewport height, not Constraints.Infinity.
+  // D.27.8 — while a queue row is being dragged, the outer LazyColumn's
+  // own vertical-scroll gesture handler steals the pointer events
+  // before `DragReorderColumn`'s `pointerInput` sees them, so the user
+  // sees the surface scroll instead of the row lifting. Track drag
+  // state and flip `userScrollEnabled` off for the duration of the
+  // drag. The `DisposableEffect` cleanup resets the flag if the
+  // composable disposes mid-drag (would otherwise leave parent scroll
+  // permanently disabled across recompositions in edge cases).
+  var isQueueDragging by remember { mutableStateOf(false) }
+  DisposableEffect(Unit) {
+    onDispose { isQueueDragging = false }
+  }
   androidx.compose.foundation.layout.BoxWithConstraints(modifier = modifier) {
     val viewport = maxHeight
   LazyColumn(
@@ -214,6 +227,7 @@ internal fun NowPlayingMergedSurface(
       horizontal = 24.dp,
       vertical = 16.dp,
     ),
+    userScrollEnabled = !isQueueDragging,
   ) {
     // -- Item 0: now-playing card ------------------------------------
     item(key = "now_playing_card") {
@@ -322,6 +336,7 @@ internal fun NowPlayingMergedSurface(
         onMove = onMoveQueueItem,
         noMatchFillModifier = Modifier.fillParentMaxHeight(),
         parentViewportHeight = viewport,
+        onDragStateChange = { isQueueDragging = it },
       )
     }
   }

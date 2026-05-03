@@ -54,6 +54,21 @@ fun <T : Any> DragReorderColumn(
   rowHeightDp: Int,
   testTagPrefix: String,
   onReordered: (List<T>) -> Unit,
+  /**
+   * D.27.8 — fires `true` when a long-press lifts a row into drag
+   * mode, `false` on release (`onDragEnd`) AND on cancel
+   * (`onDragCancel`). Callers (e.g. `QueueSection` →
+   * `NowPlayingMergedSurface`) use it to suppress parent
+   * `LazyColumn.userScrollEnabled` while a drag is in flight, so the
+   * vertical drag gesture isn't consumed by the parent scroll
+   * container before the drag-handle's `pointerInput` sees it. Default
+   * null means no plumbing — existing call sites (e.g.
+   * `LibraryTabsDialog`) need no change.
+   *
+   * Both end paths must fire — leaking `true` after a cancel would
+   * freeze the parent scroll forever.
+   */
+  onDragStateChange: ((Boolean) -> Unit)? = null,
   rowContent: @Composable (T, Modifier) -> Unit,
 ) {
   val density = LocalDensity.current
@@ -86,6 +101,7 @@ fun <T : Any> DragReorderColumn(
             onDragStart = {
               draggingIndex = index
               dragOffsetPx = 0f
+              onDragStateChange?.invoke(true)
             },
             onDrag = { _, drag ->
               dragOffsetPx += drag.y
@@ -110,11 +126,13 @@ fun <T : Any> DragReorderColumn(
             onDragEnd = {
               draggingIndex = -1
               dragOffsetPx = 0f
+              onDragStateChange?.invoke(false)
               if (working != items) onReordered(working)
             },
             onDragCancel = {
               draggingIndex = -1
               dragOffsetPx = 0f
+              onDragStateChange?.invoke(false)
               working = items
             },
           )
