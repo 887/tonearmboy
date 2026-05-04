@@ -496,7 +496,9 @@ fun TonearmboyApp(
         entry<NowPlaying> {
           LaunchedEffect(Unit) { sectionTitle.value = "Now Playing" }
           NowPlayingScreen(
-            playback = playback,
+            nowPlayingState = playback,
+            transport = playback,
+            queueCommands = playback,
             onBack = { backStack.pop() },
             albumCoversMode = albumCoversMode,
             onSaveQueueAsPlaylist = { mediaIds ->

@@ -56,7 +56,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearmboy.playback.ConnectionPhase
+import com.eight87.tonearmboy.playback.NowPlayingState
 import com.eight87.tonearmboy.playback.PlaybackUiController
+import com.eight87.tonearmboy.playback.QueueCommands
+import com.eight87.tonearmboy.playback.TransportCommands
 import com.eight87.tonearmboy.playback.PlaybackUiState
 import com.eight87.tonearmboy.playback.QueueItem
 import com.eight87.tonearmboy.playback.QueueSnapshot
@@ -84,13 +87,20 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class, UnstableApi::class)
 @Composable
 fun NowPlayingScreen(
-  playback: PlaybackUiController,
+  // R.C.1 — narrow facets: read-only state + write-only commands.
+  // The wholesale `PlaybackUiController` is no longer in this
+  // signature; AppGraph hands the same instance through three
+  // narrow contracts, but a stray ReplayGain or settings-mirror
+  // call from this screen now fails to compile.
+  nowPlayingState: NowPlayingState,
+  transport: TransportCommands,
+  queueCommands: QueueCommands,
   onBack: () -> Unit,
   albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
   onSaveQueueAsPlaylist: ((mediaIds: List<String>) -> Unit)? = null,
 ) {
-  val state by playback.state.collectAsStateWithLifecycle()
-  val queueSnapshot by playback.queue.collectAsStateWithLifecycle()
+  val state by nowPlayingState.state.collectAsStateWithLifecycle()
+  val queueSnapshot by nowPlayingState.queue.collectAsStateWithLifecycle()
   val listState = rememberLazyListState()
 
   Scaffold(
@@ -141,17 +151,17 @@ fun NowPlayingScreen(
         queueSnapshot = queueSnapshot,
         listState = listState,
         albumCoversMode = albumCoversMode,
-        onSeek = playback::seekTo,
-        onTogglePlayPause = playback::togglePlayPause,
-        onSeekBackward = playback::seekBackward,
-        onSeekForward = playback::seekForward,
-        onSeekToPrevious = playback::seekToPrevious,
-        onSeekToNext = playback::seekToNext,
-        onToggleShuffle = playback::toggleShuffle,
-        onCycleRepeat = playback::cycleRepeatMode,
-        onJumpToQueueIndex = playback::seekToQueueIndex,
-        onRemoveQueueItem = playback::removeQueueItem,
-        onMoveQueueItem = playback::moveQueueItem,
+        onSeek = transport::seekTo,
+        onTogglePlayPause = transport::togglePlayPause,
+        onSeekBackward = transport::seekBackward,
+        onSeekForward = transport::seekForward,
+        onSeekToPrevious = transport::seekToPrevious,
+        onSeekToNext = transport::seekToNext,
+        onToggleShuffle = transport::toggleShuffle,
+        onCycleRepeat = transport::cycleRepeatMode,
+        onJumpToQueueIndex = queueCommands::seekToQueueIndex,
+        onRemoveQueueItem = queueCommands::removeQueueItem,
+        onMoveQueueItem = queueCommands::moveQueueItem,
         modifier = Modifier
           .fillMaxSize()
           .padding(innerPadding)

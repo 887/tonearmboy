@@ -47,10 +47,14 @@ import kotlinx.coroutines.withContext
  * connected controller's events and projects them as state.
  */
 @UnstableApi
-class PlaybackUiController(private val applicationContext: Context) {
+class PlaybackUiController(private val applicationContext: Context) :
+  NowPlayingState,
+  TransportCommands,
+  QueueCommands,
+  ReplayGainCommands {
 
   private val _state = MutableStateFlow(PlaybackUiState.Empty)
-  val state: StateFlow<PlaybackUiState> = _state.asStateFlow()
+  override val state: StateFlow<PlaybackUiState> = _state.asStateFlow()
 
   /**
    * Phase H.4 — re-exposed audio session id from [PlayerHolder]. The
@@ -64,7 +68,7 @@ class PlaybackUiController(private val applicationContext: Context) {
    * than addressing our actual session — the row only fires the intent
    * once we have a real id.
    */
-  val audioSessionId: StateFlow<Int> = PlayerHolder.audioSessionId
+  override val audioSessionId: StateFlow<Int> = PlayerHolder.audioSessionId
 
   /**
    * Phase H.3 — process-wide sleep timer. Lives on this controller's
@@ -104,7 +108,7 @@ class PlaybackUiController(private val applicationContext: Context) {
    * sheet observes this Flow to render rows + the "now playing" marker.
    */
   private val _queue = MutableStateFlow(QueueSnapshot.Empty)
-  val queue: StateFlow<QueueSnapshot> = _queue.asStateFlow()
+  override val queue: StateFlow<QueueSnapshot> = _queue.asStateFlow()
 
   private var controller: MediaController? = null
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -120,7 +124,7 @@ class PlaybackUiController(private val applicationContext: Context) {
   @Volatile
   private var pauseOnRepeat: Boolean = false
 
-  fun setPauseOnRepeat(enabled: Boolean) {
+  override fun setPauseOnRepeat(enabled: Boolean) {
     pauseOnRepeat = enabled
   }
 
@@ -152,7 +156,7 @@ class PlaybackUiController(private val applicationContext: Context) {
    * volume to the active player. Called from the activity's settings
    * observer.
    */
-  fun setReplayGain(strategy: ReplayGainStrategy, preampDb: Float) {
+  override fun setReplayGain(strategy: ReplayGainStrategy, preampDb: Float) {
     replayGainStrategy = strategy
     replayGainPreampDb = preampDb
     scope.launch { applyReplayGainNow() }
@@ -347,7 +351,7 @@ class PlaybackUiController(private val applicationContext: Context) {
 
   // -- Commands --------------------------------------------------------------
 
-  fun playTrack(track: Track) {
+  override fun playTrack(track: Track) {
     val ctl = controller ?: return
     ctl.setMediaItem(track.toMediaItem())
     ctl.prepare()
@@ -356,7 +360,7 @@ class PlaybackUiController(private val applicationContext: Context) {
   }
 
   /** Replace the queue with [tracks] and start at [index]. */
-  fun playQueue(tracks: List<Track>, index: Int = 0) {
+  override fun playQueue(tracks: List<Track>, index: Int) {
     val ctl = controller ?: return
     if (tracks.isEmpty()) return
     val items = tracks.map { it.toMediaItem() }
@@ -366,34 +370,34 @@ class PlaybackUiController(private val applicationContext: Context) {
     pushState()
   }
 
-  fun togglePlayPause() {
+  override fun togglePlayPause() {
     val ctl = controller ?: return
     if (ctl.isPlaying) ctl.pause() else ctl.play()
     pushState()
   }
 
-  fun seekToNext() {
+  override fun seekToNext() {
     controller?.seekToNextMediaItem()
     pushState()
   }
 
-  fun seekToPrevious() {
+  override fun seekToPrevious() {
     controller?.seekToPreviousMediaItem()
     pushState()
   }
 
-  fun seekTo(positionMs: Long) {
+  override fun seekTo(positionMs: Long) {
     controller?.seekTo(positionMs)
     pushState()
   }
 
-  fun seekBackward() {
+  override fun seekBackward() {
     val ctl = controller ?: return
     ctl.seekTo((ctl.currentPosition - SEEK_INCREMENT_MS).coerceAtLeast(0))
     pushState()
   }
 
-  fun seekForward() {
+  override fun seekForward() {
     val ctl = controller ?: return
     val target = ctl.currentPosition + SEEK_INCREMENT_MS
     val cap = ctl.duration.takeIf { it > 0 } ?: target
@@ -401,7 +405,7 @@ class PlaybackUiController(private val applicationContext: Context) {
     pushState()
   }
 
-  fun stop() {
+  override fun stop() {
     controller?.stop()
     controller?.clearMediaItems()
     pushState()
@@ -412,7 +416,7 @@ class PlaybackUiController(private val applicationContext: Context) {
    * empty, also `prepare()` and start playing so the user immediately
    * hears the result instead of staring at a silent player.
    */
-  fun addToQueue(track: Track) {
+  override fun addToQueue(track: Track) {
     val ctl = controller ?: return
     val item = track.toMediaItem()
     if (ctl.mediaItemCount == 0) {
@@ -426,7 +430,7 @@ class PlaybackUiController(private val applicationContext: Context) {
   }
 
   /** D.15.5 — jump to [index] in the current queue and play. */
-  fun seekToQueueIndex(index: Int) {
+  override fun seekToQueueIndex(index: Int) {
     val ctl = controller ?: return
     if (index < 0 || index >= ctl.mediaItemCount) return
     ctl.seekTo(index, 0L)
@@ -435,7 +439,7 @@ class PlaybackUiController(private val applicationContext: Context) {
   }
 
   /** D.15.5 — remove the queue entry at [index]. */
-  fun removeQueueItem(index: Int) {
+  override fun removeQueueItem(index: Int) {
     val ctl = controller ?: return
     if (index < 0 || index >= ctl.mediaItemCount) return
     ctl.removeMediaItem(index)
@@ -459,7 +463,7 @@ class PlaybackUiController(private val applicationContext: Context) {
    * Returns the number of queue entries actually removed (used by
    * tests).
    */
-  fun removeQueueItemsByMediaIds(deletedMediaIds: Set<String>): Int {
+  override fun removeQueueItemsByMediaIds(deletedMediaIds: Set<String>): Int {
     val ctl = controller ?: return 0
     if (deletedMediaIds.isEmpty()) return 0
     val queueIds = (0 until ctl.mediaItemCount).map { i -> ctl.getMediaItemAt(i).mediaId }
@@ -481,7 +485,7 @@ class PlaybackUiController(private val applicationContext: Context) {
    * `CustomBarAction.ShuffleToggle` but bound to the explicit toggle
    * buttons in the queue header + NowPlaying transport row.
    */
-  fun toggleShuffle() {
+  override fun toggleShuffle() {
     val ctl = controller ?: return
     ctl.shuffleModeEnabled = !ctl.shuffleModeEnabled
     pushState()
@@ -492,14 +496,14 @@ class PlaybackUiController(private val applicationContext: Context) {
    * → OFF. Same state machine `nextRepeatMode` already drives via
    * [CustomBarAction.RepeatToggle].
    */
-  fun cycleRepeatMode() {
+  override fun cycleRepeatMode() {
     val ctl = controller ?: return
     ctl.repeatMode = nextRepeatMode(ctl.repeatMode)
     pushState()
   }
 
   /** D.15.5 — move queue item from [from] to [to]. */
-  fun moveQueueItem(from: Int, to: Int) {
+  override fun moveQueueItem(from: Int, to: Int) {
     val ctl = controller ?: return
     val n = ctl.mediaItemCount
     if (from < 0 || from >= n || to < 0 || to >= n || from == to) return
@@ -524,11 +528,11 @@ class PlaybackUiController(private val applicationContext: Context) {
    * UI passes [allSongs] separately so this controller does not need a
    * library-repository handle.
    */
-  fun playFromLibrary(
+  override fun playFromLibrary(
     surroundingList: List<Track>,
     tappedIndex: Int,
     strategy: PlayFromLibrary,
-    allSongs: List<Track> = surroundingList,
+    allSongs: List<Track>,
   ) {
     val (queue, startIndex) = computePlayFromLibraryQueue(
       surroundingList = surroundingList,
@@ -558,7 +562,7 @@ class PlaybackUiController(private val applicationContext: Context) {
    * `ShownItem`. The branch matters for surfaces that mix tracks from
    * multiple albums / artists into one list (e.g. a playlist).
    */
-  fun playFromDetail(
+  override fun playFromDetail(
     surroundingList: List<Track>,
     tappedIndex: Int,
     strategy: PlayFromItemDetails,
@@ -576,7 +580,7 @@ class PlaybackUiController(private val applicationContext: Context) {
    * D.9a.1 — invoked from the mini-player play button's long-press
    * handler. Picker maps to a one-shot transport command.
    */
-  fun performCustomBarAction(action: CustomBarAction) {
+  override fun performCustomBarAction(action: CustomBarAction) {
     val ctl = controller ?: return
     when (action) {
       CustomBarAction.SkipNext -> ctl.seekToNextMediaItem()
@@ -593,7 +597,7 @@ class PlaybackUiController(private val applicationContext: Context) {
    * taps it. The toggle semantics are: Repeat advances OFF -> ALL ->
    * ONE -> OFF; Shuffle flips on / off; None is a no-op.
    */
-  fun performCustomNotificationAction(action: com.eight87.tonearmboy.ui.settings.CustomNotificationAction) {
+  override fun performCustomNotificationAction(action: com.eight87.tonearmboy.ui.settings.CustomNotificationAction) {
     val ctl = controller ?: return
     when (action) {
       com.eight87.tonearmboy.ui.settings.CustomNotificationAction.RepeatMode ->
