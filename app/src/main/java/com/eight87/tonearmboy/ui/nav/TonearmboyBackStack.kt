@@ -41,11 +41,16 @@ class TonearmboyBackStack(rootKey: Destination = LibraryRoot) {
   }
 
   /**
-   * Pop everything down to (and including) the first occurrence of [key]
-   * found from the top, then push it again — i.e. ensure [key] is on
-   * top exactly once. If [key] isn't already in the stack, just push.
+   * R.F.16 — pop everything above the **first (oldest)** occurrence of
+   * [key] in the stack so that [key] sits on top exactly once. If
+   * [key] isn't already in the stack, just push it.
+   *
+   * Renamed from `popToOrPush` so the contract matches the
+   * `indexOfFirst` semantics; for tonearmboy's destinations there is
+   * never a duplicate on the stack so this is also `popToLastOrPush`
+   * in practice (Playback-F12).
    */
-  fun popToOrPush(key: NavKey) {
+  fun popToFirstOrPush(key: NavKey) {
     val idx = backStack.indexOfFirst { it == key }
     if (idx >= 0) {
       while (backStack.size > idx + 1) backStack.removeAt(backStack.lastIndex)

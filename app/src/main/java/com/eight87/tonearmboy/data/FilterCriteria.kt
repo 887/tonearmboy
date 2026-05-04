@@ -185,7 +185,8 @@ data class FilterCriteria(val conditions: List<FilterCondition> = emptyList()) {
         if (obj.containsKey("conditions")) {
           json.decodeFromString(serializer(), raw)
         } else {
-          fromLegacyJson(obj)
+          // R.F.5 — pre-D.30 wire shape; migration moved to a sibling object.
+          FilterCriteriaLegacy.fromJson(obj)
         }
       }.getOrDefault(FilterCriteria())
     }
@@ -207,64 +208,11 @@ data class FilterCriteria(val conditions: List<FilterCondition> = emptyList()) {
       hasAlbumArt: Boolean? = null,
       pathContains: String? = null,
       nameSubstring: String? = null,
-    ): FilterCriteria = FilterCriteria(buildLegacyConditions(
+    ): FilterCriteria = FilterCriteria(FilterCriteriaLegacy.conditionsFromFlatFields(
       genres, artists, albums,
       yearMin, yearMax,
       dateAddedAfter, dateAddedBefore,
       hasAlbumArt, pathContains, nameSubstring,
     ))
-
-    private fun buildLegacyConditions(
-      genres: List<String>,
-      artists: List<String>,
-      albums: List<String>,
-      yearMin: Int?,
-      yearMax: Int?,
-      dateAddedAfter: Long?,
-      dateAddedBefore: Long?,
-      hasAlbumArt: Boolean?,
-      pathContains: String?,
-      nameSubstring: String?,
-    ): List<FilterCondition> = buildList {
-      if (genres.isNotEmpty()) add(FilterCondition.GenreIn(genres))
-      if (artists.isNotEmpty()) add(FilterCondition.ArtistIn(artists))
-      if (albums.isNotEmpty()) add(FilterCondition.AlbumIn(albums))
-      if (yearMin != null || yearMax != null) {
-        add(FilterCondition.YearBetween(min = yearMin, max = yearMax))
-      }
-      if (dateAddedAfter != null || dateAddedBefore != null) {
-        add(FilterCondition.DateAddedBetween(
-          afterEpochSeconds = dateAddedAfter,
-          beforeEpochSeconds = dateAddedBefore,
-        ))
-      }
-      if (hasAlbumArt != null) add(FilterCondition.HasAlbumArt(hasAlbumArt))
-      if (!pathContains.isNullOrBlank()) add(FilterCondition.PathContains(pathContains))
-      if (!nameSubstring.isNullOrBlank()) add(FilterCondition.TitleContains(nameSubstring))
-    }
-
-    private fun fromLegacyJson(obj: JsonObject): FilterCriteria {
-      fun stringList(key: String): List<String> =
-        (obj[key] as? kotlinx.serialization.json.JsonArray)
-          ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
-          ?: emptyList()
-      fun intOrNull(key: String): Int? = (obj[key] as? JsonPrimitive)?.intOrNull
-      fun longOrNull(key: String): Long? = (obj[key] as? JsonPrimitive)?.longOrNull
-      fun booleanOrNull(key: String): Boolean? = (obj[key] as? JsonPrimitive)?.booleanOrNull
-      fun stringOrNull(key: String): String? = (obj[key] as? JsonPrimitive)?.contentOrNull
-
-      return FilterCriteria(buildLegacyConditions(
-        genres = stringList("genres"),
-        artists = stringList("artists"),
-        albums = stringList("albums"),
-        yearMin = intOrNull("yearMin"),
-        yearMax = intOrNull("yearMax"),
-        dateAddedAfter = longOrNull("dateAddedAfter"),
-        dateAddedBefore = longOrNull("dateAddedBefore"),
-        hasAlbumArt = booleanOrNull("hasAlbumArt"),
-        pathContains = stringOrNull("pathContains"),
-        nameSubstring = stringOrNull("nameSubstring"),
-      ))
-    }
   }
 }

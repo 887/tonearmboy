@@ -48,18 +48,18 @@ class TonearmboyBackStackTest {
   }
 
   @Test
-  fun popToOrPush_collapsesToExistingEntry() {
+  fun popToFirstOrPush_collapsesToExistingEntry() {
     val s = TonearmboyBackStack()
     s.push(SettingsRootDest)
     s.push(SettingsLookAndFeel)
-    s.popToOrPush(SettingsRootDest)
+    s.popToFirstOrPush(SettingsRootDest)
     assertEquals(listOf(LibraryRoot, SettingsRootDest), s.backStack.toList())
   }
 
   @Test
-  fun popToOrPush_pushesIfMissing() {
+  fun popToFirstOrPush_pushesIfMissing() {
     val s = TonearmboyBackStack()
-    s.popToOrPush(Search)
+    s.popToFirstOrPush(Search)
     assertEquals(listOf(LibraryRoot, Search), s.backStack.toList())
   }
 }
