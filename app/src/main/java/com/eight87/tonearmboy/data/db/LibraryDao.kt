@@ -14,48 +14,37 @@ import androidx.room.Transaction
 interface LibraryDao {
 
   /**
-   * Atomically replace the cached track set + derived rollups
-   * (albums / artists / genres). Used by the repository after a full
-   * scan; for incremental updates we use [applyDelta].
+   * Atomically replace the cached track set + derived rollups. Used
+   * by the repository after a full scan; for incremental updates use
+   * [applyDelta]. (R.F.6 / Data-F9.)
    */
   @Transaction
-  suspend fun replaceAll(
-    tracks: List<TrackEntity>,
-    albums: List<AlbumEntity>,
-    artists: List<ArtistEntity>,
-    genres: List<GenreEntity>,
-  ) {
+  suspend fun replaceAll(snapshot: LibrarySnapshot) {
     deleteAllTracks()
     deleteAllAlbums()
     deleteAllArtists()
     deleteAllGenres()
-    insertTracks(tracks)
-    insertAlbums(albums)
-    insertArtists(artists)
-    insertGenres(genres)
+    insertTracks(snapshot.tracks)
+    insertAlbums(snapshot.albums)
+    insertArtists(snapshot.artists)
+    insertGenres(snapshot.genres)
   }
 
   /**
    * Apply an incremental change: remove gone ids, upsert added/changed
    * rows, then refresh the rollup tables. Run inside a single Room
-   * transaction so observers fire once.
+   * transaction so observers fire once. (R.F.6 / Data-F9.)
    */
   @Transaction
-  suspend fun applyDelta(
-    removed: List<Long>,
-    upserted: List<TrackEntity>,
-    albums: List<AlbumEntity>,
-    artists: List<ArtistEntity>,
-    genres: List<GenreEntity>,
-  ) {
-    if (removed.isNotEmpty()) deleteTracksById(removed)
-    if (upserted.isNotEmpty()) insertTracks(upserted)
+  suspend fun applyDelta(delta: LibraryDelta) {
+    if (delta.removedTrackIds.isNotEmpty()) deleteTracksById(delta.removedTrackIds)
+    if (delta.upsertedTracks.isNotEmpty()) insertTracks(delta.upsertedTracks)
     deleteAllAlbums()
     deleteAllArtists()
     deleteAllGenres()
-    insertAlbums(albums)
-    insertArtists(artists)
-    insertGenres(genres)
+    insertAlbums(delta.albums)
+    insertArtists(delta.artists)
+    insertGenres(delta.genres)
   }
 
   @Query("DELETE FROM tracks") suspend fun deleteAllTracks()

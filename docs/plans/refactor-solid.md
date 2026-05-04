@@ -119,7 +119,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [ ] **R.F.3** Extract `PlaybackTransportRow(state, callbacks, iconSize)` shared between `MiniPlayer` and `NowPlayingScreen`. Mini-player passes `iconSize = 24.dp`, NowPlaying passes 36/56 (UI-F11).
 - [ ] **R.F.4** Split `Track` into `Track` (cache-faithful domain) + `ScannedTrack` (scan-only superset with splitter outputs + album-level ReplayGain). Removes the silent contract drift in `Mapping.toDomain` (Data-F4 + F10).
 - [x] **R.F.5** Move `FilterCriteria.fromLegacyJson` + `buildLegacyConditions` into a sibling `FilterCriteriaLegacy` object. Frozen migration concern lives next door, not in the live type (Data-F8).
-- [ ] **R.F.6** `LibraryDao.replaceAll` / `applyDelta` take `LibrarySnapshot` data class instead of 4 explicit lists (Data-F9).
+- [x] **R.F.6** `LibraryDao.replaceAll` / `applyDelta` take `LibrarySnapshot` data class instead of 4 explicit lists (Data-F9).
 - [x] **R.F.7** Split `data/db/Entities.kt` per entity (Data-F12). Cosmetic but cheap; reduces merge friction in worktrees.
 - [x] **R.F.8** Delete vestigial `data/DataRepository.kt` + `MainScreenViewModel` placeholder if nav-graph-orphan (Data-F11).
 - [ ] **R.F.9** Extract `MediaChangeObserver` shared by repository scan + `LibraryWatcherService`; one debounce policy (Data-F7).

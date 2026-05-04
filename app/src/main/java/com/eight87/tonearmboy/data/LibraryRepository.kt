@@ -496,7 +496,9 @@ class LibraryRepository(
       )
       val artists = Mapping.deriveArtistsFromDomain(tracksDomain)
       val genres = Mapping.deriveGenresFromDomain(tracksDomain)
-      db.libraryDao().replaceAll(snapshot, albums, artists, genres)
+      db.libraryDao().replaceAll(
+        com.eight87.tonearmboy.data.db.LibrarySnapshot(snapshot, albums, artists, genres),
+      )
       Log.i(TAG, "scan(initial): tracks=${snapshot.size}")
     } else {
       val cachedIds = db.trackDao().allIds().toHashSet()
@@ -507,7 +509,9 @@ class LibraryRepository(
       )
       val artists = Mapping.deriveArtistsFromDomain(tracksDomain)
       val genres = Mapping.deriveGenresFromDomain(tracksDomain)
-      db.libraryDao().applyDelta(removed, upserted, albums, artists, genres)
+      db.libraryDao().applyDelta(
+        com.eight87.tonearmboy.data.db.LibraryDelta(removed, upserted, albums, artists, genres),
+      )
       Log.i(TAG, "scan(delta): added/updated=${upserted.size}, removed=${removed.size}")
     }
   }
