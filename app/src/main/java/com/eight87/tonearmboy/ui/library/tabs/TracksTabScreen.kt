@@ -177,7 +177,7 @@ internal class TracksTabSpec(
   private val onAction: (Track, TrackContextAction) -> Unit,
 ) : TabSpec<Track> {
   override val testTag: String = "tracks_tab"
-  override val emptyMessage: String = "No tracks yet."
+  override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_songs
   override val supportsTileMode: Boolean = true
 
   override fun id(item: Track): Long = item.id

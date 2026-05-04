@@ -30,8 +30,9 @@ interface TabSpec<T : Any> {
   /** `Modifier.semantics { testTag = … }` value for the outer Row. */
   val testTag: String
 
-  /** Copy for [EmptyState] when the data list is empty. */
-  val emptyMessage: String
+  /** T.A.3 — string-resource id for [EmptyState] when the data list is empty. */
+  @get:androidx.annotation.StringRes
+  val emptyMessageRes: Int
 
   /** Tile-mode availability — list-only tabs (e.g. Playlists) return false. */
   val supportsTileMode: Boolean

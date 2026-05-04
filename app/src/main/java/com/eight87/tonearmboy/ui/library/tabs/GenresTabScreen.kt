@@ -61,7 +61,7 @@ fun GenresListScreen(
 /** R.D.3 — TabSpec for the Genres tab. */
 internal object GenresTabSpec : TabSpec<Genre> {
   override val testTag: String = "genres_tab"
-  override val emptyMessage: String = "No genres yet."
+  override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_genres
   override val supportsTileMode: Boolean = true
 
   override fun id(item: Genre): Long = item.id

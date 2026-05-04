@@ -72,7 +72,7 @@ fun ArtistsListScreen(
 /** R.D.3 — TabSpec for the Artists tab. */
 internal object ArtistsTabSpec : TabSpec<Artist> {
   override val testTag: String = "artists_tab"
-  override val emptyMessage: String = "No artists yet."
+  override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_artists
   override val supportsTileMode: Boolean = true
 
   override fun id(item: Artist): Long = item.id

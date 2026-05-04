@@ -42,7 +42,9 @@ class LibraryTabRendererTest {
 
   private object FakeSpec : TabSpec<FakeItem> {
     override val testTag: String = "fake_tab"
-    override val emptyMessage: String = "No fake items yet."
+    // T.A.3 — point at any string resource; the test only asserts that
+    // the empty-state composable renders, not on the resolved text.
+    override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_songs
     override val supportsTileMode: Boolean = true
     override fun id(item: FakeItem): Long = item.id
     override fun sectionKey(item: FakeItem, sort: TabSort, intelligentSorting: Boolean): String? =
@@ -88,7 +90,8 @@ class LibraryTabRendererTest {
         )
       }
     }
-    composeRule.onNodeWithText("No fake items yet.").assertIsDisplayed()
+    // T.A.3 — empty-state copy now resolved from R.string.library_empty_songs.
+    composeRule.onNodeWithText("No tracks yet.").assertIsDisplayed()
     assertEquals(0, composeRule.onAllNodesWithTag("fake_tab").fetchSemanticsNodes().size)
   }
 

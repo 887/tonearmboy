@@ -52,7 +52,7 @@ fun <T : Any> LibraryTabRenderer(
   onItemLongClick: ((T) -> Unit)? = null,
 ) {
   if (items.isEmpty()) {
-    EmptyState(spec.emptyMessage)
+    EmptyState(spec.emptyMessageRes)
     return
   }
 

@@ -75,7 +75,7 @@ fun PlaylistsListScreen(
  */
 internal object PlaylistsTabSpec : TabSpec<Playlist> {
   override val testTag: String = "playlists_tab"
-  override val emptyMessage: String = "No playlists yet. Tap + to create one."
+  override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_playlists
   override val supportsTileMode: Boolean = false
 
   override fun id(item: Playlist): Long = item.id

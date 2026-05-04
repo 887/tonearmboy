@@ -96,8 +96,7 @@ internal class AlbumsTabSpec(
   private val albumCoversMode: AlbumCoversMode,
 ) : TabSpec<Album> {
   override val testTag: String = "albums_tab"
-  override val emptyMessage: String =
-    "No albums yet. Add audio files to your device, then tap Rescan music."
+  override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_albums
   override val supportsTileMode: Boolean = true
 
   override fun id(item: Album): Long = item.id
