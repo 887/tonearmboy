@@ -460,11 +460,10 @@ class LibraryRepository(
     // around the bar shifts height. Throttling here keeps the UI
     // thread free without losing user-visible progress fidelity.
     var lastEmit = 0L
-    val tracksDomain = try {
+    // R.F.4 — scanner returns ScannedTrack (scan-only superset).
+    val scanned = try {
       scanner.scanTracks(separators, scopePrefixes) { scanned, total, title ->
         val now = android.os.SystemClock.uptimeMillis()
-        // Always emit the terminal frame (scanned == total) so the bar
-        // settles on 100 % before being cleared in the `finally`.
         if (scanned == total || now - lastEmit >= SCAN_PROGRESS_THROTTLE_MS) {
           lastEmit = now
           _scanProgress.value = ScanProgress(scanned, total, title)
@@ -473,11 +472,11 @@ class LibraryRepository(
     } finally {
       _scanProgress.value = null
     }
-    val snapshot = tracksDomain.map { it.toEntity() }
+    val snapshot = scanned.map { with(Mapping) { it.toTrackEntity() } }
     val snapshotIds = snapshot.map { it.id }.toHashSet()
 
     val albumGainPairs: List<Pair<TrackEntity, Pair<Float?, Float?>>> =
-      tracksDomain.zip(snapshot).map { (t, e) ->
+      scanned.zip(snapshot).map { (t, e) ->
         e to (t.replayGainAlbumDb to t.replayGainAlbumPeak)
       }
 
@@ -485,8 +484,8 @@ class LibraryRepository(
       val albums = Mapping.foldAlbumReplayGain(
         Mapping.deriveAlbums(snapshot), albumGainPairs,
       )
-      val artists = Mapping.deriveArtistsFromDomain(tracksDomain)
-      val genres = Mapping.deriveGenresFromDomain(tracksDomain)
+      val artists = Mapping.deriveArtistsFromScanned(scanned)
+      val genres = Mapping.deriveGenresFromScanned(scanned)
       db.libraryDao().replaceAll(
         com.eight87.tonearmboy.data.db.LibrarySnapshot(snapshot, albums, artists, genres),
       )
@@ -494,12 +493,12 @@ class LibraryRepository(
     } else {
       val cachedIds = db.trackDao().allIds().toHashSet()
       val removed = (cachedIds - snapshotIds).toList()
-      val upserted = snapshot // simplest correct: REPLACE-on-id covers both new + changed
+      val upserted = snapshot
       val albums = Mapping.foldAlbumReplayGain(
         Mapping.deriveAlbums(snapshot), albumGainPairs,
       )
-      val artists = Mapping.deriveArtistsFromDomain(tracksDomain)
-      val genres = Mapping.deriveGenresFromDomain(tracksDomain)
+      val artists = Mapping.deriveArtistsFromScanned(scanned)
+      val genres = Mapping.deriveGenresFromScanned(scanned)
       db.libraryDao().applyDelta(
         com.eight87.tonearmboy.data.db.LibraryDelta(removed, upserted, albums, artists, genres),
       )

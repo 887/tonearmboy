@@ -1,11 +1,15 @@
 package com.eight87.tonearmboy.data.model
 
 /**
- * Domain model for an audio track. Constructed from the MediaStore audio
- * cursor and persisted via [com.eight87.tonearmboy.data.db.TrackEntity].
+ * Domain model for an audio track. Cache-faithful: every field maps
+ * 1:1 to a column on [com.eight87.tonearmboy.data.db.TrackEntity], so
+ * a Track loaded from cache and a Track produced by `Mapping.toDomain`
+ * carry exactly the same data.
  *
- * The library exposes domain models, never raw cursors or Room entities,
- * to the UI / playback layers.
+ * R.F.4 — scan-only fields (album-level ReplayGain, multi-value-splitter
+ * outputs) live on [ScannedTrack], a separate scanner-output type. The
+ * pre-R.F.4 contract drift, where [Track] carried defaultable scan-only
+ * fields that the cache silently dropped, is gone. (Data-F4 + F10.)
  */
 data class Track(
   val id: Long,
@@ -22,25 +26,9 @@ data class Track(
   /** D.9b.1 — track-level ReplayGain in dB. Null when missing. */
   val replayGainTrackDb: Float? = null,
   val replayGainTrackPeak: Float? = null,
-  /** D.9b.1 — album-level ReplayGain in dB. Null when missing. */
-  val replayGainAlbumDb: Float? = null,
-  val replayGainAlbumPeak: Float? = null,
   /**
    * D.9b.3 — MediaStore album id, captured at scan time so the UI can
    * resolve cover-art via the album-art content provider.
    */
   val mediaStoreAlbumId: Long? = null,
-  /**
-   * D.9c.1 — secondary artist values produced when the user enables
-   * multi-value separator splitting. The primary value is in [artist]
-   * (used for display); these additional values are folded into the
-   * artist-rollup so e.g. `"Jane Doe; John Smith"` becomes two rows
-   * on the Artists tab. Not persisted to Room — derivation runs from
-   * the live scan, not from the cached entities.
-   */
-  val additionalArtists: List<String> = emptyList(),
-  /** D.9c.1 — secondary album-artist values; same semantics as [additionalArtists]. */
-  val additionalAlbumArtists: List<String> = emptyList(),
-  /** D.9c.1 — secondary genre values; same semantics as [additionalArtists]. */
-  val additionalGenres: List<String> = emptyList(),
 )

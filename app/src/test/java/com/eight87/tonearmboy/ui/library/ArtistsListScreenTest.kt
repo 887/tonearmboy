@@ -73,7 +73,12 @@ class ArtistsListScreenTest {
 
   // --- hide-collaborators filter mirror ------------------------------------
 
-  /** Pure mirror of the Repository's hide-collaborators rule. */
+  /**
+   * Pure mirror of the Repository's hide-collaborators rule. R.F.4 —
+   * Track no longer carries `additionalArtists` (those moved to
+   * `ScannedTrack`); this mirror tracks the live entity-keyed
+   * derivation in `LibraryRepository.deriveArtistsFromTracks`.
+   */
   private fun deriveArtistRoster(tracks: List<Track>, hideCollaborators: Boolean): Set<String> {
     return if (hideCollaborators) {
       tracks.mapNotNull { it.albumArtist?.takeIf { name -> name.isNotBlank() } ?: it.artist }
@@ -81,17 +86,16 @@ class ArtistsListScreenTest {
         .toSet()
     } else {
       tracks.flatMap { t ->
-        listOfNotNull(t.artist) + listOfNotNull(t.albumArtist) + t.additionalArtists
+        listOfNotNull(t.artist, t.albumArtist).distinct()
       }.filter { it.isNotBlank() }.toSet()
     }
   }
 
-  private fun track(id: Long, artist: String?, albumArtist: String? = null, additional: List<String> = emptyList()) =
+  private fun track(id: Long, artist: String?, albumArtist: String? = null) =
     Track(
       id = id, title = "T$id", artist = artist, album = null,
       albumArtist = albumArtist, durationMs = 0, trackNumber = null,
       year = null, genre = null, data = "", dateAddedSeconds = 0,
-      additionalArtists = additional,
     )
 
   @Test
@@ -111,13 +115,11 @@ class ArtistsListScreenTest {
 
   @Test
   fun hide_collaborators_off_keeps_every_credited_name() {
+    // R.F.4 — additionalArtists moved to ScannedTrack (scan-only); the
+    // Track-keyed mirror only sees primary + albumArtist.
     val tracks = listOf(
-      track(
-        1,
-        artist = "Jane Doe",
-        albumArtist = "Quiet Hours",
-        additional = listOf("John Smith"),
-      ),
+      track(1, artist = "Jane Doe", albumArtist = "Quiet Hours"),
+      track(2, artist = "John Smith"),
     )
     val roster = deriveArtistRoster(tracks, hideCollaborators = false)
     assertEquals(setOf("Jane Doe", "Quiet Hours", "John Smith"), roster)

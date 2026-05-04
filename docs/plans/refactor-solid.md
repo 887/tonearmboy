@@ -1,6 +1,6 @@
 # tonearmboy — SOLID refactor plan
 
-## Status: 🟡 IN PROGRESS — Phase R.A starts after the next user kick-off.
+## Status: ✅ DONE — every phase shipped (R.A → R.B → R.C → R.D → R.E → R.F).
 
 _Synthesized 2026-05-03 from a four-agent SOLID audit (data / ui-library+playing / settings / playback+nav). 50 findings collapsed into six lettered phases below, ordered so each phase unblocks the next. Phase R.A is mechanical and low-risk; phases get hairier downstream._
 
@@ -110,21 +110,21 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 ---
 
-## Phase R.F — cross-cutting polish (independent small wins)
+## Phase R.F — cross-cutting polish (independent small wins) — shipped in commits `32741ca..<head>`
 
 **Why:** Each item below is independent and ships standalone. Pick whichever lands in front of the next feature you touch — they don't block each other and don't block earlier phases.
 
 - [x] **R.F.1** Unify `TrackRow` + `DetailTrackRow` + `QueueRow` behind one composable + sealed `TrackContextAction` (UI-F5). Removes a duplicated enum + future-proofs new actions. — shipped: shared `TrackContextAction` enum + `TrackContextMenu` composable replace `TrackRowAction`/`AlbumDetailTrackAction`. `QueueRow` kept separate — its drag-handle / leading-X / active-highlight shape doesn't fold cleanly behind a single composable.
 - [x] **R.F.2** Per-variant `ConditionUi` registry on `FilterCondition` (label + summary + `@Composable Editor` + default factory). Editor screen iterates the registry — true OCP for new variants (UI-F10).
 - [x] **R.F.3** Extract `PlaybackTransportRow(state, callbacks, iconSize)` shared between `MiniPlayer` and `NowPlayingScreen`. Mini-player passes `iconSize = 24.dp`, NowPlaying passes 36/56 (UI-F11).
-- [ ] **R.F.4** Split `Track` into `Track` (cache-faithful domain) + `ScannedTrack` (scan-only superset with splitter outputs + album-level ReplayGain). Removes the silent contract drift in `Mapping.toDomain` (Data-F4 + F10).
+- [x] **R.F.4** Split `Track` into `Track` (cache-faithful domain) + `ScannedTrack` (scan-only superset with splitter outputs + album-level ReplayGain). Removes the silent contract drift in `Mapping.toDomain` (Data-F4 + F10).
 - [x] **R.F.5** Move `FilterCriteria.fromLegacyJson` + `buildLegacyConditions` into a sibling `FilterCriteriaLegacy` object. Frozen migration concern lives next door, not in the live type (Data-F8).
 - [x] **R.F.6** `LibraryDao.replaceAll` / `applyDelta` take `LibrarySnapshot` data class instead of 4 explicit lists (Data-F9).
 - [x] **R.F.7** Split `data/db/Entities.kt` per entity (Data-F12). Cosmetic but cheap; reduces merge friction in worktrees.
 - [x] **R.F.8** Delete vestigial `data/DataRepository.kt` + `MainScreenViewModel` placeholder if nav-graph-orphan (Data-F11).
 - [x] **R.F.9** Extract `MediaChangeObserver` shared by repository scan + `LibraryWatcherService`; one debounce policy (Data-F7).
-- [ ] **R.F.10** Extract `MediaStoreCursorReader` + `ReplayGainEnricher` from `MediaStoreScanner`; drop `runBlocking`, make API `suspend` (Data-F5).
-- [ ] **R.F.11** Extract `QueuePersistenceController` + `NotificationLayoutController` from `PlaybackService`; service `onCreate` becomes wiring only (Playback-F7).
+- [x] **R.F.10** Extract `MediaStoreCursorReader` + `ReplayGainEnricher` from `MediaStoreScanner`; drop `runBlocking`, make API `suspend` (Data-F5).
+- [x] **R.F.11** Extract `QueuePersistenceController` + `NotificationLayoutController` from `PlaybackService`; service `onCreate` becomes wiring only (Playback-F7).
 - [x] **R.F.12** Add `repository.observeTracksForAlbum/Artist/Genre/observeYearSpan` Flows; detail screens stop filtering in Compose (UI-F7 + F14).
 - [x] **R.F.13** Fold `RowKind` into `SettingsRowBinding` so each binding carries its own `@Composable Render(entry)`; the `null` arm becomes a compile-time error (Settings-F9).
 - [x] **R.F.14** Co-locate `SettingsCatalog` row definitions per section file; one aggregator `flatten`s. Removes the 683-LOC central edit-magnet (Settings-F7).

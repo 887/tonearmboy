@@ -4,11 +4,18 @@ import com.eight87.tonearmboy.data.db.AlbumEntity
 import com.eight87.tonearmboy.data.db.ArtistEntity
 import com.eight87.tonearmboy.data.db.GenreEntity
 import com.eight87.tonearmboy.data.db.TrackEntity
+import com.eight87.tonearmboy.data.model.ScannedTrack
 import com.eight87.tonearmboy.data.model.Track
 
 /**
  * Pure functions translating between the on-disk Room entities and the
  * domain models the rest of the app sees.
+ *
+ * R.F.4 — `ScannedTrack` is the scanner's superset; `Track` is the
+ * cache-faithful subset. `toDomain` produces `Track` from `TrackEntity`
+ * 1:1 (no defaults, no drift); the scan flow uses
+ * [ScannedTrack.toTrackEntity] to drop the scan-only fields when
+ * persisting.
  */
 internal object Mapping {
 
@@ -27,12 +34,27 @@ internal object Mapping {
     replayGainTrackDb = replayGainTrackDb,
     replayGainTrackPeak = replayGainTrackPeak,
     mediaStoreAlbumId = mediaStoreAlbumId,
-    // album-level ReplayGain fields are populated by the repository
-    // after the album rollup is rebuilt; the per-track entity itself
-    // only stores track-level values to keep the schema minimal.
   )
 
   fun Track.toEntity(): TrackEntity = TrackEntity(
+    id = id,
+    title = title,
+    artist = artist,
+    album = album,
+    albumArtist = albumArtist,
+    durationMs = durationMs,
+    trackNumber = trackNumber,
+    year = year,
+    genre = genre,
+    data = data,
+    dateAddedSeconds = dateAddedSeconds,
+    replayGainTrackDb = replayGainTrackDb,
+    replayGainTrackPeak = replayGainTrackPeak,
+    mediaStoreAlbumId = mediaStoreAlbumId,
+  )
+
+  /** R.F.4 — explicit lossy conversion: drops the album-level RG + splitter outputs. */
+  fun ScannedTrack.toTrackEntity(): TrackEntity = TrackEntity(
     id = id,
     title = title,
     artist = artist,
@@ -124,18 +146,14 @@ internal object Mapping {
   }
 
   /**
-   * D.9c.1 — derive artist rows from the live scan rather than from
-   * the cached `TrackEntity` set, so the per-track `additionalArtists` /
-   * `additionalAlbumArtists` lists produced by the multi-value splitter
-   * contribute extra rows. Falls back to the entity-only behaviour for
-   * tracks with no additional values.
+   * D.9c.1 — derive artist rows from the live scan, including each
+   * track's `additionalArtists` / `additionalAlbumArtists` lists from
+   * the multi-value splitter. Replaces the pre-R.F.4
+   * `deriveArtistsFromDomain(List<Track>)`. (Data-F4.)
    */
-  fun deriveArtistsFromDomain(tracks: List<Track>): List<ArtistEntity> {
+  fun deriveArtistsFromScanned(tracks: List<ScannedTrack>): List<ArtistEntity> {
     val names = LinkedHashSet<String>()
     for (t in tracks) {
-      // Prefer album-artist when present; else artist. Splits are
-      // already applied — the primary value is in `albumArtist`/`artist`,
-      // additional values in the parallel lists.
       val primary = t.albumArtist ?: t.artist
       primary?.takeIf { it.isNotBlank() }?.let { names += it }
       val additional = if (t.albumArtist != null) {
@@ -156,9 +174,10 @@ internal object Mapping {
 
   /**
    * D.9c.1 — derive genre rows from the live scan, including each
-   * track's `additionalGenres` from the multi-value splitter.
+   * track's `additionalGenres` from the multi-value splitter. Replaces
+   * the pre-R.F.4 `deriveGenresFromDomain(List<Track>)`. (Data-F4.)
    */
-  fun deriveGenresFromDomain(tracks: List<Track>): List<GenreEntity> {
+  fun deriveGenresFromScanned(tracks: List<ScannedTrack>): List<GenreEntity> {
     val names = LinkedHashSet<String>()
     for (t in tracks) {
       t.genre?.takeIf { it.isNotBlank() }?.let { names += it }
