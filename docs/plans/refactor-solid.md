@@ -118,21 +118,21 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [ ] **R.F.2** Per-variant `ConditionUi` registry on `FilterCondition` (label + summary + `@Composable Editor` + default factory). Editor screen iterates the registry — true OCP for new variants (UI-F10).
 - [ ] **R.F.3** Extract `PlaybackTransportRow(state, callbacks, iconSize)` shared between `MiniPlayer` and `NowPlayingScreen`. Mini-player passes `iconSize = 24.dp`, NowPlaying passes 36/56 (UI-F11).
 - [ ] **R.F.4** Split `Track` into `Track` (cache-faithful domain) + `ScannedTrack` (scan-only superset with splitter outputs + album-level ReplayGain). Removes the silent contract drift in `Mapping.toDomain` (Data-F4 + F10).
-- [ ] **R.F.5** Move `FilterCriteria.fromLegacyJson` + `buildLegacyConditions` into a sibling `FilterCriteriaLegacy` object. Frozen migration concern lives next door, not in the live type (Data-F8).
-- [ ] **R.F.6** `LibraryDao.replaceAll` / `applyDelta` take `LibrarySnapshot` data class instead of 4 explicit lists (Data-F9).
-- [ ] **R.F.7** Split `data/db/Entities.kt` per entity (Data-F12). Cosmetic but cheap; reduces merge friction in worktrees.
-- [ ] **R.F.8** Delete vestigial `data/DataRepository.kt` + `MainScreenViewModel` placeholder if nav-graph-orphan (Data-F11).
-- [ ] **R.F.9** Extract `MediaChangeObserver` shared by repository scan + `LibraryWatcherService`; one debounce policy (Data-F7).
+- [x] **R.F.5** Move `FilterCriteria.fromLegacyJson` + `buildLegacyConditions` into a sibling `FilterCriteriaLegacy` object. Frozen migration concern lives next door, not in the live type (Data-F8).
+- [x] **R.F.6** `LibraryDao.replaceAll` / `applyDelta` take `LibrarySnapshot` data class instead of 4 explicit lists (Data-F9).
+- [x] **R.F.7** Split `data/db/Entities.kt` per entity (Data-F12). Cosmetic but cheap; reduces merge friction in worktrees.
+- [x] **R.F.8** Delete vestigial `data/DataRepository.kt` + `MainScreenViewModel` placeholder if nav-graph-orphan (Data-F11).
+- [x] **R.F.9** Extract `MediaChangeObserver` shared by repository scan + `LibraryWatcherService`; one debounce policy (Data-F7).
 - [ ] **R.F.10** Extract `MediaStoreCursorReader` + `ReplayGainEnricher` from `MediaStoreScanner`; drop `runBlocking`, make API `suspend` (Data-F5).
 - [ ] **R.F.11** Extract `QueuePersistenceController` + `NotificationLayoutController` from `PlaybackService`; service `onCreate` becomes wiring only (Playback-F7).
 - [ ] **R.F.12** Add `repository.observeTracksForAlbum/Artist/Genre/observeYearSpan` Flows; detail screens stop filtering in Compose (UI-F7 + F14).
 - [ ] **R.F.13** Fold `RowKind` into `SettingsRowBinding` so each binding carries its own `@Composable Render(entry)`; the `null` arm becomes a compile-time error (Settings-F9).
 - [ ] **R.F.14** Co-locate `SettingsCatalog` row definitions per section file; one aggregator `flatten`s. Removes the 683-LOC central edit-magnet (Settings-F7).
-- [ ] **R.F.15** Replace `Group` enum with inline `GroupRef`; render order via list position. Removes `PersonalizeBehaviour`-style hacks (Settings-F8).
-- [ ] **R.F.16** Rename `popToOrPush` to `popToFirstOrPush` (or fix to `indexOfLast` to match doc), so the LSP contract matches the name (Playback-F12).
+- [x] **R.F.15** Replace `Group` enum with inline `GroupRef`; render order via list position. Removes `PersonalizeBehaviour`-style hacks (Settings-F8).
+- [x] **R.F.16** Rename `popToOrPush` to `popToFirstOrPush` (or fix to `indexOfLast` to match doc), so the LSP contract matches the name (Playback-F12).
 - [ ] **R.F.17** `rememberSettingPicker<T>(...)` helper so each sub-page body becomes a `bindings` list, not 100+ LOC of `var xPicker by remember { mutableStateOf(false) }` (Settings-F5).
-- [ ] **R.F.18** `CustomTabContent` callbacks grouped by audience (`TrackInteractions` / `NavInteractions`); ARTISTS/ALBUMS/GENRES branches drop 5 unused params (UI-F8).
-- [ ] **R.F.19** `PlaylistsTilesScreen` extracts `PlaylistDialogHost` + sealed `PlaylistDialogState` (UI-F9).
+- [x] **R.F.18** `CustomTabContent` callbacks grouped by audience (`TrackInteractions` / `NavInteractions`); ARTISTS/ALBUMS/GENRES branches drop 5 unused params (UI-F8).
+- [x] **R.F.19** `PlaylistsTilesScreen` extracts `PlaylistDialogHost` + sealed `PlaylistDialogState` (UI-F9).
 
 ---
 

@@ -386,15 +386,19 @@ fun LibraryScreen(
             forceSquareCovers = forceSquareCovers,
             albumCoversMode = albumCoversMode,
             viewMode = activeViewMode,
-            onTrackClick = onTrackClick,
-            onAddToQueue = onAddToQueue,
-            onAddToPlaylist = onAddToPlaylist,
-            onAddTracksToPlaylist = onAddTracksToPlaylist,
-            onDeleteTracks = onDeleteTracks,
-            onOpenAlbum = onOpenAlbum,
-            onOpenArtist = onOpenArtist,
-            onOpenGenre = onOpenGenre,
-            onComingSoon = onComingSoon,
+            trackInteractions = TrackInteractions(
+              onTrackClick = onTrackClick,
+              onAddToQueue = onAddToQueue,
+              onAddToPlaylist = onAddToPlaylist,
+              onAddTracksToPlaylist = onAddTracksToPlaylist,
+              onDeleteTracks = onDeleteTracks,
+              onComingSoon = onComingSoon,
+            ),
+            nav = NavInteractions(
+              onOpenAlbum = onOpenAlbum,
+              onOpenArtist = onOpenArtist,
+              onOpenGenre = onOpenGenre,
+            ),
           )
         } else when (activeTab) {
           LibraryTab.Songs -> TracksListScreen(

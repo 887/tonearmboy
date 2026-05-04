@@ -80,7 +80,7 @@ class LibraryDatabaseTest {
     val artists = listOf(ArtistEntity(name = "Alice"), ArtistEntity(name = "Bob"))
     val genres = listOf(GenreEntity(name = "Rock"), GenreEntity(name = "Jazz"))
 
-    libraryDao.replaceAll(tracks, albums, artists, genres)
+    libraryDao.replaceAll(LibrarySnapshot(tracks, albums, artists, genres))
 
     assertEquals(3, trackDao.observeAll().first().size)
 
@@ -102,17 +102,17 @@ class LibraryDatabaseTest {
 
   @Test fun `applyDelta removes gone tracks and adds new ones`() = runTest {
     val initial = listOf(track(1L), track(2L))
-    libraryDao.replaceAll(initial, emptyList(), emptyList(), emptyList())
+    libraryDao.replaceAll(LibrarySnapshot(initial, emptyList(), emptyList(), emptyList()))
     assertEquals(2, trackDao.allIds().size)
 
     val nextSnapshot = listOf(track(2L, title = "renamed"), track(3L))
-    libraryDao.applyDelta(
-      removed = listOf(1L),
-      upserted = nextSnapshot,
+    libraryDao.applyDelta(LibraryDelta(
+      removedTrackIds = listOf(1L),
+      upsertedTracks = nextSnapshot,
       albums = emptyList(),
       artists = emptyList(),
       genres = emptyList(),
-    )
+    ))
     val ids = trackDao.allIds().toSet()
     assertEquals(setOf(2L, 3L), ids)
     assertEquals("renamed", trackDao.getById(2L)?.title)
@@ -124,7 +124,7 @@ class LibraryDatabaseTest {
       track(2L, title = "Sunshine of Your Love", artist = "Cream", album = "Disraeli Gears"),
       track(3L, title = "Rainy Day", artist = "Various", album = "Compilation"),
     )
-    libraryDao.replaceAll(tracks, emptyList(), emptyList(), emptyList())
+    libraryDao.replaceAll(LibrarySnapshot(tracks, emptyList(), emptyList(), emptyList()))
 
     val sunshine = trackDao.searchFts("sunshine*").first().map { it.id }.toSet()
     assertEquals(setOf(1L, 2L), sunshine)
@@ -134,19 +134,19 @@ class LibraryDatabaseTest {
   }
 
   @Test fun `like fallback finds by partial title`() = runTest {
-    libraryDao.replaceAll(
+    libraryDao.replaceAll(LibrarySnapshot(
       listOf(track(1L, title = "Café del Mar")),
       emptyList(), emptyList(), emptyList(),
-    )
+    ))
     val rows = trackDao.searchLike("%Café%").first()
     assertEquals(1, rows.size)
   }
 
   @Test fun `playlist crud roundtrip`() = runTest {
-    libraryDao.replaceAll(
+    libraryDao.replaceAll(LibrarySnapshot(
       listOf(track(1L), track(2L), track(3L)),
       emptyList(), emptyList(), emptyList(),
-    )
+    ))
 
     val playlistId = playlistDao.insert(
       PlaylistEntity(name = "Mix", createdAtSeconds = 1_700_000_000L),
@@ -173,10 +173,10 @@ class LibraryDatabaseTest {
   }
 
   @Test fun `playlist track foreign key cascades on track delete`() = runTest {
-    libraryDao.replaceAll(
+    libraryDao.replaceAll(LibrarySnapshot(
       listOf(track(1L), track(2L)),
       emptyList(), emptyList(), emptyList(),
-    )
+    ))
     val playlistId = playlistDao.insert(
       PlaylistEntity(name = "Mix", createdAtSeconds = 1L),
     )

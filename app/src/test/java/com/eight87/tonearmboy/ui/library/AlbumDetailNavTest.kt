@@ -14,7 +14,7 @@ import org.junit.Test
  * helpers. Exercises the pure logic the screen relies on:
  *
  *  - the [AlbumDetail] destination is `@Serializable` and equality is
- *    structural (so `popToOrPush` picks up an existing entry)
+ *    structural (so `popToFirstOrPush` picks up an existing entry)
  *  - filtering the all-tracks observable by `(album, albumArtist|artist)`
  *    matches the rule [AlbumDetailScreen] uses
  *  - the album header total duration formatter handles sub-hour and

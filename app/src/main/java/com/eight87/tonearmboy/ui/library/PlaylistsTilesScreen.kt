@@ -91,11 +91,10 @@ fun PlaylistsTilesScreen(
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
 
-  var showCreateSheet by remember { mutableStateOf(false) }
+  // R.F.19 — modal dialog state collapsed into a single sealed slot.
+  var dialog by remember { mutableStateOf<PlaylistDialogState>(PlaylistDialogState.None) }
+  // Per-tile context menu remains anchored per-tile (not modal).
   var contextMenuFor by remember { mutableStateOf<Playlist?>(null) }
-  var renameFor by remember { mutableStateOf<Playlist?>(null) }
-  var deleteFor by remember { mutableStateOf<Playlist?>(null) }
-  var coverChooserFor by remember { mutableStateOf<Playlist?>(null) }
 
   Box(modifier = Modifier.fillMaxSize().semantics { testTag = "playlists_screen" }) {
     if (playlists.isEmpty()) {
@@ -130,96 +129,32 @@ fun PlaylistsTilesScreen(
             onLongPress = { contextMenuFor = p },
             contextMenuAnchorOpen = contextMenuFor?.id == p.id,
             onContextDismiss = { contextMenuFor = null },
-            onRenameRequest = { contextMenuFor = null; renameFor = p },
-            onDeleteRequest = { contextMenuFor = null; deleteFor = p },
-            onChooseCoverRequest = { contextMenuFor = null; coverChooserFor = p },
+            onRenameRequest = { contextMenuFor = null; dialog = PlaylistDialogState.Rename(p) },
+            onDeleteRequest = { contextMenuFor = null; dialog = PlaylistDialogState.Delete(p) },
+            onChooseCoverRequest = { contextMenuFor = null; dialog = PlaylistDialogState.CoverChooser(p) },
           )
         }
       }
       FastScrollbar(state = gridState, modifier = Modifier.align(Alignment.CenterEnd))
     }
     ExtendedFloatingActionButton(
-      onClick = { showCreateSheet = true },
+      onClick = { dialog = PlaylistDialogState.Create },
       icon = { Icon(Icons.Filled.Add, contentDescription = null) },
       text = { Text("New playlist") },
       modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).semantics { testTag = "new_playlist_fab" },
     )
   }
 
-  if (showCreateSheet) {
-    NewPlaylistSheet(
-      onDismiss = { showCreateSheet = false },
-      onCreate = { name ->
-        scope.launch { repository.createPlaylist(name) }
-        showCreateSheet = false
-      },
-    )
-  }
-
-  renameFor?.let { target ->
-    var name by remember(target.id) { mutableStateOf(target.name) }
-    AlertDialog(
-      onDismissRequest = { renameFor = null },
-      title = { Text("Rename playlist") },
-      text = {
-        OutlinedTextField(
-          value = name,
-          onValueChange = { name = it },
-          label = { Text("Name") },
-          singleLine = true,
-        )
-      },
-      confirmButton = {
-        TextButton(onClick = {
-          val trimmed = name.trim()
-          if (trimmed.isNotEmpty() && trimmed != target.name) {
-            onRenamePlaylist(target.id, trimmed)
-          }
-          renameFor = null
-        }) { Text("Rename") }
-      },
-      dismissButton = { TextButton(onClick = { renameFor = null }) { Text("Cancel") } },
-    )
-  }
-
-  deleteFor?.let { target ->
-    AlertDialog(
-      onDismissRequest = { deleteFor = null },
-      title = { Text("Delete playlist") },
-      text = { Text("Delete \"${target.name}\"? This removes the playlist but not the tracks themselves.") },
-      confirmButton = {
-        TextButton(onClick = {
-          onDeletePlaylist(target.id)
-          deleteFor = null
-        }) { Text("Delete") }
-      },
-      dismissButton = { TextButton(onClick = { deleteFor = null }) { Text("Cancel") } },
-    )
-  }
-
-  coverChooserFor?.let { target ->
-    PlaylistCoverChooserSheet(
-      playlist = target,
-      repository = repository,
-      onDismiss = { coverChooserFor = null },
-      onChoose = { uri ->
-        // D.27.6 — Persist read access for SAF-picked images so the
-        // cover survives reboot. SAF URIs ship with permissions tied
-        // to the activity; without takePersistableUri they're invalid
-        // on the next process start.
-        if (uri != null && uri.startsWith("content://")) {
-          runCatching {
-            context.contentResolver.takePersistableUriPermission(
-              Uri.parse(uri),
-              android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
-            )
-          }
-        }
-        onSetPlaylistCover(target.id, uri)
-        coverChooserFor = null
-      },
-    )
-  }
+  PlaylistDialogHost(
+    state = dialog,
+    repository = repository,
+    context = context,
+    onDismiss = { dialog = PlaylistDialogState.None },
+    onCreate = { name -> scope.launch { repository.createPlaylist(name) } },
+    onRename = onRenamePlaylist,
+    onDelete = onDeletePlaylist,
+    onSetCover = onSetPlaylistCover,
+  )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -316,7 +251,7 @@ private fun PlaylistTile(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NewPlaylistSheet(
+internal fun NewPlaylistSheet(
   onDismiss: () -> Unit,
   onCreate: (String) -> Unit,
 ) {
@@ -363,7 +298,7 @@ private fun NewPlaylistSheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PlaylistCoverChooserSheet(
+internal fun PlaylistCoverChooserSheet(
   playlist: Playlist,
   repository: PlaylistStore,
   onDismiss: () -> Unit,

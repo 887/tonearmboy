@@ -21,7 +21,7 @@ import kotlinx.coroutines.CoroutineScope
  * dispatcher in [TonearmboyApp] is closed against modification.
  *
  * Convention:
- * - one-shot navigation actions (push/pop/popToOrPush) come off [backStack].
+ * - one-shot navigation actions (push/pop/popToFirstOrPush) come off [backStack].
  * - cross-cutting overlays (add-to-playlist, playlist-import collisions)
  *   are exposed as their own controllers ([addToPlaylist], [playlistBackup]).
  * - settings reads are projected into plain values ([albumCoversMode],

@@ -49,28 +49,31 @@ import com.eight87.tonearmboy.ui.nav.SettingsPersonalize
 enum class Section { Root, LookAndFeel, Personalize, Content, Audio }
 
 /**
- * A grouping bucket inside a section. All entries with the same
+ * R.F.15 — grouping bucket inside a section. All entries with the same
  * (section, group) pair render inside one `SettingsCard`. Order of
  * entries inside the card follows the order they appear in
- * [SettingsCatalog.entries].
+ * [SettingsCatalog.entries]. (Settings-F8.)
+ *
+ * Replaced the pre-R.F.15 `enum class Group` whose `PersonalizeBehaviour`
+ * variant existed solely to dodge a name collision with the root-page
+ * `Behaviour`. With `GroupRef` carrying its own label inline, two
+ * sections can both have a "Behaviour" group without enum-name games.
  */
-enum class Group {
-  // Root.
-  Appearance,
-  Behaviour,
-  Library,
-  About,
-  // Look and Feel.
-  Theme,
-  // Personalize.
-  Display,
-  PersonalizeBehaviour,
-  // Content.
-  Music,
-  Images,
-  // Audio.
-  Playback,
-  VolumeNormalization,
+data class GroupRef(val label: String)
+
+/** R.F.15 — pre-built group refs reused by the catalog entries. */
+internal object Groups {
+  val Appearance = GroupRef("Appearance")
+  val Behaviour = GroupRef("Behaviour")
+  val Library = GroupRef("Library")
+  val About = GroupRef("About")
+  val Theme = GroupRef("Theme")
+  val Display = GroupRef("Display")
+  val PersonalizeBehaviour = GroupRef("Behaviour")
+  val Music = GroupRef("Music")
+  val Images = GroupRef("Images")
+  val Playback = GroupRef("Playback")
+  val VolumeNormalization = GroupRef("Volume normalization")
 }
 
 /**
@@ -127,7 +130,7 @@ data class SettingsCatalogEntry(
   val keywords: List<String> = emptyList(),
   val icon: ImageVector,
   val section: Section,
-  val group: Group,
+  val group: GroupRef,
   val kind: RowKind,
   val destination: NavKey,
   val breadcrumb: List<String>,
@@ -208,7 +211,7 @@ object SettingsCatalog {
       keywords = listOf("appearance", "theme", "dark", "light"),
       icon = Icons.Outlined.Palette,
       section = Section.Root,
-      group = Group.Appearance,
+      group = Groups.Appearance,
       kind = RowKind.Navigate,
       destination = SettingsLookAndFeel,
       breadcrumb = listOf(SECTION_SETTINGS, SECTION_LOOK_AND_FEEL),
@@ -220,7 +223,7 @@ object SettingsCatalog {
       keywords = listOf("appearance", "tabs", "actions"),
       icon = Icons.Outlined.TouchApp,
       section = Section.Root,
-      group = Group.Appearance,
+      group = Groups.Appearance,
       kind = RowKind.Navigate,
       destination = SettingsPersonalize,
       breadcrumb = listOf(SECTION_SETTINGS, SECTION_PERSONALIZE),
@@ -232,7 +235,7 @@ object SettingsCatalog {
       keywords = listOf("sort", "separator", "covers", "tags"),
       icon = Icons.Outlined.LibraryMusic,
       section = Section.Root,
-      group = Group.Behaviour,
+      group = Groups.Behaviour,
       kind = RowKind.Navigate,
       destination = SettingsContent,
       breadcrumb = listOf(SECTION_SETTINGS, SECTION_CONTENT),
@@ -244,7 +247,7 @@ object SettingsCatalog {
       keywords = listOf("playback", "replaygain", "volume", "headset"),
       icon = Icons.Outlined.GraphicEq,
       section = Section.Root,
-      group = Group.Behaviour,
+      group = Groups.Behaviour,
       kind = RowKind.Navigate,
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_SETTINGS, SECTION_AUDIO),
@@ -261,7 +264,7 @@ object SettingsCatalog {
       keywords = listOf("folder", "directory", "saf", "storage", "system", "file picker"),
       icon = Icons.Outlined.Folder,
       section = Section.Root,
-      group = Group.Library,
+      group = Groups.Library,
       kind = RowKind.OpenDialog,
       destination = com.eight87.tonearmboy.ui.nav.SettingsRootDest,
       breadcrumb = listOf(SECTION_SETTINGS, "Library", "Music sources"),
@@ -273,7 +276,7 @@ object SettingsCatalog {
       keywords = listOf("reload", "rescan", "scan"),
       icon = Icons.Outlined.Refresh,
       section = Section.Root,
-      group = Group.Library,
+      group = Groups.Library,
       kind = RowKind.Action,
       destination = com.eight87.tonearmboy.ui.nav.SettingsRootDest,
       breadcrumb = listOf(SECTION_SETTINGS, "Library", "Refresh music"),
@@ -285,7 +288,7 @@ object SettingsCatalog {
       keywords = listOf("reload", "refresh", "scan"),
       icon = Icons.Outlined.RestartAlt,
       section = Section.Root,
-      group = Group.Library,
+      group = Groups.Library,
       kind = RowKind.Action,
       destination = com.eight87.tonearmboy.ui.nav.SettingsRootDest,
       breadcrumb = listOf(SECTION_SETTINGS, "Library", "Rescan music"),
@@ -300,7 +303,7 @@ object SettingsCatalog {
       keywords = listOf("backup", "json", "save", "playlist"),
       icon = Icons.Outlined.FileDownload,
       section = Section.Root,
-      group = Group.Library,
+      group = Groups.Library,
       kind = RowKind.Action,
       destination = com.eight87.tonearmboy.ui.nav.SettingsRootDest,
       breadcrumb = listOf(SECTION_SETTINGS, "Library", "Export playlists"),
@@ -312,7 +315,7 @@ object SettingsCatalog {
       keywords = listOf("restore", "json", "load", "playlist"),
       icon = Icons.Outlined.FileUpload,
       section = Section.Root,
-      group = Group.Library,
+      group = Groups.Library,
       kind = RowKind.Action,
       destination = com.eight87.tonearmboy.ui.nav.SettingsRootDest,
       breadcrumb = listOf(SECTION_SETTINGS, "Library", "Import playlists"),
@@ -327,7 +330,7 @@ object SettingsCatalog {
       keywords = listOf("about", "version", "build", "license", "credits", "github"),
       icon = Icons.Outlined.Info,
       section = Section.Root,
-      group = Group.About,
+      group = Groups.About,
       kind = RowKind.Navigate,
       destination = SettingsAbout,
       breadcrumb = listOf(SECTION_SETTINGS, "About"),
@@ -343,7 +346,7 @@ object SettingsCatalog {
       keywords = listOf("dark", "light", "automatic", "system"),
       icon = Icons.Outlined.Palette,
       section = Section.LookAndFeel,
-      group = Group.Theme,
+      group = Groups.Theme,
       kind = RowKind.Picker,
       destination = SettingsLookAndFeel,
       breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Theme"),
@@ -361,7 +364,7 @@ object SettingsCatalog {
       ),
       icon = Icons.Outlined.ColorLens,
       section = Section.LookAndFeel,
-      group = Group.Theme,
+      group = Groups.Theme,
       kind = RowKind.Picker,
       destination = SettingsLookAndFeel,
       breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Base theme"),
@@ -373,7 +376,7 @@ object SettingsCatalog {
       keywords = listOf("palette", "tint", "album", "cover", "art", "color"),
       icon = Icons.Outlined.Palette,
       section = Section.LookAndFeel,
-      group = Group.Theme,
+      group = Groups.Theme,
       kind = RowKind.Toggle,
       destination = SettingsLookAndFeel,
       breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Tint chrome by album art"),
@@ -389,7 +392,7 @@ object SettingsCatalog {
       keywords = listOf("songs", "albums", "artists", "genres", "playlists", "tabs"),
       icon = Icons.AutoMirrored.Outlined.ViewList,
       section = Section.Personalize,
-      group = Group.Display,
+      group = Groups.Display,
       kind = RowKind.Picker,
       destination = SettingsPersonalize,
       breadcrumb = listOf(SECTION_PERSONALIZE, "Display", "Library tabs"),
@@ -401,7 +404,7 @@ object SettingsCatalog {
       keywords = listOf("skip", "shuffle", "repeat", "next", "long press"),
       icon = Icons.Outlined.TouchApp,
       section = Section.Personalize,
-      group = Group.Display,
+      group = Groups.Display,
       kind = RowKind.Picker,
       destination = SettingsPersonalize,
       breadcrumb = listOf(SECTION_PERSONALIZE, "Display", "Custom playback bar action"),
@@ -413,7 +416,7 @@ object SettingsCatalog {
       keywords = listOf("shuffle", "repeat", "notification"),
       icon = Icons.Outlined.Notifications,
       section = Section.Personalize,
-      group = Group.Display,
+      group = Groups.Display,
       kind = RowKind.Picker,
       destination = SettingsPersonalize,
       breadcrumb = listOf(SECTION_PERSONALIZE, "Display", "Custom notification action"),
@@ -425,7 +428,7 @@ object SettingsCatalog {
       keywords = listOf("queue", "play from", "all songs", "filter"),
       icon = Icons.Outlined.LibraryMusic,
       section = Section.Personalize,
-      group = Group.PersonalizeBehaviour,
+      group = Groups.PersonalizeBehaviour,
       kind = RowKind.Picker,
       destination = SettingsPersonalize,
       breadcrumb = listOf(SECTION_PERSONALIZE, "Behaviour", "When playing from the library"),
@@ -437,7 +440,7 @@ object SettingsCatalog {
       keywords = listOf("queue", "album", "artist", "play from"),
       icon = Icons.AutoMirrored.Outlined.ListAlt,
       section = Section.Personalize,
-      group = Group.PersonalizeBehaviour,
+      group = Groups.PersonalizeBehaviour,
       kind = RowKind.Picker,
       destination = SettingsPersonalize,
       breadcrumb = listOf(SECTION_PERSONALIZE, "Behaviour", "When playing from item details"),
@@ -449,7 +452,7 @@ object SettingsCatalog {
       keywords = listOf("shuffle", "random"),
       icon = Icons.Outlined.Shuffle,
       section = Section.Personalize,
-      group = Group.PersonalizeBehaviour,
+      group = Groups.PersonalizeBehaviour,
       kind = RowKind.Toggle,
       destination = SettingsPersonalize,
       breadcrumb = listOf(SECTION_PERSONALIZE, "Behaviour", "Remember shuffle"),
@@ -465,7 +468,7 @@ object SettingsCatalog {
       keywords = listOf("watch", "reload", "background", "observer", "rescan"),
       icon = Icons.Outlined.Sync,
       section = Section.Content,
-      group = Group.Music,
+      group = Groups.Music,
       kind = RowKind.Toggle,
       destination = SettingsContent,
       breadcrumb = listOf(SECTION_CONTENT, "Music", "Automatic reloading"),
@@ -477,7 +480,7 @@ object SettingsCatalog {
       keywords = listOf("artist", "split", "feat", "comma", "semicolon", "ampersand", "slash"),
       icon = Icons.Outlined.MoreHoriz,
       section = Section.Content,
-      group = Group.Music,
+      group = Groups.Music,
       kind = RowKind.Picker,
       destination = SettingsContent,
       breadcrumb = listOf(SECTION_CONTENT, "Music", "Multi-value separators"),
@@ -492,7 +495,7 @@ object SettingsCatalog {
       ),
       icon = Icons.Outlined.SortByAlpha,
       section = Section.Content,
-      group = Group.Music,
+      group = Groups.Music,
       kind = RowKind.Toggle,
       destination = SettingsContent,
       breadcrumb = listOf(SECTION_CONTENT, "Music", "Intelligent sorting"),
@@ -504,7 +507,7 @@ object SettingsCatalog {
       keywords = listOf("artist", "album artist", "feat"),
       icon = Icons.Outlined.PersonOff,
       section = Section.Content,
-      group = Group.Music,
+      group = Groups.Music,
       kind = RowKind.Toggle,
       destination = SettingsContent,
       breadcrumb = listOf(SECTION_CONTENT, "Music", "Hide collaborators"),
@@ -516,7 +519,7 @@ object SettingsCatalog {
       keywords = listOf("cover", "art", "musicbrainz", "fetch", "download"),
       icon = Icons.Outlined.ImageSearch,
       section = Section.Content,
-      group = Group.Music,
+      group = Groups.Music,
       kind = RowKind.Toggle,
       destination = SettingsContent,
       breadcrumb = listOf(SECTION_CONTENT, "Music", "Auto-discover missing album art"),
@@ -528,7 +531,7 @@ object SettingsCatalog {
       keywords = listOf("art", "image", "loading", "balanced", "coil"),
       icon = Icons.Outlined.Photo,
       section = Section.Content,
-      group = Group.Images,
+      group = Groups.Images,
       kind = RowKind.Picker,
       destination = SettingsContent,
       breadcrumb = listOf(SECTION_CONTENT, "Images", "Album covers"),
@@ -540,7 +543,7 @@ object SettingsCatalog {
       keywords = listOf("rounded", "square", "art"),
       icon = Icons.Outlined.CropSquare,
       section = Section.Content,
-      group = Group.Images,
+      group = Groups.Images,
       kind = RowKind.Toggle,
       destination = SettingsContent,
       breadcrumb = listOf(SECTION_CONTENT, "Images", "Force square album covers"),
@@ -556,7 +559,7 @@ object SettingsCatalog {
       keywords = listOf("headphones", "bluetooth", "autoplay", "connect"),
       icon = Icons.Outlined.Headphones,
       section = Section.Audio,
-      group = Group.Playback,
+      group = Groups.Playback,
       kind = RowKind.Toggle,
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_AUDIO, "Playback", "Headset autoplay"),
@@ -568,7 +571,7 @@ object SettingsCatalog {
       keywords = listOf("previous", "rewind", "skip"),
       icon = Icons.Outlined.FastRewind,
       section = Section.Audio,
-      group = Group.Playback,
+      group = Groups.Playback,
       kind = RowKind.Toggle,
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_AUDIO, "Playback", "Rewind before skipping back"),
@@ -580,7 +583,7 @@ object SettingsCatalog {
       keywords = listOf("repeat", "loop", "pause"),
       icon = Icons.Outlined.PauseCircle,
       section = Section.Audio,
-      group = Group.Playback,
+      group = Groups.Playback,
       kind = RowKind.Toggle,
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_AUDIO, "Playback", "Pause on repeat"),
@@ -592,7 +595,7 @@ object SettingsCatalog {
       keywords = listOf("resume", "position", "pause"),
       icon = Icons.Outlined.Pause,
       section = Section.Audio,
-      group = Group.Playback,
+      group = Groups.Playback,
       kind = RowKind.Toggle,
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_AUDIO, "Playback", "Remember pause"),
@@ -604,7 +607,7 @@ object SettingsCatalog {
       keywords = listOf("replaygain", "normalization", "track", "album", "smart"),
       icon = Icons.Outlined.GraphicEq,
       section = Section.Audio,
-      group = Group.VolumeNormalization,
+      group = Groups.VolumeNormalization,
       kind = RowKind.Picker,
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_AUDIO, "Volume normalization", "ReplayGain strategy"),
@@ -616,7 +619,7 @@ object SettingsCatalog {
       keywords = listOf("replaygain", "preamp", "volume", "boost", "gain", "slider"),
       icon = Icons.Outlined.Tune,
       section = Section.Audio,
-      group = Group.VolumeNormalization,
+      group = Groups.VolumeNormalization,
       kind = RowKind.Picker,
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_AUDIO, "Volume normalization", "ReplayGain pre-amp"),
@@ -632,7 +635,7 @@ object SettingsCatalog {
       keywords = listOf("sleep", "timer", "pause", "bedtime", "off"),
       icon = Icons.Outlined.Bedtime,
       section = Section.Audio,
-      group = Group.Playback,
+      group = Groups.Playback,
       kind = RowKind.OpenDialog,
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_AUDIO, "Playback", "Sleep timer"),
@@ -647,7 +650,7 @@ object SettingsCatalog {
       keywords = listOf("equalizer", "eq", "audio effects", "system"),
       icon = Icons.Outlined.Equalizer,
       section = Section.Audio,
-      group = Group.VolumeNormalization,
+      group = Groups.VolumeNormalization,
       kind = RowKind.Action,
       destination = SettingsAudio,
       breadcrumb = listOf(SECTION_AUDIO, "Volume normalization", "System equalizer"),

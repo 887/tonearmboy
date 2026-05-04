@@ -51,11 +51,11 @@ fun TonearmboyApp(
   // R.E.6 — settings → playback mirrors.
   PlaybackSettingsBridge(playback, playback, graph.settingsRepository)
 
-  // D.20.1 — react to a notification deeplink; popToOrPush keeps the
+  // D.20.1 — react to a notification deeplink; popToFirstOrPush keeps the
   // back stack sane regardless of where in the stack NowPlaying lives.
   LaunchedEffect(deeplinkNonce, pendingDeeplink) {
     if (pendingDeeplink == PlaybackService.DEEPLINK_NOW_PLAYING) {
-      if (current !is NowPlaying) backStack.popToOrPush(NowPlaying)
+      if (current !is NowPlaying) backStack.popToFirstOrPush(NowPlaying)
       onDeeplinkConsumed()
     }
   }

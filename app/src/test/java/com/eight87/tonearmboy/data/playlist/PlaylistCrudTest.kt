@@ -74,12 +74,12 @@ class PlaylistCrudTest {
         dateAddedSeconds = 0L,
       )
     }
-    db.libraryDao().replaceAll(
+    db.libraryDao().replaceAll(com.eight87.tonearmboy.data.db.LibrarySnapshot(
       rows,
       listOf(AlbumEntity(name = "Album", artist = "Test", year = 2024)),
       listOf(ArtistEntity(name = "Test")),
       listOf(GenreEntity(name = "Synthwave")),
-    )
+    ))
     return rows.map { it.id }
   }
 
