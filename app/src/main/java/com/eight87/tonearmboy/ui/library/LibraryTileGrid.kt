@@ -250,3 +250,18 @@ internal fun tileIndexForGroups(groups: List<TileGroup>, letter: String): Int {
 /** Convenience overload working straight from a flat keys list. */
 fun tileIndexFor(sectionKeys: List<String>, letter: String): Int =
   tileIndexForGroups(buildGroups(sectionKeys), letter)
+
+/**
+ * R.A.Q — inverse of [tileIndexFor]: which section letter contains
+ * the tile at [gridIndex]? Used by the FastScrollbar bubble.
+ */
+fun letterForTileIndex(sectionKeys: List<String>, gridIndex: Int): String? {
+  val groups = buildGroups(sectionKeys)
+  var idx = 0
+  for (g in groups) {
+    val sectionEnd = idx + 1 + g.length
+    if (gridIndex < sectionEnd) return g.letter
+    idx = sectionEnd
+  }
+  return groups.lastOrNull()?.letter
+}

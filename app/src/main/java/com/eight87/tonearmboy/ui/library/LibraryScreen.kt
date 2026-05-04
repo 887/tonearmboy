@@ -652,20 +652,19 @@ internal fun AlbumsTabContent(
         }
       }
     }
-    if (viewMode == ViewMode.List) FastScrollbar(state = listState)
-    else FastScrollbar(state = gridState)
-    if (orderedKeys.isNotEmpty()) {
-      AlphabetScroller(
-        keys = orderedKeys,
-        onLetter = { letter ->
-          if (viewMode == ViewMode.List) {
-            val flat = computeFlatIndexFromKeys(orderedKeys, sectionKeys, letter)
-            if (flat >= 0) scope.launch { listState.scrollToItem(flat) }
-          } else {
-            val tileIdx = tileIndexFor(sectionKeys, letter)
-            if (tileIdx >= 0) scope.launch { gridState.scrollToItem(tileIdx) }
-          }
-        },
+    if (viewMode == ViewMode.List) {
+      FastScrollbar(
+        state = listState,
+        sectionLabelFor = if (orderedKeys.isNotEmpty()) {
+          { idx -> letterForFlatIndex(orderedKeys, sectionKeys, idx) }
+        } else null,
+      )
+    } else {
+      FastScrollbar(
+        state = gridState,
+        sectionLabelFor = if (sectionKeys.isNotEmpty()) {
+          { idx -> letterForTileIndex(sectionKeys, idx) }
+        } else null,
       )
     }
   }
@@ -830,20 +829,19 @@ fun ArtistsTabScreen(
         }
       }
     }
-    if (viewMode == ViewMode.List) FastScrollbar(state = listState)
-    else FastScrollbar(state = gridState)
-    if (orderedKeys.isNotEmpty()) {
-      AlphabetScroller(
-        keys = orderedKeys,
-        onLetter = { letter ->
-          if (viewMode == ViewMode.List) {
-            val flat = computeFlatIndexFromKeys(orderedKeys, sectionKeys, letter)
-            if (flat >= 0) scope.launch { listState.scrollToItem(flat) }
-          } else {
-            val tileIdx = tileIndexFor(sectionKeys, letter)
-            if (tileIdx >= 0) scope.launch { gridState.scrollToItem(tileIdx) }
-          }
-        },
+    if (viewMode == ViewMode.List) {
+      FastScrollbar(
+        state = listState,
+        sectionLabelFor = if (orderedKeys.isNotEmpty()) {
+          { idx -> letterForFlatIndex(orderedKeys, sectionKeys, idx) }
+        } else null,
+      )
+    } else {
+      FastScrollbar(
+        state = gridState,
+        sectionLabelFor = if (sectionKeys.isNotEmpty()) {
+          { idx -> letterForTileIndex(sectionKeys, idx) }
+        } else null,
       )
     }
   }
@@ -961,6 +959,13 @@ internal fun TracksListContent(
     } else emptyMap()
   }
   val orderedKeys = remember(grouped) { grouped.keys.toList() }
+  // R.A.Q — tile-mode per-tile section keys, hoisted to function
+  // scope so the FastScrollbar's section-label lookup can read them.
+  val tileSectionKeys = remember(sorted, sort, intelligentSorting) {
+    if (sort.key == SortKey.Name)
+      sorted.map { initialKey(sortNameKey(it.title, intelligentSorting)) }
+    else emptyList()
+  }
   val listState = rememberLazyListState()
   val gridState = rememberLazyGridState()
   val scope = rememberCoroutineScope()
@@ -1052,14 +1057,9 @@ internal fun TracksListContent(
             )
           }
         }
-        val sectionKeys = remember(sorted, sort, intelligentSorting) {
-          if (sort.key == SortKey.Name)
-            sorted.map { initialKey(sortNameKey(it.title, intelligentSorting)) }
-          else emptyList()
-        }
         LibraryTileGrid(
           tiles = tileItems,
-          sectionKeys = sectionKeys,
+          sectionKeys = tileSectionKeys,
           state = gridState,
           albumCoversMode = albumCoversMode,
           onTileClick = { tile ->
@@ -1073,21 +1073,19 @@ internal fun TracksListContent(
           modifier = Modifier.weight(1f).padding(horizontal = SettingsDimens.PagePadding),
         )
       }
-      if (viewMode == ViewMode.List) FastScrollbar(state = listState)
-      else FastScrollbar(state = gridState)
-      if (orderedKeys.isNotEmpty()) {
-        AlphabetScroller(
-          keys = orderedKeys,
-          onLetter = { letter ->
-            if (viewMode == ViewMode.List) {
-              val flatIndex = computeFlatIndex(orderedKeys, grouped, letter)
-              if (flatIndex >= 0) scope.launch { listState.scrollToItem(flatIndex) }
-            } else {
-              val sectionKeys = sorted.map { initialKey(sortNameKey(it.title, intelligentSorting)) }
-              val tileIdx = tileIndexFor(sectionKeys, letter)
-              if (tileIdx >= 0) scope.launch { gridState.scrollToItem(tileIdx) }
-            }
-          },
+      if (viewMode == ViewMode.List) {
+        FastScrollbar(
+          state = listState,
+          sectionLabelFor = if (orderedKeys.isNotEmpty()) {
+            { idx -> letterForFlatIndexInGrouped(orderedKeys, grouped, idx) }
+          } else null,
+        )
+      } else {
+        FastScrollbar(
+          state = gridState,
+          sectionLabelFor = if (tileSectionKeys.isNotEmpty()) {
+            { idx -> letterForTileIndex(tileSectionKeys, idx) }
+          } else null,
         )
       }
     }
@@ -1133,6 +1131,47 @@ private fun computeFlatIndex(
     flat += grouped.getValue(key).size
   }
   return -1
+}
+
+/**
+ * R.A.Q — inverse of [computeFlatIndexFromKeys] / [computeFlatIndex]
+ * for the per-item-keys layout. Given a flat LazyColumn index,
+ * returns the section letter that contains it (or null if no
+ * sections exist).
+ */
+internal fun letterForFlatIndex(
+  orderedKeys: List<String>,
+  perItemKeys: List<String>,
+  flatIndex: Int,
+): String? {
+  if (orderedKeys.isEmpty()) return null
+  var flat = 0
+  for (key in orderedKeys) {
+    flat += 1 // header
+    flat += perItemKeys.count { it == key }
+    if (flatIndex < flat) return key
+  }
+  return orderedKeys.last()
+}
+
+/**
+ * R.A.Q — inverse for the `grouped: Map<String, List<Track>>` layout
+ * used by Tracks tab. Avoids re-counting per-item-keys by reading
+ * directly from group sizes.
+ */
+internal fun letterForFlatIndexInGrouped(
+  orderedKeys: List<String>,
+  grouped: Map<String, List<*>>,
+  flatIndex: Int,
+): String? {
+  if (orderedKeys.isEmpty()) return null
+  var flat = 0
+  for (key in orderedKeys) {
+    flat += 1 // header
+    flat += grouped[key]?.size ?: 0
+    if (flatIndex < flat) return key
+  }
+  return orderedKeys.last()
 }
 
 /**
@@ -1333,20 +1372,19 @@ fun GenresTabScreen(
         }
       }
     }
-    if (viewMode == ViewMode.List) FastScrollbar(state = listState)
-    else FastScrollbar(state = gridState)
-    if (orderedKeys.isNotEmpty()) {
-      AlphabetScroller(
-        keys = orderedKeys,
-        onLetter = { letter ->
-          if (viewMode == ViewMode.List) {
-            val flat = computeFlatIndexFromKeys(orderedKeys, sectionKeys, letter)
-            if (flat >= 0) scope.launch { listState.scrollToItem(flat) }
-          } else {
-            val tileIdx = tileIndexFor(sectionKeys, letter)
-            if (tileIdx >= 0) scope.launch { gridState.scrollToItem(tileIdx) }
-          }
-        },
+    if (viewMode == ViewMode.List) {
+      FastScrollbar(
+        state = listState,
+        sectionLabelFor = if (orderedKeys.isNotEmpty()) {
+          { idx -> letterForFlatIndex(orderedKeys, sectionKeys, idx) }
+        } else null,
+      )
+    } else {
+      FastScrollbar(
+        state = gridState,
+        sectionLabelFor = if (sectionKeys.isNotEmpty()) {
+          { idx -> letterForTileIndex(sectionKeys, idx) }
+        } else null,
       )
     }
   }
@@ -1433,16 +1471,12 @@ fun PlaylistsTabScreen(
         }
       }
     }
-    FastScrollbar(state = listState)
-    if (orderedKeys.isNotEmpty()) {
-      AlphabetScroller(
-        keys = orderedKeys,
-        onLetter = { letter ->
-          val flat = computeFlatIndexFromKeys(orderedKeys, sectionKeys, letter)
-          if (flat >= 0) scope.launch { listState.scrollToItem(flat) }
-        },
-      )
-    }
+    FastScrollbar(
+      state = listState,
+      sectionLabelFor = if (orderedKeys.isNotEmpty()) {
+        { idx -> letterForFlatIndex(orderedKeys, sectionKeys, idx) }
+      } else null,
+    )
   }
 }
 
