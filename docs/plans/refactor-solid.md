@@ -77,11 +77,11 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 **How to apply:** Two-pass refactor. First, mechanical file split (no behaviour change) so each piece is reviewable. Then, collapse the five tab dispatchers behind a `TabSpec<T>` strategy.
 
-- [ ] **R.D.1** Split `LibraryScreen.kt` mechanically: `LibraryScreen.kt` (scaffold + top-bar + dispatch only, target ~200 LOC), `tabs/{Tracks,Albums,Artists,Genres,Playlists}TabScreen.kt`, `tabs/AlphabetScroller.kt`, `tabs/MultiSelectBar.kt`, `tabs/SectionHeader.kt`, `tabs/EmptyState.kt`, `LibrarySorting.kt` (the four `sortFoo` functions — pure, easy to test). No behaviour change.
+- [x] **R.D.1** Split `LibraryScreen.kt` mechanically: `LibraryScreen.kt` (scaffold + top-bar + dispatch only, target ~200 LOC), `tabs/{Tracks,Albums,Artists,Genres,Playlists}TabScreen.kt`, `tabs/AlphabetScroller.kt`, `tabs/MultiSelectBar.kt`, `tabs/SectionHeader.kt`, `tabs/EmptyState.kt`, `LibrarySorting.kt` (the four `sortFoo` functions — pure, easy to test). No behaviour change.
 - [ ] **R.D.2** Define `TabSpec<T>` interface: `observe(filter)`, `sectionKey(item)`, `comparator(sort)`, `Row(item, callbacks)`, `Tile(item, callbacks)`. (UI-F2.)
 - [ ] **R.D.3** Implement five `TabSpec` instances (one per content type). Replace the five tab dispatcher composables with one `LibraryTabRenderer(spec, …)` engine.
-- [ ] **R.D.4** Hoist multi-select state out of the tab body into `rememberSelectionState()` — pure transition methods, unit-testable (UI-F13).
-- [ ] **R.D.5** Move `firstDifference` / `clampMoveAwayFromActive` / `translateVisualToReal` from `QueueSection.kt` to `playing/QueueReorderLogic.kt` — pure logic, file-scope test seam unchanged (UI-F12).
+- [x] **R.D.4** Hoist multi-select state out of the tab body into `rememberSelectionState()` — pure transition methods, unit-testable (UI-F13).
+- [x] **R.D.5** Move `firstDifference` / `clampMoveAwayFromActive` / `translateVisualToReal` from `QueueSection.kt` to `playing/QueueReorderLogic.kt` — pure logic, file-scope test seam unchanged (UI-F12).
 - [ ] **R.D.6** Verify: AVD smoke every tab, alphabet rail, sort, view-mode toggle, multi-select; tests green.
 - [ ] **R.D.7** Ship + tick.
 
