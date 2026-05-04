@@ -85,13 +85,16 @@ fun AlbumDetailScreen(
   onTrackAction: (Track, AlbumDetailTrackAction) -> Unit,
   onBack: () -> Unit,
 ) {
-  val allTracks by trackSource.observeTracks().collectAsState(initial = emptyList())
+  // R.F.12 — narrow Flow; repository pre-filters instead of
+  // observeTracks() + filter-in-Compose.
+  val albumTracks by trackSource.observeTracksForAlbum(albumName, albumArtist)
+    .collectAsState(initial = emptyList())
   val allAlbumsList by albumSource.observeAlbums().collectAsState(initial = emptyList())
 
-  val tracks = remember(allTracks, albumName, albumArtist) {
-    allTracks
-      .filter { it.album == albumName && (it.albumArtist ?: it.artist) == albumArtist }
-      .sortedWith(compareBy({ it.year ?: Int.MIN_VALUE }, { it.trackNumber ?: Int.MAX_VALUE }, { it.title }))
+  val tracks = remember(albumTracks) {
+    albumTracks.sortedWith(
+      compareBy({ it.year ?: Int.MIN_VALUE }, { it.trackNumber ?: Int.MAX_VALUE }, { it.title }),
+    )
   }
   val album: Album? = remember(allAlbumsList, albumName, albumArtist) {
     allAlbumsList.firstOrNull { it.name == albumName && it.artist == albumArtist }
@@ -191,13 +194,15 @@ fun ArtistDetailScreen(
   onAlbumClick: (Album) -> Unit,
   onBack: () -> Unit,
 ) {
-  val allTracks by trackSource.observeTracks().collectAsState(initial = emptyList())
+  // R.F.12 — narrow Flow; repository pre-filters by artist.
+  val artistTracks by trackSource.observeTracksForArtist(artistName)
+    .collectAsState(initial = emptyList())
   val allAlbums by albumSource.observeAlbums().collectAsState(initial = emptyList())
 
-  val tracks = remember(allTracks, artistName) {
-    allTracks
-      .filter { (it.albumArtist ?: it.artist) == artistName || it.artist == artistName }
-      .sortedWith(compareBy({ it.album ?: "" }, { it.trackNumber ?: Int.MAX_VALUE }, { it.title }))
+  val tracks = remember(artistTracks) {
+    artistTracks.sortedWith(
+      compareBy({ it.album ?: "" }, { it.trackNumber ?: Int.MAX_VALUE }, { it.title }),
+    )
   }
   val albums = remember(allAlbums, artistName) {
     allAlbums.filter { it.artist == artistName }
@@ -309,11 +314,10 @@ fun GenreDetailScreen(
   onTrackAction: (Track, AlbumDetailTrackAction) -> Unit,
   onBack: () -> Unit,
 ) {
-  val allTracks by trackSource.observeTracks().collectAsState(initial = emptyList())
-  val tracks = remember(allTracks, genreName) {
-    allTracks.filter { it.genre == genreName }
-      .sortedBy { it.title }
-  }
+  // R.F.12 — narrow Flow; repository pre-filters by genre.
+  val genreTracks by trackSource.observeTracksForGenre(genreName)
+    .collectAsState(initial = emptyList())
+  val tracks = remember(genreTracks) { genreTracks.sortedBy { it.title } }
 
   val sectionTitle = LocalSectionTitle.current
   LaunchedEffect(genreName) { sectionTitle.value = genreName }
