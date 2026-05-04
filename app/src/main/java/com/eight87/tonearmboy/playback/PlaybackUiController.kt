@@ -53,8 +53,14 @@ class PlaybackUiController(private val applicationContext: Context) :
   QueueCommands,
   ReplayGainCommands {
 
-  private val _state = MutableStateFlow(PlaybackUiState.Empty)
-  override val state: StateFlow<PlaybackUiState> = _state.asStateFlow()
+  // R.C.2 — read-side projection lives in PlaybackStateProjector.
+  // Controller delegates the two override flows; the projector
+  // reads `controller` + `connectionPhase` lazily via providers.
+  private val projector = PlaybackStateProjector(
+    controllerProvider = { controller },
+    connectionPhaseProvider = { connectionPhase },
+  )
+  override val state: StateFlow<PlaybackUiState> get() = projector.state
 
   /**
    * Phase H.4 — re-exposed audio session id from [PlayerHolder]. The
@@ -106,9 +112,9 @@ class PlaybackUiController(private val applicationContext: Context) :
    * D.15.5 — snapshot of the current MediaController queue, recomputed
    * whenever items change or the playing index advances. The queue
    * sheet observes this Flow to render rows + the "now playing" marker.
+   * Owned by [projector] (R.C.2).
    */
-  private val _queue = MutableStateFlow(QueueSnapshot.Empty)
-  override val queue: StateFlow<QueueSnapshot> = _queue.asStateFlow()
+  override val queue: StateFlow<QueueSnapshot> get() = projector.queue
 
   private var controller: MediaController? = null
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -250,15 +256,17 @@ class PlaybackUiController(private val applicationContext: Context) :
       }
       // D.9b.1: re-apply ReplayGain whenever the playing item changes.
       scope.launch { applyReplayGainNow() }
-      pushState()
+      // R.C.2 — currentMediaItemIndex shifts on transition; queue
+      // snapshot's currentIndex must follow.
+      projector.pushAll()
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
-      pushState()
+      projector.pushPlaybackState()
     }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
-      pushState()
+      projector.pushPlaybackState()
     }
 
     override fun onPositionDiscontinuity(
@@ -266,11 +274,12 @@ class PlaybackUiController(private val applicationContext: Context) :
       newPosition: Player.PositionInfo,
       reason: Int,
     ) {
-      pushState()
+      projector.pushPlaybackState()
     }
 
     override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
-      pushState()
+      // R.C.2 — timeline change == queue items added/removed/reordered.
+      projector.pushAll()
     }
 
     // D.21.4: shuffle / repeat toggles in the queue header + NowPlaying
@@ -278,11 +287,11 @@ class PlaybackUiController(private val applicationContext: Context) :
     // controller's events into pushState so the toggles light up
     // synchronously with system / Bluetooth-driven changes.
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-      pushState()
+      projector.pushPlaybackState()
     }
 
     override fun onRepeatModeChanged(repeatMode: Int) {
-      pushState()
+      projector.pushPlaybackState()
     }
   }
 
@@ -299,8 +308,8 @@ class PlaybackUiController(private val applicationContext: Context) :
    * service binding doesn't pin the splash forever.
    */
   suspend fun awaitConnected() {
-    if (_state.value.connectionPhase == ConnectionPhase.Connected) return
-    _state.first { it.connectionPhase == ConnectionPhase.Connected }
+    if (state.value.connectionPhase == ConnectionPhase.Connected) return
+    state.first { it.connectionPhase == ConnectionPhase.Connected }
   }
 
   /** Connect to the running [PlaybackService]. Idempotent. */
@@ -318,7 +327,8 @@ class PlaybackUiController(private val applicationContext: Context) :
     // Apply the persisted ReplayGain settings to the freshly connected
     // controller before any track plays.
     scope.launch { applyReplayGainNow() }
-    pushState()
+    // R.C.2 — initial connect needs both state + queue rendered.
+    projector.pushAll()
     if (!positionTickerStarted) {
       positionTickerStarted = true
       scope.launch {
@@ -327,7 +337,10 @@ class PlaybackUiController(private val applicationContext: Context) :
         while (true) {
           delay(POSITION_TICK_MS)
           val ctl = controller ?: continue
-          if (ctl.isPlaying) pushState()
+          // R.C.2 — position-only push: the 250 ms ticker no longer
+          // recomputes the queue snapshot; queue rebuild fires only
+          // from listener events that actually change media items.
+          if (ctl.isPlaying) projector.pushPlaybackState()
         }
       }
     }
@@ -341,7 +354,7 @@ class PlaybackUiController(private val applicationContext: Context) :
     }
     controller = null
     connectionPhase = ConnectionPhase.Connecting
-    _state.value = PlaybackUiState.Empty
+    projector.reset()
   }
 
   fun shutdown() {
@@ -356,7 +369,7 @@ class PlaybackUiController(private val applicationContext: Context) :
     ctl.setMediaItem(track.toMediaItem())
     ctl.prepare()
     ctl.play()
-    pushState()
+    projector.pushAll()
   }
 
   /** Replace the queue with [tracks] and start at [index]. */
@@ -367,34 +380,34 @@ class PlaybackUiController(private val applicationContext: Context) :
     ctl.setMediaItems(items, index, 0L)
     ctl.prepare()
     ctl.play()
-    pushState()
+    projector.pushAll()
   }
 
   override fun togglePlayPause() {
     val ctl = controller ?: return
     if (ctl.isPlaying) ctl.pause() else ctl.play()
-    pushState()
+    projector.pushPlaybackState()
   }
 
   override fun seekToNext() {
     controller?.seekToNextMediaItem()
-    pushState()
+    projector.pushPlaybackState()
   }
 
   override fun seekToPrevious() {
     controller?.seekToPreviousMediaItem()
-    pushState()
+    projector.pushPlaybackState()
   }
 
   override fun seekTo(positionMs: Long) {
     controller?.seekTo(positionMs)
-    pushState()
+    projector.pushPlaybackState()
   }
 
   override fun seekBackward() {
     val ctl = controller ?: return
     ctl.seekTo((ctl.currentPosition - SEEK_INCREMENT_MS).coerceAtLeast(0))
-    pushState()
+    projector.pushPlaybackState()
   }
 
   override fun seekForward() {
@@ -402,13 +415,13 @@ class PlaybackUiController(private val applicationContext: Context) :
     val target = ctl.currentPosition + SEEK_INCREMENT_MS
     val cap = ctl.duration.takeIf { it > 0 } ?: target
     ctl.seekTo(target.coerceAtMost(cap))
-    pushState()
+    projector.pushPlaybackState()
   }
 
   override fun stop() {
     controller?.stop()
     controller?.clearMediaItems()
-    pushState()
+    projector.pushPlaybackState()
   }
 
   /**
@@ -426,7 +439,7 @@ class PlaybackUiController(private val applicationContext: Context) :
     } else {
       ctl.addMediaItem(item)
     }
-    pushState()
+    projector.pushAll()
   }
 
   /** D.15.5 — jump to [index] in the current queue and play. */
@@ -435,7 +448,7 @@ class PlaybackUiController(private val applicationContext: Context) :
     if (index < 0 || index >= ctl.mediaItemCount) return
     ctl.seekTo(index, 0L)
     ctl.play()
-    pushState()
+    projector.pushAll()
   }
 
   /** D.15.5 — remove the queue entry at [index]. */
@@ -443,7 +456,7 @@ class PlaybackUiController(private val applicationContext: Context) :
     val ctl = controller ?: return
     if (index < 0 || index >= ctl.mediaItemCount) return
     ctl.removeMediaItem(index)
-    pushState()
+    projector.pushAll()
   }
 
   /**
@@ -476,7 +489,7 @@ class PlaybackUiController(private val applicationContext: Context) :
       ctl.stop()
       ctl.clearMediaItems()
     }
-    pushState()
+    projector.pushAll()
     return toRemove.size
   }
 
@@ -488,7 +501,7 @@ class PlaybackUiController(private val applicationContext: Context) :
   override fun toggleShuffle() {
     val ctl = controller ?: return
     ctl.shuffleModeEnabled = !ctl.shuffleModeEnabled
-    pushState()
+    projector.pushPlaybackState()
   }
 
   /**
@@ -499,7 +512,7 @@ class PlaybackUiController(private val applicationContext: Context) :
   override fun cycleRepeatMode() {
     val ctl = controller ?: return
     ctl.repeatMode = nextRepeatMode(ctl.repeatMode)
-    pushState()
+    projector.pushPlaybackState()
   }
 
   /** D.15.5 — move queue item from [from] to [to]. */
@@ -508,7 +521,7 @@ class PlaybackUiController(private val applicationContext: Context) :
     val n = ctl.mediaItemCount
     if (from < 0 || from >= n || to < 0 || to >= n || from == to) return
     ctl.moveMediaItem(from, to)
-    pushState()
+    projector.pushAll()
   }
 
   /**
@@ -588,7 +601,7 @@ class PlaybackUiController(private val applicationContext: Context) :
       CustomBarAction.RepeatToggle -> ctl.repeatMode = nextRepeatMode(ctl.repeatMode)
       CustomBarAction.None -> Unit
     }
-    pushState()
+    projector.pushPlaybackState()
   }
 
   /**
@@ -606,7 +619,7 @@ class PlaybackUiController(private val applicationContext: Context) :
         ctl.shuffleModeEnabled = !ctl.shuffleModeEnabled
       com.eight87.tonearmboy.ui.settings.CustomNotificationAction.None -> Unit
     }
-    pushState()
+    projector.pushPlaybackState()
   }
 
   private fun nextRepeatMode(current: Int): Int = when (current) {
@@ -616,49 +629,6 @@ class PlaybackUiController(private val applicationContext: Context) :
   }
 
   // -- Internals -------------------------------------------------------------
-
-  private fun pushState() {
-    val ctl = controller
-    val phase = connectionPhase
-    if (ctl == null || ctl.mediaItemCount == 0) {
-      _state.value = PlaybackUiState.Empty.copy(connectionPhase = phase)
-      _queue.value = QueueSnapshot.Empty
-      return
-    }
-    val item = ctl.currentMediaItem
-    val md = item?.mediaMetadata
-    val mediaStoreAlbumId = (md?.extras?.getLong(EXTRA_MEDIA_STORE_ALBUM_ID, -1L))
-      ?.takeIf { it >= 0 }
-    _state.value = PlaybackUiState(
-      hasMedia = true,
-      title = md?.title?.toString().orEmpty(),
-      artist = md?.artist?.toString().orEmpty(),
-      album = md?.albumTitle?.toString().orEmpty(),
-      mediaStoreAlbumId = mediaStoreAlbumId,
-      isPlaying = ctl.isPlaying,
-      positionMs = ctl.currentPosition.coerceAtLeast(0),
-      durationMs = ctl.duration.takeIf { it > 0 } ?: 0,
-      hasNext = ctl.hasNextMediaItem(),
-      hasPrevious = ctl.hasPreviousMediaItem(),
-      shuffleEnabled = ctl.shuffleModeEnabled,
-      repeatMode = ctl.repeatMode,
-      connectionPhase = phase,
-    )
-    val items = ArrayList<QueueItem>(ctl.mediaItemCount)
-    for (i in 0 until ctl.mediaItemCount) {
-      val mi = ctl.getMediaItemAt(i)
-      val mmd = mi.mediaMetadata
-      val itemAlbumId = mmd.extras?.getLong(EXTRA_MEDIA_STORE_ALBUM_ID, -1L)
-        ?.takeIf { it >= 0 }
-      items += QueueItem(
-        mediaId = mi.mediaId,
-        title = mmd.title?.toString().orEmpty(),
-        artist = mmd.artist?.toString().orEmpty(),
-        mediaStoreAlbumId = itemAlbumId,
-      )
-    }
-    _queue.value = QueueSnapshot(items = items, currentIndex = ctl.currentMediaItemIndex)
-  }
 
   companion object {
     private const val SEEK_INCREMENT_MS = 10_000L
