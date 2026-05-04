@@ -9,6 +9,7 @@ import com.eight87.tonearmboy.data.model.Playlist
 import com.eight87.tonearmboy.data.model.Track
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 
 /**
  * R.A.1 — eight narrow data-layer interfaces carved out of
@@ -32,6 +33,32 @@ interface TrackSource {
   fun tracksMatching(criteria: FilterCriteria): Flow<List<Track>>
   fun search(query: String): Flow<List<Track>>
   suspend fun trackById(id: Long): Track?
+
+  /**
+   * R.F.12 — narrow Flows that detail screens use instead of
+   * `observeTracks()` + filter-in-Compose. (UI-F7 / UI-F14.) The
+   * default impls compose against `observeTracks()` so callers
+   * implementing only the broad surface still work.
+   */
+  fun observeTracksForAlbum(albumName: String, albumArtist: String?): Flow<List<Track>> =
+    observeTracks().map { all ->
+      all.filter { it.album == albumName && (it.albumArtist ?: it.artist) == albumArtist }
+    }
+
+  fun observeTracksForArtist(artistName: String): Flow<List<Track>> =
+    observeTracks().map { all ->
+      all.filter { (it.albumArtist ?: it.artist) == artistName || it.artist == artistName }
+    }
+
+  fun observeTracksForGenre(genreName: String): Flow<List<Track>> =
+    observeTracks().map { all -> all.filter { it.genre == genreName } }
+
+  /** R.F.12 — (min, max) of populated `track.year` values across the library. */
+  fun observeYearSpan(): Flow<Pair<Int?, Int?>> =
+    observeTracks().map { all ->
+      val years = all.mapNotNull { it.year }
+      years.minOrNull() to years.maxOrNull()
+    }
 
   /**
    * Album-key album-level ReplayGain lookup. Lives on [TrackSource]

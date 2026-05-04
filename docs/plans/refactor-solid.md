@@ -125,7 +125,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [x] **R.F.9** Extract `MediaChangeObserver` shared by repository scan + `LibraryWatcherService`; one debounce policy (Data-F7).
 - [ ] **R.F.10** Extract `MediaStoreCursorReader` + `ReplayGainEnricher` from `MediaStoreScanner`; drop `runBlocking`, make API `suspend` (Data-F5).
 - [ ] **R.F.11** Extract `QueuePersistenceController` + `NotificationLayoutController` from `PlaybackService`; service `onCreate` becomes wiring only (Playback-F7).
-- [ ] **R.F.12** Add `repository.observeTracksForAlbum/Artist/Genre/observeYearSpan` Flows; detail screens stop filtering in Compose (UI-F7 + F14).
+- [x] **R.F.12** Add `repository.observeTracksForAlbum/Artist/Genre/observeYearSpan` Flows; detail screens stop filtering in Compose (UI-F7 + F14).
 - [ ] **R.F.13** Fold `RowKind` into `SettingsRowBinding` so each binding carries its own `@Composable Render(entry)`; the `null` arm becomes a compile-time error (Settings-F9).
 - [ ] **R.F.14** Co-locate `SettingsCatalog` row definitions per section file; one aggregator `flatten`s. Removes the 683-LOC central edit-magnet (Settings-F7).
 - [x] **R.F.15** Replace `Group` enum with inline `GroupRef`; render order via list position. Removes `PersonalizeBehaviour`-style hacks (Settings-F8).
