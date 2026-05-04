@@ -23,8 +23,18 @@ import androidx.compose.ui.unit.dp
  * matching binding when its sub-page renders, or the row falls back to
  * a stub-like "Coming in v1.1" tap.
  */
+/**
+ * R.F.13 — each binding variant carries its own `Render(entry)` method.
+ * The render path is a single dispatch through [Render]; missing bindings
+ * fall back to [Stub] at the lookup site, so the renderer's `when` is
+ * sealed-exhaustive — adding a new variant without a `Render` becomes a
+ * compile-time error rather than a render-time stub. (Settings-F9.)
+ */
 sealed class SettingsRowBinding {
   abstract val id: String
+
+  @Composable
+  abstract fun Render(entry: SettingsCatalogEntry)
 
   /** Plain navigation / action row. */
   data class Action(
@@ -32,14 +42,37 @@ sealed class SettingsRowBinding {
     val onClick: () -> Unit,
     /** Optional override for the catalog subtitle (e.g. picker current value). */
     val subtitleOverride: String? = null,
-  ) : SettingsRowBinding()
+  ) : SettingsRowBinding() {
+    @Composable
+    override fun Render(entry: SettingsCatalogEntry) {
+      SettingsRow(
+        id = entry.id,
+        icon = entry.icon,
+        label = entry.label,
+        subtitle = subtitleOverride ?: entry.subtitle,
+        onClick = onClick,
+      )
+    }
+  }
 
   /** Toggle row backed by a Boolean. */
   data class Toggle(
     override val id: String,
     val checked: Boolean,
     val onCheckedChange: (Boolean) -> Unit,
-  ) : SettingsRowBinding()
+  ) : SettingsRowBinding() {
+    @Composable
+    override fun Render(entry: SettingsCatalogEntry) {
+      SettingsToggleRow(
+        id = entry.id,
+        icon = entry.icon,
+        label = entry.label,
+        subtitle = entry.subtitle,
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+      )
+    }
+  }
 
   /**
    * Picker row: tapping opens a dialog. The currently-selected value's
@@ -52,7 +85,39 @@ sealed class SettingsRowBinding {
     val currentLabel: String,
     val onClick: () -> Unit,
     val trailing: (@Composable () -> Unit)? = null,
-  ) : SettingsRowBinding()
+  ) : SettingsRowBinding() {
+    @Composable
+    override fun Render(entry: SettingsCatalogEntry) {
+      SettingsRow(
+        id = entry.id,
+        icon = entry.icon,
+        label = entry.label,
+        subtitle = currentLabel,
+        onClick = onClick,
+        trailing = trailing,
+      )
+    }
+  }
+
+  /**
+   * R.F.13 — fallback variant for catalog entries that have no wired
+   * handler on this sub-page. Renders the catalog's own subtitle
+   * (typically "Coming in v1.1.") with no click action. Pages don't
+   * normally instantiate this directly; it's the implicit fallback at
+   * the lookup site in [SettingsCatalogPage].
+   */
+  data class Stub(override val id: String) : SettingsRowBinding() {
+    @Composable
+    override fun Render(entry: SettingsCatalogEntry) {
+      SettingsRow(
+        id = entry.id,
+        icon = entry.icon,
+        label = entry.label,
+        subtitle = entry.subtitle,
+        onClick = null,
+      )
+    }
+  }
 }
 
 /**
@@ -90,8 +155,10 @@ fun SettingsCatalogPage(
     grouped.forEach { (group, items) ->
       SettingsCard(title = groupTitleFor(group)) {
         items.forEachIndexed { index, entry ->
-          val binding = bindingsById[entry.id]
-          RowFromBinding(entry = entry, binding = binding)
+          // R.F.13 — single dispatch through binding.Render; missing
+          // bindings fall back to Stub. No null arm.
+          val binding = bindingsById[entry.id] ?: SettingsRowBinding.Stub(entry.id)
+          binding.Render(entry)
           if (index < items.size - 1) SettingsRowDivider()
         }
       }
@@ -101,49 +168,8 @@ fun SettingsCatalogPage(
   }
 }
 
-@Composable
-private fun RowFromBinding(
-  entry: SettingsCatalogEntry,
-  binding: SettingsRowBinding?,
-) {
-  when (binding) {
-    is SettingsRowBinding.Toggle -> SettingsToggleRow(
-      id = entry.id,
-      icon = entry.icon,
-      label = entry.label,
-      subtitle = entry.subtitle,
-      checked = binding.checked,
-      onCheckedChange = binding.onCheckedChange,
-    )
-    is SettingsRowBinding.Picker -> SettingsRow(
-      id = entry.id,
-      icon = entry.icon,
-      label = entry.label,
-      subtitle = binding.currentLabel,
-      onClick = binding.onClick,
-      trailing = binding.trailing,
-    )
-    is SettingsRowBinding.Action -> SettingsRow(
-      id = entry.id,
-      icon = entry.icon,
-      label = entry.label,
-      subtitle = binding.subtitleOverride ?: entry.subtitle,
-      onClick = binding.onClick,
-    )
-    null -> {
-      // Catalog entry without a binding — render its catalog subtitle
-      // (typically "Coming in v1.1.") and have the tap do nothing
-      // visible. This is the explicit stub render path.
-      SettingsRow(
-        id = entry.id,
-        icon = entry.icon,
-        label = entry.label,
-        subtitle = entry.subtitle,
-        onClick = null,
-      )
-    }
-  }
-}
+// R.F.13 — RowFromBinding collapsed: `binding.Render(entry)` at the
+// call site. Each variant owns its own composable; no when, no null arm.
 
 /** R.F.15 — group titles now ride the GroupRef inline. */
 fun groupTitleFor(group: GroupRef): String = group.label
