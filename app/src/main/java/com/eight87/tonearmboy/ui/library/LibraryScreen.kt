@@ -83,6 +83,7 @@ import com.eight87.tonearmboy.data.model.Album
 import com.eight87.tonearmboy.data.model.Artist
 import com.eight87.tonearmboy.data.model.Genre
 import com.eight87.tonearmboy.data.model.Track
+import com.eight87.tonearmboy.ui.common.FastScrollbar
 import com.eight87.tonearmboy.ui.settings.LibraryTab
 import com.eight87.tonearmboy.ui.settings.SettingsRepository
 import com.eight87.tonearmboy.ui.settings.SortDirection
@@ -651,6 +652,8 @@ internal fun AlbumsTabContent(
         }
       }
     }
+    if (viewMode == ViewMode.List) FastScrollbar(state = listState)
+    else FastScrollbar(state = gridState)
     if (orderedKeys.isNotEmpty()) {
       AlphabetScroller(
         keys = orderedKeys,
@@ -827,6 +830,8 @@ fun ArtistsTabScreen(
         }
       }
     }
+    if (viewMode == ViewMode.List) FastScrollbar(state = listState)
+    else FastScrollbar(state = gridState)
     if (orderedKeys.isNotEmpty()) {
       AlphabetScroller(
         keys = orderedKeys,
@@ -1068,6 +1073,8 @@ internal fun TracksListContent(
           modifier = Modifier.weight(1f).padding(horizontal = SettingsDimens.PagePadding),
         )
       }
+      if (viewMode == ViewMode.List) FastScrollbar(state = listState)
+      else FastScrollbar(state = gridState)
       if (orderedKeys.isNotEmpty()) {
         AlphabetScroller(
           keys = orderedKeys,
@@ -1326,6 +1333,8 @@ fun GenresTabScreen(
         }
       }
     }
+    if (viewMode == ViewMode.List) FastScrollbar(state = listState)
+    else FastScrollbar(state = gridState)
     if (orderedKeys.isNotEmpty()) {
       AlphabetScroller(
         keys = orderedKeys,
@@ -1424,6 +1433,7 @@ fun PlaylistsTabScreen(
         }
       }
     }
+    FastScrollbar(state = listState)
     if (orderedKeys.isNotEmpty()) {
       AlphabetScroller(
         keys = orderedKeys,

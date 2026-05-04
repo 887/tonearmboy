@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import com.eight87.tonearmboy.ui.common.FastScrollbar
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -108,8 +110,10 @@ fun PlaylistsTilesScreen(
         )
       }
     } else {
+      val gridState = rememberLazyGridState()
       LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 140.dp),
+        state = gridState,
         contentPadding = PaddingValues(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -132,6 +136,7 @@ fun PlaylistsTilesScreen(
           )
         }
       }
+      FastScrollbar(state = gridState, modifier = Modifier.align(Alignment.CenterEnd))
     }
     ExtendedFloatingActionButton(
       onClick = { showCreateSheet = true },

@@ -47,6 +47,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import com.eight87.tonearmboy.ui.common.FastScrollbar
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.semantics
@@ -339,6 +340,13 @@ internal fun NowPlayingMergedSurface(
       )
     }
   }
+    // R.A.Q — full-height fast-scroll thumb. Spans the entire merged
+    // surface (cover/transport at the top through the queue at the
+    // bottom) since they share one LazyColumn.
+    FastScrollbar(
+      state = listState,
+      modifier = Modifier.align(Alignment.CenterEnd),
+    )
   }
 }
 
