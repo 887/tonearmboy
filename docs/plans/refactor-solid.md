@@ -115,7 +115,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 **Why:** Each item below is independent and ships standalone. Pick whichever lands in front of the next feature you touch — they don't block each other and don't block earlier phases.
 
 - [x] **R.F.1** Unify `TrackRow` + `DetailTrackRow` + `QueueRow` behind one composable + sealed `TrackContextAction` (UI-F5). Removes a duplicated enum + future-proofs new actions. — shipped: shared `TrackContextAction` enum + `TrackContextMenu` composable replace `TrackRowAction`/`AlbumDetailTrackAction`. `QueueRow` kept separate — its drag-handle / leading-X / active-highlight shape doesn't fold cleanly behind a single composable.
-- [ ] **R.F.2** Per-variant `ConditionUi` registry on `FilterCondition` (label + summary + `@Composable Editor` + default factory). Editor screen iterates the registry — true OCP for new variants (UI-F10).
+- [x] **R.F.2** Per-variant `ConditionUi` registry on `FilterCondition` (label + summary + `@Composable Editor` + default factory). Editor screen iterates the registry — true OCP for new variants (UI-F10).
 - [x] **R.F.3** Extract `PlaybackTransportRow(state, callbacks, iconSize)` shared between `MiniPlayer` and `NowPlayingScreen`. Mini-player passes `iconSize = 24.dp`, NowPlaying passes 36/56 (UI-F11).
 - [ ] **R.F.4** Split `Track` into `Track` (cache-faithful domain) + `ScannedTrack` (scan-only superset with splitter outputs + album-level ReplayGain). Removes the silent contract drift in `Mapping.toDomain` (Data-F4 + F10).
 - [x] **R.F.5** Move `FilterCriteria.fromLegacyJson` + `buildLegacyConditions` into a sibling `FilterCriteriaLegacy` object. Frozen migration concern lives next door, not in the live type (Data-F8).

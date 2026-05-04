@@ -237,44 +237,37 @@ internal fun contentTypeLabel(ct: CustomTabContentType): String = when (ct) {
   CustomTabContentType.GENRES -> "Genres"
 }
 
-internal fun conditionTypeLabel(condition: FilterCondition): String = when (condition) {
-  is FilterCondition.GenreIn -> "Genre"
-  is FilterCondition.ArtistIn -> "Artist"
-  is FilterCondition.AlbumIn -> "Album"
-  is FilterCondition.YearBetween -> "Year range"
-  is FilterCondition.DateAddedBetween -> "Date added"
-  is FilterCondition.HasAlbumArt -> "Album art"
-  is FilterCondition.PathContains -> "File path contains"
-  is FilterCondition.TitleContains -> "Title contains"
-}
+// R.F.2 — conditionTypeLabel + conditionSummary collapsed into the
+// per-variant ConditionUi registry; see `ConditionUi.kt`.
+internal fun conditionTypeLabel(condition: FilterCondition): String =
+  ConditionUiRegistry.uiFor(condition).label
 
-internal fun conditionSummary(condition: FilterCondition): String = when (condition) {
-  is FilterCondition.GenreIn -> if (condition.values.isEmpty()) "Any" else condition.values.joinToString(", ")
-  is FilterCondition.ArtistIn -> if (condition.values.isEmpty()) "Any" else condition.values.joinToString(", ")
-  is FilterCondition.AlbumIn -> if (condition.values.isEmpty()) "Any" else condition.values.joinToString(", ")
-  is FilterCondition.YearBetween -> when {
-    condition.min == null && condition.max == null -> "Any"
-    condition.min != null && condition.max != null -> "${condition.min} – ${condition.max}"
-    condition.min != null -> "from ${condition.min}"
-    else -> "up to ${condition.max}"
-  }
-  is FilterCondition.DateAddedBetween -> when {
-    condition.afterEpochSeconds == null && condition.beforeEpochSeconds == null -> "Any"
-    condition.afterEpochSeconds != null && condition.beforeEpochSeconds != null ->
-      "${formatEpochDay(condition.afterEpochSeconds)} – ${formatEpochDay(condition.beforeEpochSeconds)}"
-    condition.afterEpochSeconds != null -> "since ${formatEpochDay(condition.afterEpochSeconds)}"
-    else -> "until ${formatEpochDay(condition.beforeEpochSeconds!!)}"
-  }
-  is FilterCondition.HasAlbumArt -> if (condition.value) "Only with album art" else "Only without album art"
-  is FilterCondition.PathContains -> if (condition.needle.isBlank()) "Any" else "\"${condition.needle}\""
-  is FilterCondition.TitleContains -> if (condition.needle.isBlank()) "Any" else "\"${condition.needle}\""
-}
+internal fun conditionSummary(condition: FilterCondition): String =
+  ConditionUiRegistry.uiFor(condition).summary(condition)
 
-private fun formatEpochDay(epochSeconds: Long): String {
+internal fun formatEpochDay(epochSeconds: Long): String {
   val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
     timeZone = TimeZone.getTimeZone("UTC")
   }
   return fmt.format(java.util.Date(epochSeconds * 1000))
+}
+
+@Composable
+internal fun SubstringEditor(
+  value: String,
+  label: String,
+  tag: String,
+  onChange: (String) -> Unit,
+) {
+  OutlinedTextField(
+    value = value,
+    onValueChange = onChange,
+    label = { Text(label) },
+    singleLine = true,
+    modifier = Modifier
+      .fillMaxWidth()
+      .semantics { testTag = tag },
+  )
 }
 
 /**
@@ -331,66 +324,19 @@ private fun FilterConditionRow(
   }
 }
 
+// R.F.2 — ConditionEditor collapsed into per-variant ConditionUi.Editor()
+// dispatch via the registry. See `ConditionUi.kt`.
 @Composable
 private fun ConditionEditor(
   condition: FilterCondition,
   universe: FilterUniverse,
   onChange: (FilterCondition) -> Unit,
 ) {
-  when (condition) {
-    is FilterCondition.GenreIn -> MultiCheckList(
-      options = universe.genres,
-      selected = condition.values.toSet(),
-      onToggle = { v ->
-        val next = if (v in condition.values) condition.values - v else condition.values + v
-        onChange(FilterCondition.GenreIn(next))
-      },
-      tagPrefix = "genre",
-    )
-    is FilterCondition.ArtistIn -> MultiCheckList(
-      options = universe.artists,
-      selected = condition.values.toSet(),
-      onToggle = { v ->
-        val next = if (v in condition.values) condition.values - v else condition.values + v
-        onChange(FilterCondition.ArtistIn(next))
-      },
-      tagPrefix = "artist",
-    )
-    is FilterCondition.AlbumIn -> MultiCheckList(
-      options = universe.albums,
-      selected = condition.values.toSet(),
-      onToggle = { v ->
-        val next = if (v in condition.values) condition.values - v else condition.values + v
-        onChange(FilterCondition.AlbumIn(next))
-      },
-      tagPrefix = "album",
-    )
-    is FilterCondition.YearBetween -> YearRangeEditor(condition, universe, onChange)
-    is FilterCondition.DateAddedBetween -> DateAddedEditor(condition, onChange)
-    is FilterCondition.HasAlbumArt -> HasAlbumArtEditor(condition, onChange)
-    is FilterCondition.PathContains -> OutlinedTextField(
-      value = condition.needle,
-      onValueChange = { onChange(FilterCondition.PathContains(it)) },
-      label = { Text("Path contains") },
-      singleLine = true,
-      modifier = Modifier
-        .fillMaxWidth()
-        .semantics { testTag = "path_contains" },
-    )
-    is FilterCondition.TitleContains -> OutlinedTextField(
-      value = condition.needle,
-      onValueChange = { onChange(FilterCondition.TitleContains(it)) },
-      label = { Text("Title contains") },
-      singleLine = true,
-      modifier = Modifier
-        .fillMaxWidth()
-        .semantics { testTag = "title_contains" },
-    )
-  }
+  ConditionUiRegistry.uiFor(condition).Editor(condition, universe, onChange)
 }
 
 @Composable
-private fun YearRangeEditor(
+internal fun YearRangeEditor(
   condition: FilterCondition.YearBetween,
   universe: FilterUniverse,
   onChange: (FilterCondition.YearBetween) -> Unit,
@@ -418,7 +364,7 @@ private fun YearRangeEditor(
 }
 
 @Composable
-private fun DateAddedEditor(
+internal fun DateAddedEditor(
   condition: FilterCondition.DateAddedBetween,
   onChange: (FilterCondition.DateAddedBetween) -> Unit,
 ) {
@@ -499,7 +445,7 @@ private fun DatePickerSheet(
 }
 
 @Composable
-private fun HasAlbumArtEditor(
+internal fun HasAlbumArtEditor(
   condition: FilterCondition.HasAlbumArt,
   onChange: (FilterCondition.HasAlbumArt) -> Unit,
 ) {
@@ -520,7 +466,7 @@ private fun HasAlbumArtEditor(
 }
 
 @Composable
-private fun MultiCheckList(
+internal fun MultiCheckList(
   options: List<String>,
   selected: Set<String>,
   onToggle: (String) -> Unit,
@@ -583,14 +529,12 @@ private fun ConditionTypeChooser(
         style = MaterialTheme.typography.titleMedium,
         modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
       )
-      ConditionPickRow("Genre", "Match selected genres") { onPick(FilterCondition.GenreIn(emptyList())) }
-      ConditionPickRow("Artist", "Match selected artists") { onPick(FilterCondition.ArtistIn(emptyList())) }
-      ConditionPickRow("Album", "Match selected albums") { onPick(FilterCondition.AlbumIn(emptyList())) }
-      ConditionPickRow("Year range", "Limit by release year") { onPick(FilterCondition.YearBetween()) }
-      ConditionPickRow("Date added", "Limit by when added to library") { onPick(FilterCondition.DateAddedBetween()) }
-      ConditionPickRow("Album art", "Only tracks with / without art") { onPick(FilterCondition.HasAlbumArt(true)) }
-      ConditionPickRow("Title contains", "Substring match on title / artist / album") { onPick(FilterCondition.TitleContains("")) }
-      ConditionPickRow("File path contains", "Substring match on the file path") { onPick(FilterCondition.PathContains("")) }
+      // R.F.2 — iterate the ConditionUi registry; adding a new
+      // FilterCondition variant + registry entry adds it here without
+      // changing the chooser code.
+      ConditionUiRegistry.all.forEach { ui ->
+        ConditionPickRow(ui.label, ui.addSubtitle) { onPick(ui.defaultInstance()) }
+      }
     }
   }
 }
