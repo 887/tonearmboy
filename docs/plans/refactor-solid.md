@@ -64,8 +64,8 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [x] **R.C.4** Extract `ReplayGainController(library, scope)` — owns `applyReplayGainNow` + `computeQueueAlbumCoverage` + the settings-flag mirrors (`replayGainStrategy`, `replayGainPreampDb`). Removes `LibraryRepository` from `PlaybackUiController` entirely (Playback-F6).
 - [x] **R.C.5** Move `SleepTimer` construction out of the controller into `AppGraph`; the controller no longer owns it (Playback-F10).
 - [x] **R.C.6** `PlaybackUiController` shrinks to the connection lifecycle + listener attach + composing the four collaborators. Target: under 200 LOC.
-- [ ] **R.C.7** Verify: AVD smoke loop — play, pause, skip, scrub, queue add/remove/reorder, sleep timer, lock-screen controls, notification controls. **This is the highest-risk verification surface in the plan.**
-- [ ] **R.C.8** Ship + tick.
+- [x] **R.C.7** Verify: AVD smoke loop — play, pause, skip, scrub, queue add/remove/reorder, sleep timer, lock-screen controls, notification controls. **This is the highest-risk verification surface in the plan.**
+- [x] **R.C.8** Ship + tick.
 
 **Effort:** L (2 days). **Risk:** medium-high — Media3 listener wiring is fragile; mistakes break notification + lock-screen state. Lean on the existing `PlaybackController` smoke test + manual AVD pass. **Blast radius:** every UI surface that consumes playback state (~5 composables); `PlaybackService` unchanged.
 
