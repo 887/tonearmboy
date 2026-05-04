@@ -90,6 +90,14 @@ class AppGraph(private val applicationContext: Context) {
   }
 
   /**
+   * R.E.8 — production [SessionActivityIntentFactory] binding.
+   * `PlaybackService` reads it via [AppGraph.get] so the service no
+   * longer hard-imports `MainActivity`.
+   */
+  val sessionActivityIntentFactory: com.eight87.tonearmboy.playback.SessionActivityIntentFactory =
+    com.eight87.tonearmboy.ui.nav.MainActivitySessionIntentFactory
+
+  /**
    * R.C.5 — process-wide sleep timer. Constructed here (not on the
    * playback controller) so the controller's only responsibility
    * is connection lifecycle + state projection. Wired through the

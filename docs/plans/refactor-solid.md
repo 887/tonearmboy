@@ -102,7 +102,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [x] **R.E.5** Lift the playlist picker overlay (single + bulk) into `rememberAddToPlaylistController(graph)`.
 - [x] **R.E.6** Lift the four settings → playback `LaunchedEffect`s into `rememberPlaybackSettingsBridge(playback, settings)` — one place to wire mirrors.
 - [ ] **R.E.7** Push side-effect launchers out of settings sub-pages into injectable interfaces: `AutoReloadController`, `EqualizerLauncher`, `MusicSourceCommands` (Settings-F6).
-- [ ] **R.E.8** Define `SessionActivityIntentFactory` interface; `PlaybackService` uses it instead of `Intent(this, MainActivity::class.java)` so service no longer imports the UI module (Playback-F8).
+- [x] **R.E.8** Define `SessionActivityIntentFactory` interface; `PlaybackService` uses it instead of `Intent(this, MainActivity::class.java)` so service no longer imports the UI module (Playback-F8).
 - [ ] **R.E.9** Verify: deep-link from notification, every nav route, SAF import collision dialog, AVD config-change survival.
 - [ ] **R.E.10** Ship + tick.
 
