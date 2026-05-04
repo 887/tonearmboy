@@ -82,7 +82,7 @@ fun AlbumDetailScreen(
   albumArtist: String?,
   albumCoversMode: AlbumCoversMode,
   onTrackClick: (List<Track>, Int) -> Unit,
-  onTrackAction: (Track, AlbumDetailTrackAction) -> Unit,
+  onTrackAction: (Track, TrackContextAction) -> Unit,
   onBack: () -> Unit,
 ) {
   // R.F.12 — narrow Flow; repository pre-filters instead of
@@ -190,7 +190,7 @@ fun ArtistDetailScreen(
   artistName: String,
   albumCoversMode: AlbumCoversMode,
   onTrackClick: (List<Track>, Int) -> Unit,
-  onTrackAction: (Track, AlbumDetailTrackAction) -> Unit,
+  onTrackAction: (Track, TrackContextAction) -> Unit,
   onAlbumClick: (Album) -> Unit,
   onBack: () -> Unit,
 ) {
@@ -311,7 +311,7 @@ fun GenreDetailScreen(
   trackSource: TrackSource,
   genreName: String,
   onTrackClick: (List<Track>, Int) -> Unit,
-  onTrackAction: (Track, AlbumDetailTrackAction) -> Unit,
+  onTrackAction: (Track, TrackContextAction) -> Unit,
   onBack: () -> Unit,
 ) {
   // R.F.12 — narrow Flow; repository pre-filters by genre.
@@ -368,14 +368,14 @@ fun GenreDetailScreen(
 }
 
 // --- Track row + actions used across detail surfaces -------------------
-
-enum class AlbumDetailTrackAction { Play, AddToQueue, AddToPlaylist, GoToAlbum, GoToArtist, Delete }
+// R.F.1 — TrackContextAction declared in `TrackContextAction.kt`,
+// shared with the library Songs tab. Overflow menu shared via TrackContextMenu.
 
 @Composable
 private fun DetailTrackRow(
   track: Track,
   onClick: () -> Unit,
-  onAction: (AlbumDetailTrackAction) -> Unit,
+  onAction: (TrackContextAction) -> Unit,
 ) {
   var menuOpen by remember { mutableStateOf(false) }
   Row(
@@ -400,18 +400,12 @@ private fun DetailTrackRow(
         onClick = { menuOpen = true },
         modifier = Modifier.semantics { testTag = "detail_track_overflow" },
       ) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
-      DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-        DropdownMenuItem(text = { Text("Play") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.Play) })
-        DropdownMenuItem(text = { Text("Add to queue") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.AddToQueue) })
-        DropdownMenuItem(text = { Text("Add to playlist…") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.AddToPlaylist) })
-        DropdownMenuItem(text = { Text("Go to album") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.GoToAlbum) })
-        DropdownMenuItem(text = { Text("Go to artist") }, onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.GoToArtist) })
-        DropdownMenuItem(
-          text = { Text("Delete file…") },
-          onClick = { menuOpen = false; onAction(AlbumDetailTrackAction.Delete) },
-          modifier = Modifier.semantics { testTag = "detail_track_context_delete" },
-        )
-      }
+      TrackContextMenu(
+        expanded = menuOpen,
+        onDismiss = { menuOpen = false },
+        onAction = onAction,
+        deleteTestTag = "detail_track_context_delete",
+      )
     }
   }
   HorizontalDivider()

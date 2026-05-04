@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.ui.library.TileItem
+import com.eight87.tonearmboy.ui.library.TrackContextAction
 import com.eight87.tonearmboy.ui.library.initialKey
 import com.eight87.tonearmboy.ui.library.sortNameKey
 import com.eight87.tonearmboy.ui.library.sortTracks
@@ -111,9 +112,9 @@ internal fun TracksListContent(
   // R.D.4 — multi-select state hoisted into rememberSelectionState.
   val selection = rememberSelectionState<Long>()
 
-  val onAction: (Track, TrackRowAction) -> Unit = { track, action ->
+  val onAction: (Track, TrackContextAction) -> Unit = { track, action ->
     val idx = sorted.indexOf(track).coerceAtLeast(0)
-    if (action == TrackRowAction.Delete && onDeleteTracks != null) {
+    if (action == TrackContextAction.Delete && onDeleteTracks != null) {
       onDeleteTracks(listOf(track))
     } else {
       handleTrackAction(track, sorted, idx, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon)
@@ -173,7 +174,7 @@ internal fun TracksListContent(
  */
 internal class TracksTabSpec(
   private val albumCoversMode: AlbumCoversMode,
-  private val onAction: (Track, TrackRowAction) -> Unit,
+  private val onAction: (Track, TrackContextAction) -> Unit,
 ) : TabSpec<Track> {
   override val testTag: String = "tracks_tab"
   override val emptyMessage: String = "No tracks yet."
@@ -216,7 +217,7 @@ private fun handleTrackAction(
   track: Track,
   list: List<Track>,
   index: Int,
-  action: TrackRowAction,
+  action: TrackContextAction,
   onPlayQueue: (List<Track>, Int) -> Unit,
   onAddToQueue: (Track) -> Unit,
   onAddToPlaylist: (Track) -> Unit,
@@ -225,25 +226,26 @@ private fun handleTrackAction(
   onComingSoon: (String) -> Unit,
 ) {
   when (action) {
-    TrackRowAction.Play -> onPlayQueue(list, index)
-    TrackRowAction.AddToQueue -> onAddToQueue(track)
-    TrackRowAction.AddToPlaylist -> onAddToPlaylist(track)
-    TrackRowAction.GoToAlbum -> onGoToAlbum(track)
-    TrackRowAction.GoToArtist -> onGoToArtist(track)
+    TrackContextAction.Play -> onPlayQueue(list, index)
+    TrackContextAction.AddToQueue -> onAddToQueue(track)
+    TrackContextAction.AddToPlaylist -> onAddToPlaylist(track)
+    TrackContextAction.GoToAlbum -> onGoToAlbum(track)
+    TrackContextAction.GoToArtist -> onGoToArtist(track)
     // Phase F (file deletion) wires this; the menu item is `enabled = false`
     // in the meantime so the snackbar stays out of the user's way.
-    TrackRowAction.Delete -> onComingSoon("Delete file")
+    TrackContextAction.Delete -> onComingSoon("Delete file")
   }
 }
 
-internal enum class TrackRowAction { Play, AddToQueue, AddToPlaylist, GoToAlbum, GoToArtist, Delete }
+// R.F.1 — TrackContextAction lives in `ui/library/TrackContextAction.kt`,
+// shared with `DetailTrackRow`. Overflow menu also shared via TrackContextMenu.
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TrackRow(
   track: Track,
   onClick: () -> Unit,
-  onAction: (TrackRowAction) -> Unit,
+  onAction: (TrackContextAction) -> Unit,
   selected: Boolean = false,
   inSelectionMode: Boolean = false,
   onLongClick: () -> Unit = {},
@@ -277,34 +279,12 @@ private fun TrackRow(
         onClick = { menuOpen = true },
         modifier = Modifier.semantics { testTag = "track_row_overflow" },
       ) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
-      DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-        DropdownMenuItem(
-          text = { Text("Play") },
-          onClick = { menuOpen = false; onAction(TrackRowAction.Play) },
-        )
-        DropdownMenuItem(
-          text = { Text("Add to queue") },
-          onClick = { menuOpen = false; onAction(TrackRowAction.AddToQueue) },
-        )
-        DropdownMenuItem(
-          text = { Text("Add to playlist…") },
-          onClick = { menuOpen = false; onAction(TrackRowAction.AddToPlaylist) },
-        )
-        DropdownMenuItem(
-          text = { Text("Go to album") },
-          onClick = { menuOpen = false; onAction(TrackRowAction.GoToAlbum) },
-        )
-        DropdownMenuItem(
-          text = { Text("Go to artist") },
-          onClick = { menuOpen = false; onAction(TrackRowAction.GoToArtist) },
-        )
-        // Phase F: file deletion lives here.
-        DropdownMenuItem(
-          text = { Text("Delete file…") },
-          onClick = { menuOpen = false; onAction(TrackRowAction.Delete) },
-          modifier = Modifier.semantics { testTag = "track_context_delete" },
-        )
-      }
+      com.eight87.tonearmboy.ui.library.TrackContextMenu(
+        expanded = menuOpen,
+        onDismiss = { menuOpen = false },
+        onAction = onAction,
+        deleteTestTag = "track_context_delete",
+      )
     }
   }
   HorizontalDivider()
