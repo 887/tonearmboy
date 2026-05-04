@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import com.eight87.tonearmboy.data.model.Track
+import com.eight87.tonearmboy.ui.library.tabs.TracksListContent
 import com.eight87.tonearmboy.ui.settings.SortDirection
 import com.eight87.tonearmboy.ui.settings.SortKey
 import com.eight87.tonearmboy.ui.settings.TabSort
