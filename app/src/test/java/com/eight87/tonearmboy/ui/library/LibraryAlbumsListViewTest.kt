@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import com.eight87.tonearmboy.data.model.Album
+import com.eight87.tonearmboy.ui.library.tabs.AlbumsTabContent
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 import com.eight87.tonearmboy.ui.settings.SortDirection
 import com.eight87.tonearmboy.ui.settings.SortKey

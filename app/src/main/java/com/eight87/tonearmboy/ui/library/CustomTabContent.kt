@@ -10,6 +10,7 @@ import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.db.CustomTabContentType
 import com.eight87.tonearmboy.data.db.CustomTabEntity
 import com.eight87.tonearmboy.data.model.Track
+import com.eight87.tonearmboy.ui.library.tabs.AlbumsTabScreen
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 import com.eight87.tonearmboy.ui.settings.SettingsRepository
 import com.eight87.tonearmboy.ui.settings.TabSort
