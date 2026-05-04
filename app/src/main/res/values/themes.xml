@@ -11,18 +11,21 @@
           icon background, so the splash and launcher icon read as one
           continuous surface during the launch animation.
         - windowSplashScreenAnimatedIcon: the launcher foreground (fox
-          + vinyl + tonearm). The system clamps to a circle by default;
-          the foreground is square so the fox stays inside the safe
-          zone.
-        - windowSplashScreenIconBackgroundColor: transparent so the
-          dark splash background shows through.
+          + vinyl + tonearm). With the icon-background colour set
+          (next item) Android sizes the visible icon at 160dp inside
+          a 240dp area instead of the default 80dp/192dp — the fox
+          design is twice the linear size on the splash.
+        - windowSplashScreenIconBackgroundColor: same launcher
+          background colour as the splash, so the bigger icon area
+          blends with the surrounding splash and the fox reads as
+          one continuous visual instead of a tiny inset puck.
         - postSplashScreenTheme: the regular Tonearm theme that
           MainActivity continues to render under once Compose mounts.
     -->
     <style name="Theme.Tonearm" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/launcher_background</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
-        <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/launcher_background</item>
         <item name="postSplashScreenTheme">@style/Theme.Tonearm.Main</item>
     </style>
 
