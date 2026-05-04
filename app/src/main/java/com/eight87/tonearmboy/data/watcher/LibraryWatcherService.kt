@@ -8,11 +8,8 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.database.ContentObserver
 import android.net.Uri
 import android.os.Build
-import android.os.Handler
-import android.os.HandlerThread
 import android.os.IBinder
 import android.provider.MediaStore
 import android.util.Log
@@ -55,21 +52,20 @@ class LibraryWatcherService : Service() {
 
   private val scope = CoroutineScope(SupervisorJob())
 
-  private val observerThread by lazy {
-    HandlerThread("tonearmboy-watcher").apply { start() }
+  // R.F.9 — shared MediaChangeObserver wiring; debounce stays per-consumer
+  // (this service uses WorkManager so observer callbacks survive process
+  // death; the repository uses Flow.debounce in-process). (Data-F7.)
+  private val observer by lazy {
+    com.eight87.tonearmboy.data.MediaChangeObserver(
+      contentResolver = contentResolver,
+      threadName = "tonearmboy-watcher",
+      onChange = { uri ->
+        Log.i(TAG, "onChange uri=$uri")
+        enqueueDebouncedRescan(this@LibraryWatcherService)
+      },
+    )
   }
-  private val observerHandler by lazy { Handler(observerThread.looper) }
 
-  /** Single observer reused across every URI registration. */
-  private val observer = object : ContentObserver(observerHandler) {
-    override fun onChange(selfChange: Boolean, uri: Uri?) {
-      Log.i(TAG, "onChange selfChange=$selfChange uri=$uri")
-      enqueueDebouncedRescan(this@LibraryWatcherService)
-    }
-  }
-
-  /** Track which URIs we've registered the observer against; needed for clean teardown. */
-  private val registeredUris = mutableSetOf<Uri>()
   private var sourceWatchJob: Job? = null
 
   override fun onBind(intent: Intent?): IBinder? = null
@@ -91,9 +87,7 @@ class LibraryWatcherService : Service() {
   override fun onDestroy() {
     Log.i(TAG, "onDestroy: unregistering observer + cancelling pending workers")
     sourceWatchJob?.cancel()
-    runCatching { contentResolver.unregisterContentObserver(observer) }
-    registeredUris.clear()
-    runCatching { observerThread.quitSafely() }
+    observer.close()
     scope.cancel()
     // Cancel any pending debounced rescan so toggling the setting OFF
     // takes effect immediately, not 30 seconds from now.
@@ -117,48 +111,17 @@ class LibraryWatcherService : Service() {
   }
 
   private fun registerMediaStoreObserver() {
-    contentResolver.registerContentObserver(
-      MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-      /* notifyForDescendants = */ true,
-      observer,
-    )
-    registeredUris += MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+    observer.register(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI)
   }
 
   private fun watchSourceUris() {
     val settings = AppGraph.get(applicationContext).settingsRepository
     sourceWatchJob = scope.launch {
       settings.musicSourceUris.flow.collectLatest { sources ->
-        // Diff: drop observers for URIs we no longer track, register
-        // observers for newly-added URIs.
-        val targetUris = sources.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }.toSet()
-        // Always keep the MediaStore registration.
-        val keep = registeredUris.filter {
-          it == MediaStore.Audio.Media.EXTERNAL_CONTENT_URI || it in targetUris
-        }.toSet()
-        // Unregister-then-register the observer to update the URI set.
-        // ContentResolver does not expose "unregister-by-URI", so we
-        // unregister all and re-register the keep + new sets — the
-        // single observer instance is fine for both.
-        runCatching { contentResolver.unregisterContentObserver(observer) }
-        registeredUris.clear()
-        // MediaStore + every (still-valid) source URI.
-        registerMediaStoreObserver()
-        for (sourceUri in targetUris) {
-          runCatching {
-            contentResolver.registerContentObserver(
-              sourceUri,
-              /* notifyForDescendants = */ true,
-              observer,
-            )
-            registeredUris += sourceUri
-          }.onFailure {
-            Log.w(TAG, "failed to register observer for $sourceUri: ${it.message}")
-          }
-        }
-        // Keep variable referenced.
-        @Suppress("UNUSED_EXPRESSION") keep
-        Log.i(TAG, "watching ${registeredUris.size} URIs (mediastore + ${targetUris.size} sources)")
+        val sourceUris = sources.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }.toSet()
+        // MediaStore is always observed; sources are diffed via rebindTo.
+        observer.rebindTo(setOf(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI) + sourceUris)
+        Log.i(TAG, "watching mediastore + ${sourceUris.size} source URIs")
       }
     }
   }

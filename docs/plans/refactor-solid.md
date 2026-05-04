@@ -122,7 +122,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [x] **R.F.6** `LibraryDao.replaceAll` / `applyDelta` take `LibrarySnapshot` data class instead of 4 explicit lists (Data-F9).
 - [x] **R.F.7** Split `data/db/Entities.kt` per entity (Data-F12). Cosmetic but cheap; reduces merge friction in worktrees.
 - [x] **R.F.8** Delete vestigial `data/DataRepository.kt` + `MainScreenViewModel` placeholder if nav-graph-orphan (Data-F11).
-- [ ] **R.F.9** Extract `MediaChangeObserver` shared by repository scan + `LibraryWatcherService`; one debounce policy (Data-F7).
+- [x] **R.F.9** Extract `MediaChangeObserver` shared by repository scan + `LibraryWatcherService`; one debounce policy (Data-F7).
 - [ ] **R.F.10** Extract `MediaStoreCursorReader` + `ReplayGainEnricher` from `MediaStoreScanner`; drop `runBlocking`, make API `suspend` (Data-F5).
 - [ ] **R.F.11** Extract `QueuePersistenceController` + `NotificationLayoutController` from `PlaybackService`; service `onCreate` becomes wiring only (Playback-F7).
 - [ ] **R.F.12** Add `repository.observeTracksForAlbum/Artist/Genre/observeYearSpan` Flows; detail screens stop filtering in Compose (UI-F7 + F14).

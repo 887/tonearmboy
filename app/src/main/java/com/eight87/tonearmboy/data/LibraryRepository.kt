@@ -1,10 +1,7 @@
 package com.eight87.tonearmboy.data
 
 import android.content.Context
-import android.database.ContentObserver
 import android.net.Uri
-import android.os.Handler
-import android.os.HandlerThread
 import android.provider.MediaStore
 import android.util.Log
 import com.eight87.tonearmboy.data.Mapping.toDomain
@@ -114,16 +111,14 @@ class LibraryRepository(
    */
   override val mediaChanges: Flow<Unit> get() = rescanRequests
 
-  private val observerThread by lazy {
-    HandlerThread("tonearmboy-mediastore-observer").apply { start() }
-  }
-  private val observerHandler by lazy { Handler(observerThread.looper) }
-  private val mediaStoreObserver = object : ContentObserver(observerHandler) {
-    override fun onChange(selfChange: Boolean, uri: Uri?) {
-      // Coalesce bursts; the worker debounces.
-      rescanRequests.tryEmit(Unit)
-    }
-  }
+  // R.F.9 — shared observer plumbing (Data-F7). Debounce policy stays
+  // here (in-process Flow.debounce); the watcher service does its own
+  // WorkManager-based debouncing on top of the same primitive.
+  private val mediaObserver = MediaChangeObserver(
+    contentResolver = context.contentResolver,
+    threadName = "tonearmboy-mediastore-observer",
+    onChange = { rescanRequests.tryEmit(Unit) },
+  )
 
   init {
     @OptIn(FlowPreview::class)
@@ -133,11 +128,7 @@ class LibraryRepository(
         .onEach { runScan(initial = false) }
         .collect()
     }
-    context.contentResolver.registerContentObserver(
-      MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-      /* notifyForDescendants = */ true,
-      mediaStoreObserver,
-    )
+    mediaObserver.register(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI)
   }
 
   // -- Public surface --------------------------------------------------------
@@ -517,10 +508,7 @@ class LibraryRepository(
   }
 
   fun shutdown() {
-    runCatching {
-      context.contentResolver.unregisterContentObserver(mediaStoreObserver)
-    }
-    runCatching { observerThread.quitSafely() }
+    mediaObserver.close()
   }
 
   companion object {
