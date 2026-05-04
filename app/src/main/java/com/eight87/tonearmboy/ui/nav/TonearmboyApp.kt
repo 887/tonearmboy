@@ -34,7 +34,6 @@ import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 import com.eight87.tonearmboy.ui.settings.CustomBarAction
 import com.eight87.tonearmboy.ui.settings.PlayFromItemDetails
 import com.eight87.tonearmboy.ui.settings.PlayFromLibrary
-import com.eight87.tonearmboy.ui.settings.ReplayGainStrategy
 import com.eight87.tonearmboy.ui.settings.SettingsAudioScreen
 import com.eight87.tonearmboy.ui.settings.SettingsContentScreen
 import com.eight87.tonearmboy.ui.settings.AboutScreen
@@ -93,15 +92,16 @@ fun TonearmboyApp(
 
   val playback = graph.playbackUiController
   val playbackState by playback.state.collectAsStateWithLifecycle()
+  // R.E.6 — settings → playback mirrors live in PlaybackSettingsBridge,
+  // not inline LaunchedEffects.
+  PlaybackSettingsBridge(
+    transport = playback,
+    replayGain = playback,
+    settings = graph.settingsRepository,
+  )
   // R.B.5 — per-key Flow reads via the facets the repository implements.
   // Each Compose subscription is its own Flow; toggling a setting only
   // recomposes screens that read that specific key.
-  val pauseOnRepeat by graph.settingsRepository.pauseOnRepeat.flow
-    .collectAsStateWithLifecycle(initialValue = false)
-  val replayGainStrategy by graph.settingsRepository.replayGainStrategy.flow
-    .collectAsStateWithLifecycle(initialValue = ReplayGainStrategy.Default)
-  val replayGainPreampDb by graph.settingsRepository.replayGainPreampDb.flow
-    .collectAsStateWithLifecycle(initialValue = 0f)
   val customBarAction by graph.settingsRepository.customBarAction.flow
     .collectAsStateWithLifecycle(initialValue = CustomBarAction.Default)
   val albumCoversMode by graph.settingsRepository.albumCoversMode.flow
@@ -138,22 +138,6 @@ fun TonearmboyApp(
     // album lookups before it sees the first track transition.
     playback.setLibrary(graph.tracks)
     playback.connect()
-  }
-
-  // D.9a.3 — keep the playback controller's pause-on-repeat flag in
-  // sync with the user's setting.
-  LaunchedEffect(pauseOnRepeat) {
-    playback.setPauseOnRepeat(pauseOnRepeat)
-  }
-
-  // D.9b.1 / D.9b.2 — push ReplayGain strategy + pre-amp into the
-  // controller. The controller re-applies the volume immediately and
-  // on every subsequent track transition.
-  LaunchedEffect(replayGainStrategy, replayGainPreampDb) {
-    playback.setReplayGain(
-      replayGainStrategy,
-      replayGainPreampDb,
-    )
   }
 
   val showMiniPlayer = playbackState.hasMedia && current !is NowPlaying
