@@ -89,6 +89,21 @@ class AppGraph(private val applicationContext: Context) {
     PlaybackUiController(applicationContext)
   }
 
+  /**
+   * R.C.5 — process-wide sleep timer. Constructed here (not on the
+   * playback controller) so the controller's only responsibility
+   * is connection lifecycle + state projection. Wired through the
+   * controller's three small SleepTimer hooks.
+   */
+  val sleepTimer: com.eight87.tonearmboy.playback.SleepTimer by lazy {
+    com.eight87.tonearmboy.playback.SleepTimer(
+      scope = applicationScope,
+      pauseAction = { playbackUiController.pauseSilently() },
+      addPlayerListener = playbackUiController::addPlayerListener,
+      removePlayerListener = playbackUiController::removePlayerListener,
+    )
+  }
+
   val themePreferenceStore: ThemePreferenceStore by lazy {
     ThemePreferenceStore(applicationContext)
   }

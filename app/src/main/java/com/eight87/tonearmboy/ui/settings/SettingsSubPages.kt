@@ -601,12 +601,14 @@ fun SettingsAudioScreen(
   onBack: () -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
-  // Phase H.3 / H.4 — wired from `TonearmboyApp` so the Audio sub-page can
-  // host the Sleep timer dialog and launch the System equalizer intent.
-  // Optional so existing tests / preview surfaces can keep instantiating
-  // without the playback controller; nullable means "fall back to a
-  // 'Coming in v1.1' style snackbar".
-  playback: com.eight87.tonearmboy.playback.PlaybackUiController? = null,
+  // Phase H.3 / R.C.5 — sleep-timer surface. Nullable so existing
+  // tests / preview surfaces can instantiate without it; null falls
+  // back to a "Coming in v1.1" snackbar on row tap.
+  sleepTimer: com.eight87.tonearmboy.playback.SleepTimer? = null,
+  // Phase H.4 — system equalizer needs the active audio session id.
+  // Read from the NowPlayingState facet (audioSessionId is exposed
+  // there). Nullable for the same test reason as `sleepTimer`.
+  nowPlayingState: com.eight87.tonearmboy.playback.NowPlayingState? = null,
 ) {
   val headsetAutoplay by settings.headsetAutoplay.flow.collectAsState(
     initial = false,
@@ -634,7 +636,7 @@ fun SettingsAudioScreen(
 
   // Phase H.3 — observe the timer state so the dialog (and the row
   // subtitle) can render the live countdown without polling.
-  val sleepState by (playback?.sleepTimer?.state
+  val sleepState by (sleepTimer?.state
     ?: kotlinx.coroutines.flow.MutableStateFlow(
       com.eight87.tonearmboy.playback.SleepTimerState.Idle,
     )).collectAsState(initial = com.eight87.tonearmboy.playback.SleepTimerState.Idle)
@@ -691,7 +693,7 @@ fun SettingsAudioScreen(
     SettingsRowBinding.Action(
       id = SettingsCatalog.ID_SYSTEM_EQUALIZER,
       onClick = {
-        val sessionId = playback?.audioSessionId?.value
+        val sessionId = nowPlayingState?.audioSessionId?.value
           ?: androidx.media3.common.C.AUDIO_SESSION_ID_UNSET
         val intent = SystemEqualizer.buildIntent(sessionId, context.packageName)
         if (SystemEqualizer.resolves(context, intent)) {
@@ -727,7 +729,7 @@ fun SettingsAudioScreen(
     SleepTimerDialog(
       state = sleepState,
       onStart = { durationMs, waitForEndOfTrack ->
-        playback?.sleepTimer?.start(durationMs, waitForEndOfTrack)
+        sleepTimer?.start(durationMs, waitForEndOfTrack)
         sleepDialog = false
         scope.launch {
           val mins = durationMs / 60_000L
@@ -735,7 +737,7 @@ fun SettingsAudioScreen(
         }
       },
       onCancel = {
-        playback?.sleepTimer?.cancel()
+        sleepTimer?.cancel()
       },
       onDismiss = { sleepDialog = false },
     )
