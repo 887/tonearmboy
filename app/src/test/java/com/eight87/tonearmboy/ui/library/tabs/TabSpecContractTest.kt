@@ -1,0 +1,147 @@
+package com.eight87.tonearmboy.ui.library.tabs
+
+import com.eight87.tonearmboy.data.model.Album
+import com.eight87.tonearmboy.data.model.Artist
+import com.eight87.tonearmboy.data.model.Genre
+import com.eight87.tonearmboy.data.model.Playlist
+import com.eight87.tonearmboy.data.model.Track
+import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
+import com.eight87.tonearmboy.ui.settings.SortDirection
+import com.eight87.tonearmboy.ui.settings.SortKey
+import com.eight87.tonearmboy.ui.settings.TabSort
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * R.D.3 — pure-logic contract tests for the five [TabSpec]
+ * implementations. These cover the non-Composable surface
+ * (id / sectionKey / toTile / supportsTileMode / testTag /
+ * emptyMessage) so the strategy abstraction is exercised in JVM
+ * unit tests without spinning Robolectric.
+ */
+class TabSpecContractTest {
+
+  private val byName = TabSort(SortKey.Name, SortDirection.Ascending)
+  private val byArtist = TabSort(SortKey.Artist, SortDirection.Ascending)
+  private val byDuration = TabSort(SortKey.Duration, SortDirection.Ascending)
+
+  // -- Albums ---------------------------------------------------------
+
+  @Test
+  fun albums_spec_section_keys_only_when_sorting_by_name() {
+    val spec = AlbumsTabSpec(AlbumCoversMode.Default)
+    val a = Album(id = 1, name = "Aerial Roots", artist = "X",
+      trackCount = 4, year = 2024, mediaStoreAlbumId = null)
+    assertEquals("A", spec.sectionKey(a, byName, intelligentSorting = false))
+    assertNull(spec.sectionKey(a, byDuration, intelligentSorting = false))
+    assertNull(spec.sectionKey(a, byArtist, intelligentSorting = false))
+  }
+
+  @Test
+  fun albums_spec_supports_tile_mode_and_carries_album_art_id() {
+    val spec = AlbumsTabSpec(AlbumCoversMode.Default)
+    val a = Album(id = 7, name = "Beach", artist = "X",
+      trackCount = 4, year = 2024, mediaStoreAlbumId = 42L)
+    val tile = spec.toTile(a)
+    assertNotNull(tile)
+    assertEquals(7L, tile!!.id)
+    assertEquals("Beach", tile.title)
+    assertEquals(42L, tile.albumArtId)
+    assertTrue(spec.supportsTileMode)
+    assertEquals("albums_tab", spec.testTag)
+  }
+
+  @Test
+  fun albums_spec_falls_back_to_unknown_artist_when_blank() {
+    val spec = AlbumsTabSpec(AlbumCoversMode.Default)
+    val a = Album(id = 1, name = "X", artist = null,
+      trackCount = 4, year = 2024, mediaStoreAlbumId = null)
+    assertEquals("Unknown artist", spec.toTile(a)!!.subtitle)
+  }
+
+  // -- Artists --------------------------------------------------------
+
+  @Test
+  fun artists_spec_sections_by_name_or_artist_sort() {
+    val a = Artist(id = 9, name = "Zaza", albumCount = 1, trackCount = 3)
+    assertEquals("Z", ArtistsTabSpec.sectionKey(a, byName, intelligentSorting = false))
+    assertEquals("Z", ArtistsTabSpec.sectionKey(a, byArtist, intelligentSorting = false))
+    assertNull(ArtistsTabSpec.sectionKey(a, byDuration, intelligentSorting = false))
+  }
+
+  @Test
+  fun artists_spec_tile_has_no_album_art() {
+    val a = Artist(id = 9, name = "Zaza", albumCount = 1, trackCount = 3)
+    val tile = ArtistsTabSpec.toTile(a)
+    assertNotNull(tile)
+    assertNull(tile!!.albumArtId)
+    assertEquals("artists_tab", ArtistsTabSpec.testTag)
+    assertTrue(ArtistsTabSpec.supportsTileMode)
+  }
+
+  // -- Genres ---------------------------------------------------------
+
+  @Test
+  fun genres_spec_sections_unless_sort_is_duration() {
+    val g = Genre(id = 1, name = "ambient", trackCount = 12)
+    assertEquals("A", GenresTabSpec.sectionKey(g, byName, intelligentSorting = false))
+    assertNull(GenresTabSpec.sectionKey(g, byDuration, intelligentSorting = false))
+    assertEquals("genres_tab", GenresTabSpec.testTag)
+  }
+
+  // -- Playlists ------------------------------------------------------
+
+  @Test
+  fun playlists_spec_does_not_support_tile_mode_and_returns_null_tile() {
+    val p = Playlist(id = 1, name = "Mix", trackCount = 5, createdAtSeconds = 0)
+    assertFalse(PlaylistsTabSpec.supportsTileMode)
+    assertNull(PlaylistsTabSpec.toTile(p))
+    assertEquals("M", PlaylistsTabSpec.sectionKey(p, byName, intelligentSorting = false))
+    assertEquals("playlists_tab", PlaylistsTabSpec.testTag)
+  }
+
+  // -- Tracks ---------------------------------------------------------
+
+  @Test
+  fun tracks_spec_sections_only_when_sorting_by_name() {
+    val spec = TracksTabSpec(AlbumCoversMode.Default, onAction = { _, _ -> })
+    val t = Track(
+      id = 1, title = "Apricot", artist = "x", album = "y", albumArtist = null,
+      durationMs = 1000, trackNumber = null, year = null, genre = null,
+      data = "/x", dateAddedSeconds = 0,
+    )
+    assertEquals("A", spec.sectionKey(t, byName, intelligentSorting = false))
+    assertNull(spec.sectionKey(t, byDuration, intelligentSorting = false))
+    assertEquals("tracks_tab", spec.testTag)
+    assertTrue(spec.supportsTileMode)
+  }
+
+  @Test
+  fun tracks_spec_tile_carries_album_art_id_and_artist_subtitle() {
+    val spec = TracksTabSpec(AlbumCoversMode.Default, onAction = { _, _ -> })
+    val t = Track(
+      id = 1, title = "Apricot", artist = "Solo", album = "y", albumArtist = null,
+      durationMs = 1000, trackNumber = null, year = null, genre = null,
+      data = "/x", dateAddedSeconds = 0, mediaStoreAlbumId = 99L,
+    )
+    val tile = spec.toTile(t)
+    assertNotNull(tile)
+    assertEquals(99L, tile!!.albumArtId)
+    assertEquals("Solo", tile.subtitle)
+  }
+
+  @Test
+  fun tracks_spec_blank_artist_drops_subtitle() {
+    val spec = TracksTabSpec(AlbumCoversMode.Default, onAction = { _, _ -> })
+    val t = Track(
+      id = 1, title = "x", artist = "  ", album = null, albumArtist = null,
+      durationMs = 1, trackNumber = null, year = null, genre = null,
+      data = "/x", dateAddedSeconds = 0,
+    )
+    assertNull(spec.toTile(t)!!.subtitle)
+  }
+}
