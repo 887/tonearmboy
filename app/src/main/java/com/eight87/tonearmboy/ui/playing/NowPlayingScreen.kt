@@ -282,55 +282,39 @@ internal fun NowPlayingMergedSurface(
 
     // -- Item 1: transport row ---------------------------------------
     item(key = "transport_row") {
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .semantics { testTag = "now_playing_transport_row" },
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        IconToggleButton(
-          checked = state.shuffleEnabled,
-          onCheckedChange = { onToggleShuffle() },
-          modifier = Modifier.semantics { testTag = "now_playing_shuffle" },
-        ) {
-          Icon(
-            imageVector = if (state.shuffleEnabled) Icons.Filled.ShuffleOn else Icons.Filled.Shuffle,
-            contentDescription = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
-          )
-        }
-        IconButton(onClick = onSeekToPrevious, enabled = state.hasPrevious) {
-          Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(36.dp))
-        }
-        IconButton(onClick = onSeekBackward) {
-          Icon(Icons.Filled.Replay10, contentDescription = "Seek back 10 seconds", modifier = Modifier.size(36.dp))
-        }
-        IconButton(onClick = onTogglePlayPause) {
-          Icon(
-            imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-            contentDescription = if (state.isPlaying) "Pause" else "Play",
-            modifier = Modifier.size(56.dp),
-          )
-        }
-        IconButton(onClick = onSeekForward) {
-          Icon(Icons.Filled.Forward10, contentDescription = "Seek forward 10 seconds", modifier = Modifier.size(36.dp))
-        }
-        IconButton(onClick = onSeekToNext, enabled = state.hasNext) {
-          Icon(Icons.Filled.SkipNext, contentDescription = "Next", modifier = Modifier.size(36.dp))
-        }
-        IconToggleButton(
-          checked = state.repeatMode != Player.REPEAT_MODE_OFF,
-          onCheckedChange = { onCycleRepeat() },
-          modifier = Modifier.semantics { testTag = "now_playing_repeat" },
-        ) {
-          val (icon, desc) = when (state.repeatMode) {
-            Player.REPEAT_MODE_ONE -> Icons.Filled.RepeatOneOn to "Repeat one"
-            Player.REPEAT_MODE_ALL -> Icons.Filled.RepeatOn to "Repeat all"
-            else -> Icons.Filled.Repeat to "Repeat off"
+      // R.F.3 — shared with MiniPlayer via PlaybackTransportRow.
+      // NowPlaying inserts Replay10 / Forward10 around the play button
+      // via the extraStart / extraEnd slots.
+      PlaybackTransportRow(
+        state = state,
+        iconSize = 36.dp,
+        playIconSize = 56.dp,
+        onTogglePlayPause = onTogglePlayPause,
+        onSkipPrevious = onSeekToPrevious,
+        onSkipNext = onSeekToNext,
+        onToggleShuffle = onToggleShuffle,
+        onCycleRepeat = onCycleRepeat,
+        testTagPrefix = "now_playing",
+        modifier = Modifier.semantics { testTag = "now_playing_transport_row" },
+        extraStart = {
+          IconButton(onClick = onSeekBackward) {
+            Icon(
+              Icons.Filled.Replay10,
+              contentDescription = "Seek back 10 seconds",
+              modifier = Modifier.size(36.dp),
+            )
           }
-          Icon(imageVector = icon, contentDescription = desc)
-        }
-      }
+        },
+        extraEnd = {
+          IconButton(onClick = onSeekForward) {
+            Icon(
+              Icons.Filled.Forward10,
+              contentDescription = "Seek forward 10 seconds",
+              modifier = Modifier.size(36.dp),
+            )
+          }
+        },
+      )
     }
 
     // -- Item 2: queue section ---------------------------------------

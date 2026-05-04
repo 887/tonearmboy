@@ -146,90 +146,22 @@ fun MiniPlayer(
       }
     }
 
-    // -- Transport row -------------------------------------------------
-    // D.26.1: shuffle (left) — prev — play-pause — next — repeat (right),
-    // distributed across the full surface width with `SpaceEvenly`. The
-    // long-press hook on play-pause continues to fire `customBarAction`.
-    Row(
+    // R.F.3 — transport row shared with NowPlayingScreen via PlaybackTransportRow.
+    PlaybackTransportRow(
+      state = state,
+      iconSize = 24.dp,
+      playIconSize = 24.dp,
+      onTogglePlayPause = onTogglePlayPause,
+      onSkipPrevious = onSkipPrevious,
+      onSkipNext = onSkipNext,
+      onToggleShuffle = onToggleShuffle,
+      onCycleRepeat = onCycleRepeat,
+      testTagPrefix = "mini_player",
+      onPlayLongPress = onPlayButtonLongPress,
       modifier = Modifier
-        .fillMaxWidth()
         .padding(horizontal = 8.dp)
         .semantics { testTag = "mini_player_transport_row" },
-      horizontalArrangement = Arrangement.SpaceEvenly,
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      IconToggleButton(
-        checked = state.shuffleEnabled,
-        onCheckedChange = { onToggleShuffle() },
-        modifier = Modifier.semantics { testTag = "mini_player_shuffle" },
-      ) {
-        Icon(
-          imageVector = if (state.shuffleEnabled) Icons.Filled.ShuffleOn else Icons.Filled.Shuffle,
-          contentDescription = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
-        )
-      }
-      IconButton(
-        onClick = onSkipPrevious,
-        enabled = state.hasPrevious,
-        modifier = Modifier.semantics { testTag = "mini_player_prev" },
-      ) {
-        Icon(
-          imageVector = Icons.Filled.SkipPrevious,
-          contentDescription = "Previous",
-        )
-      }
-
-      // D.9a.1 — `IconButton` doesn't expose a long-press hook, so build
-      // a 40-dp tap target by hand using `combinedClickable`. Long-press
-      // triggers the user's chosen Custom playback bar action; tap
-      // toggles play/pause.
-      val interaction = remember { MutableInteractionSource() }
-      Box(
-        modifier = Modifier
-          .size(40.dp)
-          .clip(CircleShape)
-          .combinedClickable(
-            interactionSource = interaction,
-            indication = ripple(bounded = false, radius = 20.dp),
-            onClick = onTogglePlayPause,
-            onLongClick = onPlayButtonLongPress,
-            onClickLabel = if (state.isPlaying) "Pause" else "Play",
-            onLongClickLabel = "Custom action",
-          )
-          .semantics { testTag = "mini_player_play_button" },
-        contentAlignment = Alignment.Center,
-      ) {
-        Icon(
-          imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-          contentDescription = if (state.isPlaying) "Pause" else "Play",
-          tint = LocalContentColor.current,
-        )
-      }
-
-      IconButton(
-        onClick = onSkipNext,
-        enabled = state.hasNext,
-        modifier = Modifier.semantics { testTag = "mini_player_next" },
-      ) {
-        Icon(
-          imageVector = Icons.Filled.SkipNext,
-          contentDescription = "Next",
-        )
-      }
-
-      IconToggleButton(
-        checked = state.repeatMode != Player.REPEAT_MODE_OFF,
-        onCheckedChange = { onCycleRepeat() },
-        modifier = Modifier.semantics { testTag = "mini_player_repeat" },
-      ) {
-        val (icon, desc) = when (state.repeatMode) {
-          Player.REPEAT_MODE_ONE -> Icons.Filled.RepeatOneOn to "Repeat one"
-          Player.REPEAT_MODE_ALL -> Icons.Filled.RepeatOn to "Repeat all"
-          else -> Icons.Filled.Repeat to "Repeat off"
-        }
-        Icon(imageVector = icon, contentDescription = desc)
-      }
-    }
+    )
 
     // -- Slider row ----------------------------------------------------
     // D.26.1: full draggable Material 3 Slider (replaces the old 2-dp

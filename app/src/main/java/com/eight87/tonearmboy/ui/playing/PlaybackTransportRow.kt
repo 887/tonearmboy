@@ -1,0 +1,164 @@
+package com.eight87.tonearmboy.ui.playing
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOn
+import androidx.compose.material.icons.filled.RepeatOneOn
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.ShuffleOn
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.media3.common.Player
+import com.eight87.tonearmboy.playback.PlaybackUiState
+
+/**
+ * R.F.3 — shared transport row used by both [MiniPlayer] and
+ * [NowPlayingScreen]. Five canonical buttons (shuffle, prev,
+ * play-pause, next, repeat) in a `SpaceEvenly` Row. (UI-F11.)
+ *
+ * Sizing axis ([iconSize] / [playIconSize]):
+ * - mini-player: 24 dp icons, 24 dp play
+ * - now-playing: 36 dp icons, 56 dp play
+ *
+ * Two optional behaviours:
+ * - [onPlayLongPress]: long-press on play fires the user's
+ *   custom-bar-action. Mini-player passes a non-null lambda; now-playing
+ *   passes null and the play button reverts to a plain [IconButton].
+ * - [extraStart] / [extraEnd]: composable slots between prev/play and
+ *   play/next. Now-playing inserts its Replay10 / Forward10 buttons
+ *   here; mini-player passes null for both.
+ *
+ * The callers still own their own outer Row's `Modifier`, padding, and
+ * `testTag` for the surface, so tests anchoring on `mini_player_transport_row`
+ * and `now_playing_transport_row` keep their existing semantics.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun PlaybackTransportRow(
+  state: PlaybackUiState,
+  iconSize: Dp,
+  playIconSize: Dp,
+  onTogglePlayPause: () -> Unit,
+  onSkipPrevious: () -> Unit,
+  onSkipNext: () -> Unit,
+  onToggleShuffle: () -> Unit,
+  onCycleRepeat: () -> Unit,
+  testTagPrefix: String,
+  modifier: Modifier = Modifier,
+  onPlayLongPress: (() -> Unit)? = null,
+  extraStart: (@Composable () -> Unit)? = null,
+  extraEnd: (@Composable () -> Unit)? = null,
+) {
+  Row(
+    modifier = modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.SpaceEvenly,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    IconToggleButton(
+      checked = state.shuffleEnabled,
+      onCheckedChange = { onToggleShuffle() },
+      modifier = Modifier.semantics { testTag = "${testTagPrefix}_shuffle" },
+    ) {
+      Icon(
+        imageVector = if (state.shuffleEnabled) Icons.Filled.ShuffleOn else Icons.Filled.Shuffle,
+        contentDescription = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
+        modifier = Modifier.size(iconSize),
+      )
+    }
+    IconButton(
+      onClick = onSkipPrevious,
+      enabled = state.hasPrevious,
+      modifier = Modifier.semantics { testTag = "${testTagPrefix}_prev" },
+    ) {
+      Icon(
+        Icons.Filled.SkipPrevious,
+        contentDescription = "Previous",
+        modifier = Modifier.size(iconSize),
+      )
+    }
+    extraStart?.invoke()
+    if (onPlayLongPress != null) {
+      // D.9a.1 — IconButton has no long-press hook; build a tap target
+      // by hand so long-press triggers the custom-bar-action.
+      val interaction = remember { MutableInteractionSource() }
+      Box(
+        modifier = Modifier
+          .size(40.dp)
+          .clip(CircleShape)
+          .combinedClickable(
+            interactionSource = interaction,
+            indication = ripple(bounded = false, radius = 20.dp),
+            onClick = onTogglePlayPause,
+            onLongClick = onPlayLongPress,
+            onClickLabel = if (state.isPlaying) "Pause" else "Play",
+            onLongClickLabel = "Custom action",
+          )
+          .semantics { testTag = "${testTagPrefix}_play_button" },
+        contentAlignment = Alignment.Center,
+      ) {
+        Icon(
+          imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+          contentDescription = if (state.isPlaying) "Pause" else "Play",
+          tint = LocalContentColor.current,
+        )
+      }
+    } else {
+      IconButton(onClick = onTogglePlayPause) {
+        Icon(
+          imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+          contentDescription = if (state.isPlaying) "Pause" else "Play",
+          modifier = Modifier.size(playIconSize),
+        )
+      }
+    }
+    extraEnd?.invoke()
+    IconButton(
+      onClick = onSkipNext,
+      enabled = state.hasNext,
+      modifier = Modifier.semantics { testTag = "${testTagPrefix}_next" },
+    ) {
+      Icon(
+        Icons.Filled.SkipNext,
+        contentDescription = "Next",
+        modifier = Modifier.size(iconSize),
+      )
+    }
+    IconToggleButton(
+      checked = state.repeatMode != Player.REPEAT_MODE_OFF,
+      onCheckedChange = { onCycleRepeat() },
+      modifier = Modifier.semantics { testTag = "${testTagPrefix}_repeat" },
+    ) {
+      val (icon, desc) = when (state.repeatMode) {
+        Player.REPEAT_MODE_ONE -> Icons.Filled.RepeatOneOn to "Repeat one"
+        Player.REPEAT_MODE_ALL -> Icons.Filled.RepeatOn to "Repeat all"
+        else -> Icons.Filled.Repeat to "Repeat off"
+      }
+      Icon(imageVector = icon, contentDescription = desc, modifier = Modifier.size(iconSize))
+    }
+  }
+}
