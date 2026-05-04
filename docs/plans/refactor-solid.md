@@ -1,6 +1,6 @@
 # tonearmboy — SOLID refactor plan
 
-## Status: 🟡 IN PROGRESS — Phase R.A starts after the next user kick-off.
+## Status: ✅ DONE — every phase shipped (R.A → R.B → R.C → R.D → R.E → R.F).
 
 _Synthesized 2026-05-03 from a four-agent SOLID audit (data / ui-library+playing / settings / playback+nav). 50 findings collapsed into six lettered phases below, ordered so each phase unblocks the next. Phase R.A is mechanical and low-risk; phases get hairier downstream._
 
@@ -110,7 +110,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 ---
 
-## Phase R.F — cross-cutting polish (independent small wins)
+## Phase R.F — cross-cutting polish (independent small wins) — shipped in commits `32741ca..<head>`
 
 **Why:** Each item below is independent and ships standalone. Pick whichever lands in front of the next feature you touch — they don't block each other and don't block earlier phases.
 
@@ -124,7 +124,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [x] **R.F.8** Delete vestigial `data/DataRepository.kt` + `MainScreenViewModel` placeholder if nav-graph-orphan (Data-F11).
 - [x] **R.F.9** Extract `MediaChangeObserver` shared by repository scan + `LibraryWatcherService`; one debounce policy (Data-F7).
 - [x] **R.F.10** Extract `MediaStoreCursorReader` + `ReplayGainEnricher` from `MediaStoreScanner`; drop `runBlocking`, make API `suspend` (Data-F5).
-- [ ] **R.F.11** Extract `QueuePersistenceController` + `NotificationLayoutController` from `PlaybackService`; service `onCreate` becomes wiring only (Playback-F7).
+- [x] **R.F.11** Extract `QueuePersistenceController` + `NotificationLayoutController` from `PlaybackService`; service `onCreate` becomes wiring only (Playback-F7).
 - [x] **R.F.12** Add `repository.observeTracksForAlbum/Artist/Genre/observeYearSpan` Flows; detail screens stop filtering in Compose (UI-F7 + F14).
 - [x] **R.F.13** Fold `RowKind` into `SettingsRowBinding` so each binding carries its own `@Composable Render(entry)`; the `null` arm becomes a compile-time error (Settings-F9).
 - [x] **R.F.14** Co-locate `SettingsCatalog` row definitions per section file; one aggregator `flatten`s. Removes the 683-LOC central edit-magnet (Settings-F7).
