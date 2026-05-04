@@ -191,10 +191,4 @@ private fun RailTabItem(
   }
 }
 
-private fun tabLabel(tab: LibraryTab): String = when (tab) {
-  LibraryTab.Songs -> "Songs"
-  LibraryTab.Albums -> "Albums"
-  LibraryTab.Artists -> "Artists"
-  LibraryTab.Genres -> "Genres"
-  LibraryTab.Playlists -> "Playlists"
-}
+// R.D.1 — `tabLabel` lives in `LibrarySorting.kt`; resolved by package.

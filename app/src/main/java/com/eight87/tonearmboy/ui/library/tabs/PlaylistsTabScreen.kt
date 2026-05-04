@@ -16,10 +16,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import com.eight87.tonearmboy.data.PlaylistStore
 import com.eight87.tonearmboy.ui.common.FastScrollbar
-import com.eight87.tonearmboy.ui.library.EmptyState
+// EmptyState is in same package (tabs)
 import com.eight87.tonearmboy.ui.library.PlaylistsTilesScreen
-import com.eight87.tonearmboy.ui.library.SectionHeader
-import com.eight87.tonearmboy.ui.library.TwoLineRow
+// SectionHeader is in same package (tabs)
+// TwoLineRow is in same package (tabs)
 import com.eight87.tonearmboy.ui.library.initialKey
 import com.eight87.tonearmboy.ui.library.letterForFlatIndex
 import com.eight87.tonearmboy.ui.library.libraryListCard

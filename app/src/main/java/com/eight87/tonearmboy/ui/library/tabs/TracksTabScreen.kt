@@ -37,10 +37,10 @@ import androidx.compose.ui.unit.dp
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.ui.common.FastScrollbar
-import com.eight87.tonearmboy.ui.library.EmptyState
+// EmptyState is in same package (tabs)
 import com.eight87.tonearmboy.ui.library.LibraryTileGrid
-import com.eight87.tonearmboy.ui.library.MultiSelectBar
-import com.eight87.tonearmboy.ui.library.SectionHeader
+// MultiSelectBar is in same package (tabs)
+// SectionHeader is in same package (tabs)
 import com.eight87.tonearmboy.ui.library.TileItem
 import com.eight87.tonearmboy.ui.library.initialKey
 import com.eight87.tonearmboy.ui.library.letterForFlatIndexInGrouped

@@ -32,9 +32,9 @@ import com.eight87.tonearmboy.data.AlbumSource
 import com.eight87.tonearmboy.data.model.Album
 import com.eight87.tonearmboy.ui.common.FastScrollbar
 import com.eight87.tonearmboy.ui.library.CoverArt
-import com.eight87.tonearmboy.ui.library.EmptyState
+// EmptyState is in same package (tabs)
 import com.eight87.tonearmboy.ui.library.LibraryTileGrid
-import com.eight87.tonearmboy.ui.library.SectionHeader
+// SectionHeader is in same package (tabs)
 import com.eight87.tonearmboy.ui.library.TileItem
 import com.eight87.tonearmboy.ui.library.initialKey
 import com.eight87.tonearmboy.ui.library.letterForFlatIndex
