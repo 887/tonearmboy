@@ -27,10 +27,10 @@ val buildDateUtc: String = DateTimeFormatter.ISO_LOCAL_DATE
   .format(LocalDate.now(ZoneOffset.UTC))
 
 android {
-    namespace = "com.eight87.tonearm"
+    namespace = "com.eight87.tonearmboy"
     compileSdk = 36
     defaultConfig {
-        applicationId = "com.eight87.tonearm"
+        applicationId = "com.eight87.tonearmboy"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

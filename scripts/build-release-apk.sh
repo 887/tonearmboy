@@ -8,7 +8,7 @@
 #
 # Combine: --gh-release --install is fine (this is the "phone-vibing" happy path).
 #
-# Output: release/tonearm-<version>-<sha7>.apk and a release/latest.apk symlink.
+# Output: release/tonearmboy-<version>-<sha7>.apk and a release/latest.apk symlink.
 #
 # Signing: this uses Gradle's debug keystore by default (good for personal
 # sideload). For a real published release, set TONEARM_RELEASE_KEYSTORE +
@@ -62,7 +62,7 @@ TAG="${VERSION}-${SHA7}"
 REL_TAG="v${TAG}"
 
 OUT_DIR="${ROOT}/release"
-OUT_APK="${OUT_DIR}/tonearm-${TAG}.apk"
+OUT_APK="${OUT_DIR}/tonearmboy-${TAG}.apk"
 mkdir -p "${OUT_DIR}"
 
 # Decide release vs debug build flavour
@@ -122,7 +122,7 @@ Auto-built APK from commit \`${SHA7}\`.
 Sideload via [Obtainium](https://github.com/ImranR98/Obtainium) (recommended — see the project README for setup) or install directly:
 
 \`\`\`
-adb install -r tonearm-${TAG}.apk
+adb install -r tonearmboy-${TAG}.apk
 \`\`\`
 
 ## ${CHANGELOG_HEADER}
@@ -134,14 +134,14 @@ ${COMMIT_LIST}
 | Field | Value |
 | --- | --- |
 | Commit | \`${SHA_FULL}\` |
-| APK | \`tonearm-${TAG}.apk\` |
+| APK | \`tonearmboy-${TAG}.apk\` |
 | APK SHA-256 | \`${APK_SHA256}\` |
 | Build flavour | \`${GRADLE_TASK}\` |
 
 To verify locally:
 
 \`\`\`
-sha256sum tonearm-${TAG}.apk
+sha256sum tonearmboy-${TAG}.apk
 # expected: ${APK_SHA256}
 \`\`\`
 EOF
@@ -153,7 +153,7 @@ EOF
     else
         echo "[build-release-apk] creating release ${REL_TAG} on GitHub..."
         gh release create "${REL_TAG}" "${OUT_APK}" \
-            --title "tonearm ${VERSION} (${SHA7})" \
+            --title "tonearmboy ${VERSION} (${SHA7})" \
             --notes-file "${NOTES_FILE}"
     fi
     rm -f "${NOTES_FILE}"

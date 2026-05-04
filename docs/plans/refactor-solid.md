@@ -1,4 +1,4 @@
-# tonearm — SOLID refactor plan
+# tonearmboy — SOLID refactor plan
 
 ## Status: 🟡 IN PROGRESS — Phase R.A starts after the next user kick-off.
 
@@ -8,9 +8,9 @@ _Synthesized 2026-05-03 from a four-agent SOLID audit (data / ui-library+playing
 
 ## Cross-cutting themes (the audit in one breath)
 
-Five god-objects shape the codebase: `LibraryRepository.kt` (565 LOC, 6 concerns), `SettingsRepository.kt` (826 LOC, 25+ keys + fat snapshot), `PlaybackUiController.kt` (882 LOC, 6 axes), `LibraryScreen.kt` (1528 LOC, 5 near-duplicate tab dispatchers), `TonearmApp.kt` (820 LOC, every nav destination inline-wired). Composables take these god-handles wholesale (ISP), so a leaf row that needs `track.title + onClick` ends up depending on `LibraryRepository` (~30 methods). Two wrong-direction dependencies leak across layers (`data/LibraryRepository` imports `ui.settings.SettingsRepository`; `playback/PlaybackService` imports `MainActivity` deeplink constants). Several `when`-over-type chains should be sealed-type-dispatched (5 tab dispatchers, 4 `FilterCondition` enumerations, every nav `entry<Destination>`). One boilerplate quartet repeats 25× in settings (`stringPreferencesKey + Flow + setter + snapshot field`).
+Five god-objects shape the codebase: `LibraryRepository.kt` (565 LOC, 6 concerns), `SettingsRepository.kt` (826 LOC, 25+ keys + fat snapshot), `PlaybackUiController.kt` (882 LOC, 6 axes), `LibraryScreen.kt` (1528 LOC, 5 near-duplicate tab dispatchers), `TonearmboyApp.kt` (820 LOC, every nav destination inline-wired). Composables take these god-handles wholesale (ISP), so a leaf row that needs `track.title + onClick` ends up depending on `LibraryRepository` (~30 methods). Two wrong-direction dependencies leak across layers (`data/LibraryRepository` imports `ui.settings.SettingsRepository`; `playback/PlaybackService` imports `MainActivity` deeplink constants). Several `when`-over-type chains should be sealed-type-dispatched (5 tab dispatchers, 4 `FilterCondition` enumerations, every nav `entry<Destination>`). One boilerplate quartet repeats 25× in settings (`stringPreferencesKey + Flow + setter + snapshot field`).
 
-The phases below attack these in unblock-order: narrow data interfaces first (cheapest, opens up every UI consumer), then settings facets, then the playback split, then the LibraryScreen reshape, then the TonearmApp shrink, then standalone polish wins.
+The phases below attack these in unblock-order: narrow data interfaces first (cheapest, opens up every UI consumer), then settings facets, then the playback split, then the LibraryScreen reshape, then the TonearmboyApp shrink, then standalone polish wins.
 
 ---
 
@@ -89,16 +89,16 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 ---
 
-## Phase R.E — `TonearmApp` shrink: `RouteScope` + per-route renderers + extracted IO controllers
+## Phase R.E — `TonearmboyApp` shrink: `RouteScope` + per-route renderers + extracted IO controllers
 
-**Why:** `TonearmApp.kt` at 820 LOC has every `entry<Destination>` inline-rendering its route with full data plumbing — adding a destination means editing this file (closed against extension). It also hosts SAF launchers (export/import), the playlist picker overlay, the music-sources dialog, the import-collision dialog, the deeplink reactor, and four `LaunchedEffect`s mirroring settings into the controller. Six unrelated change-axes.
+**Why:** `TonearmboyApp.kt` at 820 LOC has every `entry<Destination>` inline-rendering its route with full data plumbing — adding a destination means editing this file (closed against extension). It also hosts SAF launchers (export/import), the playlist picker overlay, the music-sources dialog, the import-collision dialog, the deeplink reactor, and four `LaunchedEffect`s mirroring settings into the controller. Six unrelated change-axes.
 
 **How to apply:** Define a `RouteScope` data interface (graph + backstack + snackbar + facets + callbacks) and per-destination `Render(scope: RouteScope)` extensions. Lift cross-cutting concerns into `remember*Controller` helpers.
 
 - [ ] **R.E.1** Define `RouteScope` interface carrying everything a route needs (`graph`, `backStack`, `snackbar`, `playback: TransportCommands`, settings facets, etc.).
 - [ ] **R.E.2** Per-destination `Register(scope)` extensions on the sealed `Destination` interface — one file per destination grouping (e.g. `routes/SettingsRoutes.kt`, `routes/LibraryRoutes.kt`).
-- [ ] **R.E.3** `TonearmApp.kt` shrinks to: theme + scaffold + top-app-bar + a single `entryProvider { destination -> destination.Register(scope) }` block. Target: under 150 LOC.
-- [ ] **R.E.4** Lift playlist export/import out of `TonearmApp` into `rememberPlaylistBackupController(graph, snackbar)` returning `{ onExport, onImport, collisionDialog }` (Playback-F9).
+- [ ] **R.E.3** `TonearmboyApp.kt` shrinks to: theme + scaffold + top-app-bar + a single `entryProvider { destination -> destination.Register(scope) }` block. Target: under 150 LOC.
+- [ ] **R.E.4** Lift playlist export/import out of `TonearmboyApp` into `rememberPlaylistBackupController(graph, snackbar)` returning `{ onExport, onImport, collisionDialog }` (Playback-F9).
 - [ ] **R.E.5** Lift the playlist picker overlay (single + bulk) into `rememberAddToPlaylistController(graph)`.
 - [ ] **R.E.6** Lift the four settings → playback `LaunchedEffect`s into `rememberPlaybackSettingsBridge(playback, settings)` — one place to wire mirrors.
 - [ ] **R.E.7** Push side-effect launchers out of settings sub-pages into injectable interfaces: `AutoReloadController`, `EqualizerLauncher`, `MusicSourceCommands` (Settings-F6).

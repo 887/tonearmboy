@@ -1,4 +1,4 @@
-# tonearm
+# tonearmboy
 
 Modern Android music player. Built on Jetpack Compose + Media3. Targets feature parity with [Auxio](https://github.com/OxygenCobalt/Auxio), plus first-class file deletion from inside the player.
 
@@ -30,7 +30,7 @@ sideload dance, auto-update on every new release. Works on de-Googled Androids
 
 Tap this link on your phone:
 
-[`obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearm`](obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearm)
+[`obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearmboy`](obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Ftonearmboy)
 
 Obtainium opens, prefills the source, and shows **Add**.
 
@@ -41,7 +41,7 @@ Obtainium opens, prefills the source, and shows **Add**.
 2. In Obtainium, tap **Add App** → paste this **Source URL**:
 
    ```
-   https://github.com/887/tonearm
+   https://github.com/887/tonearmboy
    ```
 
    (The code block above gives you a one-tap copy on GitHub web + most Markdown viewers.)
@@ -51,10 +51,10 @@ Obtainium opens, prefills the source, and shows **Add**.
    | Field            | Value                  |
    | ---------------- | ---------------------- |
    | Source type      | GitHub                 |
-   | APK filter regex | `^tonearm-.*\.apk$`    |
+   | APK filter regex | `^tonearmboy-.*\.apk$`    |
    | Update channel   | Releases               |
 
-4. Tap **Add**. Obtainium fetches `tonearm-<version>-<sha7>.apk` from the latest release and offers Install. Future releases trigger an auto-update notification.
+4. Tap **Add**. Obtainium fetches `tonearmboy-<version>-<sha7>.apk` from the latest release and offers Install. Future releases trigger an auto-update notification.
 
 ### Verifying a build
 
@@ -62,7 +62,7 @@ Each release ships a "Verify build" table in its notes with the APK SHA-256.
 After installing, confirm what you got matches:
 
 ```bash
-adb shell pm path com.eight87.tonearm           # find the installed APK on your device
+adb shell pm path com.eight87.tonearmboy           # find the installed APK on your device
 adb pull <path-from-above> /tmp/installed.apk   # pull it back
 sha256sum /tmp/installed.apk                    # compare to the release notes
 ```
@@ -126,14 +126,14 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 ## Build a release APK
 
 The canonical happy path is **"phone-vibing"**: you're on your phone, you tell
-Claude (in the Claude app) to ship a new build of tonearm. Claude opens a
+Claude (in the Claude app) to ship a new build of tonearmboy. Claude opens a
 session against this repo on your dev machine, runs:
 
 ```bash
 scripts/build-release-apk.sh --gh-release
 ```
 
-…and the new APK shows up on `https://github.com/887/tonearm/releases/latest`.
+…and the new APK shows up on `https://github.com/887/tonearmboy/releases/latest`.
 You then pull it to your phone via [Obtainium](#install-via-obtainium), which
 auto-detects the new release and offers an in-place update. No Play Store, no
 Android Studio, no manual `adb`.
@@ -141,7 +141,7 @@ Android Studio, no manual `adb`.
 The script supports three flags, individually or combined:
 
 ```bash
-# 1. Build only — APK lands at release/tonearm-<version>-<sha7>.apk
+# 1. Build only — APK lands at release/tonearmboy-<version>-<sha7>.apk
 scripts/build-release-apk.sh
 
 # 2. Build + upload to GitHub Releases (uses gh CLI; creates a vN.N.N-<sha7> tag)
@@ -179,7 +179,7 @@ web UI. It triggers **only** on `push: tags: [v*]`; it never runs on regular
 pushes, PRs, or schedule, so the default cost is zero CI minutes.
 
 The workflow is **self-disabling**: at the start of the job it queries the
-matching release; if any asset already matches `tonearm-*.apk` (which is what
+matching release; if any asset already matches `tonearmboy-*.apk` (which is what
 `scripts/build-release-apk.sh --gh-release` uploaded), it exits 0 without
 rebuilding. So for the normal local-build flow, even though the tag push
 triggers the workflow, no work happens.
@@ -218,8 +218,8 @@ scripts/push-test-music.sh            # pushes to the running AVD, triggers Medi
 scripts/fetch-test-music.sh --push    # fetch + push in one shot
 ```
 
-Tracks land at `/sdcard/Music/tonearm-test/` on the device. After pushing, open
-tonearm and hit **Settings → Rescan music** if the library doesn't pick them up
+Tracks land at `/sdcard/Music/tonearmboy-test/` on the device. After pushing, open
+tonearmboy and hit **Settings → Rescan music** if the library doesn't pick them up
 automatically (the deprecated `MEDIA_SCANNER_SCAN_FILE` broadcast is best-effort
 on modern Android).
 

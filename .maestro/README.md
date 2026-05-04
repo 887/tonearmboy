@@ -1,6 +1,6 @@
 # Maestro flows
 
-Two end-to-end UI flows that exercise tonearm's golden paths from a real
+Two end-to-end UI flows that exercise tonearmboy's golden paths from a real
 ADB target. Each flow is also runnable step-by-step via mobile-mcp inside
 Claude Code (the YAML actions map 1:1 onto `mcp__mobile__mobile_*` tool
 calls).
@@ -31,7 +31,7 @@ The `mcp__mobile__*` tools (registered via `.mcp.json`) execute the same
 actions interactively. A typical session:
 
 ```
-mcp__mobile__mobile_launch_app(packageName="com.eight87.tonearm")
+mcp__mobile__mobile_launch_app(packageName="com.eight87.tonearmboy")
 mcp__mobile__mobile_list_elements_on_screen()
 mcp__mobile__mobile_click_on_screen_at_coordinates(...)
 ```

@@ -34,7 +34,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:windowSoftInputMode="adjustResize"
-        android:theme="@style/Theme.Tonearm">
+        android:theme="@style/Theme.Tonearmboy">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -82,18 +82,18 @@
             android:name=".playback.SmokeTestReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.eight87.tonearm.action.SMOKE_PLAY" />
+                <action android:name="com.eight87.tonearmboy.action.SMOKE_PLAY" />
             </intent-filter>
         </receiver>
 
         <!-- Phase C smoke-test entry point: runs a MediaStore scan and logs
-             the result counts under the tonearm tag so the library smoke
+             the result counts under the tonearmboy tag so the library smoke
              test can assert the seeded fixtures were picked up. -->
         <receiver
             android:name=".data.LibraryScanReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.eight87.tonearm.action.LIBRARY_SCAN" />
+                <action android:name="com.eight87.tonearmboy.action.LIBRARY_SCAN" />
             </intent-filter>
         </receiver>
 
@@ -113,7 +113,7 @@
             android:name=".data.watcher.LibraryWatcherDisableReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.eight87.tonearm.action.WATCHER_DISABLE" />
+                <action android:name="com.eight87.tonearmboy.action.WATCHER_DISABLE" />
             </intent-filter>
         </receiver>
     </application>

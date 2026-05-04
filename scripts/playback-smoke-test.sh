@@ -17,7 +17,7 @@
 #     ADB_DEVICE)
 set -euo pipefail
 
-APP_ID="com.eight87.tonearm"
+APP_ID="com.eight87.tonearmboy"
 APK="app/build/outputs/apk/debug/app-debug.apk"
 DEVICE="${ADB_DEVICE:-emulator-5554}"
 ADB=(adb -s "$DEVICE")
@@ -40,13 +40,13 @@ echo "[install] $APK"
 
 # Generate a 30-second fixture so we can scrub position-restore
 # behaviour without it ending mid-test.
-FIXTURE_LOCAL="${TMPDIR:-/tmp}/tonearm-pe-smoke.mp3"
-FIXTURE_REMOTE="/sdcard/Music/tonearm-pe-smoke.mp3"
+FIXTURE_LOCAL="${TMPDIR:-/tmp}/tonearmboy-pe-smoke.mp3"
+FIXTURE_REMOTE="/sdcard/Music/tonearmboy-pe-smoke.mp3"
 # Underscore-separated values — adb shell `am broadcast --es` chops on
 # unquoted whitespace and there is no portable way to single-quote
 # through the adb shell layer.
 TRACK_TITLE="Phase_E_Smoke"
-TRACK_ARTIST="Tonearm_Test"
+TRACK_ARTIST="Tonearmboy_Test"
 TRACK_ALBUM="Phase_E"
 echo "[fixture] regenerating $FIXTURE_LOCAL"
 ffmpeg -y -loglevel error \
@@ -73,7 +73,7 @@ assert_fail() { echo "[FAIL] $1" >&2; exit 1; }
 #          MediaSession is active + a notification carries the title.
 echo "[E.1] starting playback via SMOKE_PLAY broadcast"
 "${ADB[@]}" shell am broadcast \
-  -a com.eight87.tonearm.action.SMOKE_PLAY \
+  -a com.eight87.tonearmboy.action.SMOKE_PLAY \
   -n "${APP_ID}/.playback.SmokeTestReceiver" \
   --es path "$FIXTURE_REMOTE" \
   --es title "$TRACK_TITLE" \
@@ -237,7 +237,7 @@ mkdir -p "$D12_SCREENSHOT_DIR"
 "${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" >/dev/null
 sleep 2
 "${ADB[@]}" shell am broadcast \
-  -a com.eight87.tonearm.action.SMOKE_PLAY \
+  -a com.eight87.tonearmboy.action.SMOKE_PLAY \
   -n "${APP_ID}/.playback.SmokeTestReceiver" \
   --es path "$FIXTURE_REMOTE" \
   --es title "$TRACK_TITLE" \
@@ -390,7 +390,7 @@ fi
 
 # Restart playback so D.12.4 has something to assert against.
 "${ADB[@]}" shell am broadcast \
-  -a com.eight87.tonearm.action.SMOKE_PLAY \
+  -a com.eight87.tonearmboy.action.SMOKE_PLAY \
   -n "${APP_ID}/.playback.SmokeTestReceiver" \
   --es path "$FIXTURE_REMOTE" \
   --es title "$TRACK_TITLE" \
@@ -436,7 +436,7 @@ echo "[D.12.5] kill mid-track, send PLAY, assert resumed within ±2s"
 "${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" >/dev/null
 sleep 2
 "${ADB[@]}" shell am broadcast \
-  -a com.eight87.tonearm.action.SMOKE_PLAY \
+  -a com.eight87.tonearmboy.action.SMOKE_PLAY \
   -n "${APP_ID}/.playback.SmokeTestReceiver" \
   --es path "$FIXTURE_REMOTE" \
   --es title "$TRACK_TITLE" \

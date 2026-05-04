@@ -37,8 +37,8 @@ echo "[install] adb install -r $APK"
 adb install -r "$APK"
 
 if [[ $LAUNCH -eq 1 ]]; then
-  echo "[install] launching com.eight87.tonearm/.MainActivity"
-  adb shell am start -n com.eight87.tonearm/.MainActivity
+  echo "[install] launching com.eight87.tonearmboy/.MainActivity"
+  adb shell am start -n com.eight87.tonearmboy/.MainActivity
 fi
 
 echo "[install] done"

@@ -8,14 +8,14 @@
         avoid a white flash when the system theme is light); kept
         separate so the post-splash theme can diverge later.
     -->
-    <style name="Theme.Tonearm" parent="Theme.SplashScreen">
+    <style name="Theme.Tonearmboy" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/launcher_background</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
         <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
-        <item name="postSplashScreenTheme">@style/Theme.Tonearm.Main</item>
+        <item name="postSplashScreenTheme">@style/Theme.Tonearmboy.Main</item>
     </style>
 
-    <style name="Theme.Tonearm.Main" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.Tonearmboy.Main" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/launcher_background</item>
     </style>
 

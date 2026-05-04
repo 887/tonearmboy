@@ -21,7 +21,7 @@
 #   scripts/ui-smoke-test.sh
 set -euo pipefail
 
-APP_ID="com.eight87.tonearm"
+APP_ID="com.eight87.tonearmboy"
 APK="app/build/outputs/apk/debug/app-debug.apk"
 DEVICE="${ADB_DEVICE:-}"
 ADB=(adb)
@@ -46,7 +46,7 @@ echo "[install] $APK"
 "${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" >/dev/null
 sleep 3
 
-UIDUMP_LOCAL="${TMPDIR:-/tmp}/tonearm-uidump.xml"
+UIDUMP_LOCAL="${TMPDIR:-/tmp}/tonearmboy-uidump.xml"
 dump() {
   "${ADB[@]}" shell uiautomator dump /sdcard/_uidump.xml >/dev/null 2>&1 || true
   "${ADB[@]}" pull /sdcard/_uidump.xml "$UIDUMP_LOCAL" >/dev/null 2>&1
@@ -356,8 +356,8 @@ if [[ "$auto_bounds" =~ bounds=\"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]\" ]]
   # Tap near the right edge of the row to hit the trailing Switch.
   ty=$(( (${BASH_REMATCH[2]} + ${BASH_REMATCH[4]}) / 2 ))
   "${ADB[@]}" shell input tap 920 "$ty"; sleep 3
-  if "${ADB[@]}" shell dumpsys activity services com.eight87.tonearm 2>/dev/null \
-      | grep -q 'LibraryWatcherService.*c:com.eight87.tonearm'; then
+  if "${ADB[@]}" shell dumpsys activity services com.eight87.tonearmboy 2>/dev/null \
+      | grep -q 'LibraryWatcherService.*c:com.eight87.tonearmboy'; then
     echo "[PASS] D.9d.2: LibraryWatcherService is running after toggle ON"
   else
     echo "[FAIL] D.9d.2: LibraryWatcherService not found after toggle ON" >&2
@@ -371,8 +371,8 @@ if [[ "$auto_bounds" =~ bounds=\"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]\" ]]
   fi
   # Toggle off — service must stop.
   "${ADB[@]}" shell input tap 920 "$ty"; sleep 3
-  if "${ADB[@]}" shell dumpsys activity services com.eight87.tonearm 2>/dev/null \
-      | grep -q 'LibraryWatcherService.*c:com.eight87.tonearm'; then
+  if "${ADB[@]}" shell dumpsys activity services com.eight87.tonearmboy 2>/dev/null \
+      | grep -q 'LibraryWatcherService.*c:com.eight87.tonearmboy'; then
     echo "[FAIL] D.9d.2: LibraryWatcherService still running after toggle OFF" >&2
     exit 1
   else
@@ -388,7 +388,7 @@ fi
 # Switch the strategy to Album (the test fixture under
 # scripts/fetch-test-music.sh tags Velvet Den with -8.00 dB album gain),
 # play a Velvet Den track, and assert the per-track gain log line shows
-# `volume=` near 10^(-8/20) ≈ 0.398. The log lives at tag `tonearm-rg`.
+# `volume=` near 10^(-8/20) ≈ 0.398. The log lives at tag `tonearmboy-rg`.
 "${ADB[@]}" logcat -c
 "${ADB[@]}" shell am force-stop "$APP_ID"
 "${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" >/dev/null
@@ -401,7 +401,7 @@ if [[ "$ciph" =~ bounds=\"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]\" ]]; then
   cx=$(( (${BASH_REMATCH[1]} + ${BASH_REMATCH[3]}) / 2 ))
   cy=$(( (${BASH_REMATCH[2]} + ${BASH_REMATCH[4]}) / 2 ))
   "${ADB[@]}" shell input tap "$cx" "$cy"; sleep 4
-  log=$("${ADB[@]}" logcat -d -t 300 | grep "tonearm-rg" | tail -1 || true)
+  log=$("${ADB[@]}" logcat -d -t 300 | grep "tonearmboy-rg" | tail -1 || true)
   if [[ -n "$log" ]]; then
     echo "[INFO] $log"
     if echo "$log" | grep -qE 'volume=(0\.[0-9]+|1\.0)'; then
@@ -411,7 +411,7 @@ if [[ "$ciph" =~ bounds=\"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]\" ]]; then
       exit 1
     fi
   else
-    echo "[WARN] no tonearm-rg log line — fixtures may not be pushed; skipping volume assertion" >&2
+    echo "[WARN] no tonearmboy-rg log line — fixtures may not be pushed; skipping volume assertion" >&2
   fi
 else
   echo "[WARN] Cipher Light not on screen — fixtures not pushed; skipping volume assertion" >&2
@@ -421,7 +421,7 @@ fi
 # Phase D.11 — Main UI test coverage integration assertions
 # =====================================================================
 # Each block targets one of the eight D.11 sub-steps. The unit-test
-# half lives at app/src/test/java/com/eight87/tonearm/ui/{library,
+# half lives at app/src/test/java/com/eight87/tonearmboy/ui/{library,
 # playing,search}/. Here we assert the on-device behaviours that can't
 # be covered without the running emulator.
 
@@ -626,7 +626,7 @@ mp_title_bounds() {
 
 # Re-foreground the app — we may have backed out of the search overlay
 # all the way to the launcher in the D.11.6 block. `am start` brings
-# tonearm back to the foreground without losing playback state.
+# tonearmboy back to the foreground without losing playback state.
 "${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" >/dev/null
 sleep 2
 dump
@@ -1013,7 +1013,7 @@ echo "[D.20] real-device regression sweep"
 # D.20.1 — fire the deeplink intent the way the notification's
 # sessionActivity PendingIntent would, then assert NowPlaying renders.
 "${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" \
-  --es tonearm.deeplink now_playing -f 0x14000000 >/dev/null 2>&1 || true
+  --es tonearmboy.deeplink now_playing -f 0x14000000 >/dev/null 2>&1 || true
 sleep 2; dump
 if grep -q 'text="Now Playing"' "$UIDUMP_LOCAL"; then
   echo "[PASS] D.20.1: notification deeplink routes to Now Playing"
@@ -1025,13 +1025,13 @@ else
 fi
 
 # D.20.3 — cold-start restore: kill the app, restart, assert that the
-# `tonearm: queue restored` log line appears in logcat.
+# `tonearmboy: queue restored` log line appears in logcat.
 "${ADB[@]}" logcat -c >/dev/null 2>&1 || true
 "${ADB[@]}" shell am force-stop "${APP_ID}" >/dev/null 2>&1 || true
 sleep 2
 "${ADB[@]}" shell am start -n "${APP_ID}/.MainActivity" >/dev/null 2>&1 || true
 sleep 4
-if "${ADB[@]}" logcat -d -s 'tonearm:I' 2>/dev/null | grep -q 'queue restored'; then
+if "${ADB[@]}" logcat -d -s 'tonearmboy:I' 2>/dev/null | grep -q 'queue restored'; then
   echo "[PASS] D.20.3: queue restored from QueuePersistence on cold start"
   "${ADB[@]}" shell screencap -p /sdcard/102-d20-queue-restored-after-restart.png 2>/dev/null
   "${ADB[@]}" pull /sdcard/102-d20-queue-restored-after-restart.png \

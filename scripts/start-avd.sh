@@ -17,7 +17,7 @@ set -euo pipefail
 AVD_NAME="medium_phone"
 EMULATOR_BIN="${ANDROID_HOME:-$HOME/Android/Sdk}/emulator/emulator"
 ADB_DEVICE="emulator-5554"
-SCRCPY_TITLE="tonearm-AVD"
+SCRCPY_TITLE="tonearmboy-AVD"
 
 action="${1:-start}"
 
@@ -39,7 +39,7 @@ start_avd() {
         -avd "${AVD_NAME}" \
         -no-window -no-audio -no-snapshot -no-boot-anim \
         -gpu swiftshader_indirect \
-        > /tmp/tonearm-emulator.log 2>&1 &
+        > /tmp/tonearmboy-emulator.log 2>&1 &
     echo "[start-avd] waiting for adb to see device..."
     until is_avd_running; do sleep 5; done
     echo "[start-avd] waiting for boot to complete..."
@@ -61,12 +61,12 @@ start_scrcpy() {
     fi
     echo "[start-avd] attaching scrcpy..."
     scrcpy -s "${ADB_DEVICE}" --no-audio --window-title="${SCRCPY_TITLE}" \
-        > /tmp/tonearm-scrcpy.log 2>&1 &
+        > /tmp/tonearmboy-scrcpy.log 2>&1 &
     sleep 1
     if is_scrcpy_running; then
         echo "[start-avd] scrcpy window: ${SCRCPY_TITLE}"
     else
-        echo "[start-avd] scrcpy failed to launch — check /tmp/tonearm-scrcpy.log" >&2
+        echo "[start-avd] scrcpy failed to launch — check /tmp/tonearmboy-scrcpy.log" >&2
     fi
 }
 

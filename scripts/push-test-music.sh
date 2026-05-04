@@ -19,7 +19,7 @@ if ! adb devices 2>/dev/null | grep -qE '\<device$'; then
     exit 1
 fi
 
-DEVICE_DIR="/sdcard/Music/tonearm-test"
+DEVICE_DIR="/sdcard/Music/tonearmboy-test"
 echo "[push-test-music] cleaning ${DEVICE_DIR}..."
 adb shell rm -rf "${DEVICE_DIR}" || true
 adb shell mkdir -p "${DEVICE_DIR}"
@@ -56,10 +56,10 @@ echo "[push-test-music] MediaStore reports ${count} test track(s) ingested"
 
 if [ "${count}" -eq 0 ]; then
     echo "[push-test-music] note: scanner didn't pick the tracks up automatically." >&2
-    echo "[push-test-music] open tonearm → Settings → Rescan music to force the cache to" >&2
+    echo "[push-test-music] open tonearmboy → Settings → Rescan music to force the cache to" >&2
     echo "[push-test-music] re-query MediaStore. The files ARE on the device." >&2
     exit 0
 fi
 
-echo "[push-test-music] done. Open tonearm — they should appear after the next library scan,"
+echo "[push-test-music] done. Open tonearmboy — they should appear after the next library scan,"
 echo "                  or hit Settings → Rescan music to force-refresh."
