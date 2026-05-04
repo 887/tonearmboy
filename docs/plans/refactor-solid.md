@@ -89,7 +89,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 ---
 
-## Phase R.E — `TonearmboyApp` shrink: `RouteScope` + per-route renderers + extracted IO controllers
+## Phase R.E — `TonearmboyApp` shrink: `RouteScope` + per-route renderers + extracted IO controllers — shipped in commits `fa0dbfc..8e53ea5`
 
 **Why:** `TonearmboyApp.kt` at 820 LOC has every `entry<Destination>` inline-rendering its route with full data plumbing — adding a destination means editing this file (closed against extension). It also hosts SAF launchers (export/import), the playlist picker overlay, the music-sources dialog, the import-collision dialog, the deeplink reactor, and four `LaunchedEffect`s mirroring settings into the controller. Six unrelated change-axes.
 
@@ -103,8 +103,8 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [x] **R.E.6** Lift the four settings → playback `LaunchedEffect`s into `rememberPlaybackSettingsBridge(playback, settings)` — one place to wire mirrors.
 - [x] **R.E.7** Push side-effect launchers out of settings sub-pages into injectable interfaces: `AutoReloadController`, `EqualizerLauncher`, `MusicSourceCommands` (Settings-F6).
 - [x] **R.E.8** Define `SessionActivityIntentFactory` interface; `PlaybackService` uses it instead of `Intent(this, MainActivity::class.java)` so service no longer imports the UI module (Playback-F8).
-- [ ] **R.E.9** Verify: deep-link from notification, every nav route, SAF import collision dialog, AVD config-change survival.
-- [ ] **R.E.10** Ship + tick.
+- [x] **R.E.9** Verify: deep-link from notification, every nav route, SAF import collision dialog, AVD config-change survival.
+- [x] **R.E.10** Ship + tick.
 
 **Effort:** L (2 days). **Risk:** medium — `@Serializable` `Destination` keys must round-trip through `SavedStateHandle`; deep-link reactor has subtle ordering. **Blast radius:** nav + settings sub-pages; data + playback contract-stable.
 
