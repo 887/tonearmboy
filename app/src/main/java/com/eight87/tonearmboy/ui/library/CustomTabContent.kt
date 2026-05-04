@@ -47,14 +47,34 @@ fun defaultViewModeFor(contentType: CustomTabContentType): ViewMode = when (cont
  * parallel implementation that drifted: sort wasn't honoured by the
  * row layout, no alphabet rail, no multi-select. Replaced.
  */
+/**
+ * R.F.18 — track-row callbacks consumed only by the SONGS branch.
+ * ALBUMS / ARTISTS / GENRES branches don't reference any of these.
+ */
+internal data class TrackInteractions(
+  val onTrackClick: (List<Track>, Int) -> Unit,
+  val onAddToQueue: (Track) -> Unit,
+  val onAddToPlaylist: (Track) -> Unit,
+  val onAddTracksToPlaylist: ((List<Long>) -> Unit)?,
+  val onDeleteTracks: ((List<Track>) -> Unit)?,
+  val onComingSoon: (String) -> Unit,
+)
+
+/**
+ * R.F.18 — navigation callbacks consumed by every branch (each branch
+ * uses one of the three).
+ */
+internal data class NavInteractions(
+  val onOpenAlbum: (name: String, albumArtist: String?) -> Unit,
+  val onOpenArtist: (name: String) -> Unit,
+  val onOpenGenre: (name: String) -> Unit,
+)
+
 @Composable
 internal fun CustomTabContent(
   customTab: CustomTabEntity,
   // R.A.4 — each branch dispatches into one tab screen so we take all
-  // four sources up-front. Smaller-blast-radius alternative (one
-  // composite "LibrarySources" interface) was rejected per the brief:
-  // "ISP isn't about minimizing parameter count, it's about minimizing
-  // the surface a caller depends on".
+  // four sources up-front.
   tracks: TrackSource,
   albums: AlbumSource,
   artists: ArtistSource,
@@ -65,15 +85,8 @@ internal fun CustomTabContent(
   forceSquareCovers: Boolean,
   albumCoversMode: AlbumCoversMode,
   viewMode: ViewMode,
-  onTrackClick: (List<Track>, Int) -> Unit,
-  onAddToQueue: (Track) -> Unit,
-  onAddToPlaylist: (Track) -> Unit,
-  onAddTracksToPlaylist: ((List<Long>) -> Unit)?,
-  onDeleteTracks: ((List<Track>) -> Unit)?,
-  onOpenAlbum: (name: String, albumArtist: String?) -> Unit,
-  onOpenArtist: (name: String) -> Unit,
-  onOpenGenre: (name: String) -> Unit,
-  onComingSoon: (String) -> Unit,
+  trackInteractions: TrackInteractions,
+  nav: NavInteractions,
 ) {
   val criteria = remember(customTab.criteriaJson) {
     FilterCriteria.fromJson(customTab.criteriaJson)
@@ -86,23 +99,23 @@ internal fun CustomTabContent(
       filter = criteria,
       viewMode = viewMode,
       albumCoversMode = albumCoversMode,
-      onTrackClick = onTrackClick,
-      onAddToQueue = onAddToQueue,
-      onAddToPlaylist = onAddToPlaylist,
-      onAddTracksToPlaylist = onAddTracksToPlaylist,
+      onTrackClick = trackInteractions.onTrackClick,
+      onAddToQueue = trackInteractions.onAddToQueue,
+      onAddToPlaylist = trackInteractions.onAddToPlaylist,
+      onAddTracksToPlaylist = trackInteractions.onAddTracksToPlaylist,
       onGoToAlbum = { t ->
-        onOpenAlbum(
+        nav.onOpenAlbum(
           t.album ?: return@TracksListScreen,
           t.albumArtist ?: t.artist,
         )
       },
       onGoToArtist = { t ->
-        onOpenArtist(
+        nav.onOpenArtist(
           (t.albumArtist?.takeIf { it.isNotBlank() } ?: t.artist) ?: return@TracksListScreen,
         )
       },
-      onComingSoon = onComingSoon,
-      onDeleteTracks = onDeleteTracks,
+      onComingSoon = trackInteractions.onComingSoon,
+      onDeleteTracks = trackInteractions.onDeleteTracks,
     )
     CustomTabContentType.ALBUMS -> AlbumsTabScreen(
       repository = albums,
@@ -112,7 +125,7 @@ internal fun CustomTabContent(
       albumCoversMode = albumCoversMode,
       viewMode = viewMode,
       filter = criteria,
-      onAlbumClick = { a -> onOpenAlbum(a.name, a.artist) },
+      onAlbumClick = { a -> nav.onOpenAlbum(a.name, a.artist) },
     )
     CustomTabContentType.ARTISTS -> ArtistsTabScreen(
       repository = artists,
@@ -121,14 +134,14 @@ internal fun CustomTabContent(
       intelligentSorting = intelligentSorting,
       viewMode = viewMode,
       filter = criteria,
-      onArtistClick = { a -> onOpenArtist(a.name) },
+      onArtistClick = { a -> nav.onOpenArtist(a.name) },
     )
     CustomTabContentType.GENRES -> GenresTabScreen(
       repository = genres,
       sort = sort,
       viewMode = viewMode,
       filter = criteria,
-      onGenreClick = { g -> onOpenGenre(g.name) },
+      onGenreClick = { g -> nav.onOpenGenre(g.name) },
     )
   }
 }
