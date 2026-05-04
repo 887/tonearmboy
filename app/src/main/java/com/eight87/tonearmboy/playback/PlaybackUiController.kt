@@ -123,16 +123,25 @@ class PlaybackUiController(private val applicationContext: Context) :
   /**
    * D.9a.3 — when true, the listener pauses the player at the
    * `MEDIA_ITEM_TRANSITION_REASON_REPEAT` boundary instead of letting
-   * the loop continue. Updated from the settings Flow by
-   * [setPauseOnRepeat] so we don't pull a Context-bound dependency into
-   * this class.
+   * the loop continue. Owned by the holder so [MediaTransportCommands]
+   * can write it (via [TransportCommands.setPauseOnRepeat]) and the
+   * listener block below can read it.
    */
-  @Volatile
-  private var pauseOnRepeat: Boolean = false
+  private val pauseOnRepeatHolder = PauseOnRepeatHolder()
 
-  override fun setPauseOnRepeat(enabled: Boolean) {
-    pauseOnRepeat = enabled
-  }
+  // R.C.3 — TransportCommands + QueueCommands impls. Controller
+  // forwards each facet method via single-line override below;
+  // each impl reads the live `controller` via the same provider
+  // the projector uses, and pushes through the same projector.
+  private val transportImpl: MediaTransportCommands = MediaTransportCommands(
+    controllerProvider = { controller },
+    projector = projector,
+    pauseOnRepeatHolder = pauseOnRepeatHolder,
+  )
+  private val queueImpl: MediaQueueCommands = MediaQueueCommands(
+    controllerProvider = { controller },
+    projector = projector,
+  )
 
   /**
    * D.9b.1 / D.9b.2 — current ReplayGain strategy + pre-amp dB,
@@ -248,7 +257,7 @@ class PlaybackUiController(private val applicationContext: Context) :
       // user can resume with the play button. We deliberately seek to 0
       // first to avoid a one-frame artifact where the new track starts
       // at the previous position.
-      if (shouldPauseOnRepeatBoundary(reason, pauseOnRepeat)) {
+      if (shouldPauseOnRepeatBoundary(reason, pauseOnRepeatHolder.value)) {
         controller?.let {
           it.seekTo(0L)
           it.playWhenReady = false
@@ -364,269 +373,47 @@ class PlaybackUiController(private val applicationContext: Context) :
 
   // -- Commands --------------------------------------------------------------
 
-  override fun playTrack(track: Track) {
-    val ctl = controller ?: return
-    ctl.setMediaItem(track.toMediaItem())
-    ctl.prepare()
-    ctl.play()
-    projector.pushAll()
-  }
+  // R.C.3 — TransportCommands + QueueCommands forward to the
+  // extracted impls. Each method body is a single-line delegation;
+  // the actual MediaController interaction lives in
+  // MediaTransportCommands / MediaQueueCommands.
 
-  /** Replace the queue with [tracks] and start at [index]. */
-  override fun playQueue(tracks: List<Track>, index: Int) {
-    val ctl = controller ?: return
-    if (tracks.isEmpty()) return
-    val items = tracks.map { it.toMediaItem() }
-    ctl.setMediaItems(items, index, 0L)
-    ctl.prepare()
-    ctl.play()
-    projector.pushAll()
-  }
-
-  override fun togglePlayPause() {
-    val ctl = controller ?: return
-    if (ctl.isPlaying) ctl.pause() else ctl.play()
-    projector.pushPlaybackState()
-  }
-
-  override fun seekToNext() {
-    controller?.seekToNextMediaItem()
-    projector.pushPlaybackState()
-  }
-
-  override fun seekToPrevious() {
-    controller?.seekToPreviousMediaItem()
-    projector.pushPlaybackState()
-  }
-
-  override fun seekTo(positionMs: Long) {
-    controller?.seekTo(positionMs)
-    projector.pushPlaybackState()
-  }
-
-  override fun seekBackward() {
-    val ctl = controller ?: return
-    ctl.seekTo((ctl.currentPosition - SEEK_INCREMENT_MS).coerceAtLeast(0))
-    projector.pushPlaybackState()
-  }
-
-  override fun seekForward() {
-    val ctl = controller ?: return
-    val target = ctl.currentPosition + SEEK_INCREMENT_MS
-    val cap = ctl.duration.takeIf { it > 0 } ?: target
-    ctl.seekTo(target.coerceAtMost(cap))
-    projector.pushPlaybackState()
-  }
-
-  override fun stop() {
-    controller?.stop()
-    controller?.clearMediaItems()
-    projector.pushPlaybackState()
-  }
-
-  /**
-   * D.15.6.1 — append a track to the end of the queue. If the queue is
-   * empty, also `prepare()` and start playing so the user immediately
-   * hears the result instead of staring at a silent player.
-   */
-  override fun addToQueue(track: Track) {
-    val ctl = controller ?: return
-    val item = track.toMediaItem()
-    if (ctl.mediaItemCount == 0) {
-      ctl.setMediaItem(item)
-      ctl.prepare()
-      ctl.play()
-    } else {
-      ctl.addMediaItem(item)
-    }
-    projector.pushAll()
-  }
-
-  /** D.15.5 — jump to [index] in the current queue and play. */
-  override fun seekToQueueIndex(index: Int) {
-    val ctl = controller ?: return
-    if (index < 0 || index >= ctl.mediaItemCount) return
-    ctl.seekTo(index, 0L)
-    ctl.play()
-    projector.pushAll()
-  }
-
-  /** D.15.5 — remove the queue entry at [index]. */
-  override fun removeQueueItem(index: Int) {
-    val ctl = controller ?: return
-    if (index < 0 || index >= ctl.mediaItemCount) return
-    ctl.removeMediaItem(index)
-    projector.pushAll()
-  }
-
-  /**
-   * Phase F.4 — remove every queue entry whose `mediaId` matches one of
-   * [deletedMediaIds] (the string form of [Track.id]). Used after the
-   * file-deletion flow lands so a track the user just blew away does
-   * not stay queued / advance into a now-missing source.
-   *
-   * Behaviour:
-   * - matching items are removed, lowest index first;
-   * - if the *currently playing* item is among them, Media3 will
-   *   advance to the next remaining queue entry (its built-in
-   *   behaviour after `removeMediaItem(currentIndex)`);
-   * - if the queue ends up empty, we stop the player so the user
-   *   isn't left with a dead mini-player surface.
-   *
-   * Returns the number of queue entries actually removed (used by
-   * tests).
-   */
-  override fun removeQueueItemsByMediaIds(deletedMediaIds: Set<String>): Int {
-    val ctl = controller ?: return 0
-    if (deletedMediaIds.isEmpty()) return 0
-    val queueIds = (0 until ctl.mediaItemCount).map { i -> ctl.getMediaItemAt(i).mediaId }
-    val toRemove = queueIndicesToRemove(queueIds, deletedMediaIds)
-    if (toRemove.isEmpty()) return 0
-    // Indices already arrive in descending order so each removeMediaItem
-    // call doesn't shift the indices we still need to act on.
-    for (idx in toRemove) ctl.removeMediaItem(idx)
-    if (ctl.mediaItemCount == 0) {
-      ctl.stop()
-      ctl.clearMediaItems()
-    }
-    projector.pushAll()
-    return toRemove.size
-  }
-
-  /**
-   * D.21.4 — toggle shuffle on the underlying [MediaController]. Mirrors
-   * `CustomBarAction.ShuffleToggle` but bound to the explicit toggle
-   * buttons in the queue header + NowPlaying transport row.
-   */
-  override fun toggleShuffle() {
-    val ctl = controller ?: return
-    ctl.shuffleModeEnabled = !ctl.shuffleModeEnabled
-    projector.pushPlaybackState()
-  }
-
-  /**
-   * D.21.4 — cycle the controller's repeat mode through OFF → ALL → ONE
-   * → OFF. Same state machine `nextRepeatMode` already drives via
-   * [CustomBarAction.RepeatToggle].
-   */
-  override fun cycleRepeatMode() {
-    val ctl = controller ?: return
-    ctl.repeatMode = nextRepeatMode(ctl.repeatMode)
-    projector.pushPlaybackState()
-  }
-
-  /** D.15.5 — move queue item from [from] to [to]. */
-  override fun moveQueueItem(from: Int, to: Int) {
-    val ctl = controller ?: return
-    val n = ctl.mediaItemCount
-    if (from < 0 || from >= n || to < 0 || to >= n || from == to) return
-    ctl.moveMediaItem(from, to)
-    projector.pushAll()
-  }
-
-  /**
-   * D.9a.4 — build the queue for a tap on a track inside a flat library
-   * list view (Songs tab, Genres detail, custom tabs).
-   *
-   *  - [PlayFromLibrary.AllSongs]: queue = the entire surrounding list,
-   *    start at [tappedIndex];
-   *  - [PlayFromLibrary.ItemOnly]: queue = just the tapped track;
-   *  - [PlayFromLibrary.CurrentFilter]: queue = the surrounding list
-   *    (which already represents the active filter / tab content),
-   *    start at [tappedIndex].
-   *
-   * `AllSongs` and `CurrentFilter` are equivalent on the Songs tab
-   * (where the surrounding list IS the entire library); they diverge
-   * inside Genres detail, custom tabs, and other filtered surfaces. The
-   * UI passes [allSongs] separately so this controller does not need a
-   * library-repository handle.
-   */
+  override fun togglePlayPause() = transportImpl.togglePlayPause()
+  override fun seekTo(positionMs: Long) = transportImpl.seekTo(positionMs)
+  override fun seekBackward() = transportImpl.seekBackward()
+  override fun seekForward() = transportImpl.seekForward()
+  override fun seekToPrevious() = transportImpl.seekToPrevious()
+  override fun seekToNext() = transportImpl.seekToNext()
+  override fun stop() = transportImpl.stop()
+  override fun toggleShuffle() = transportImpl.toggleShuffle()
+  override fun cycleRepeatMode() = transportImpl.cycleRepeatMode()
+  override fun setPauseOnRepeat(enabled: Boolean) = transportImpl.setPauseOnRepeat(enabled)
+  override fun playTrack(track: Track) = transportImpl.playTrack(track)
+  override fun playQueue(tracks: List<Track>, index: Int) =
+    transportImpl.playQueue(tracks, index)
   override fun playFromLibrary(
     surroundingList: List<Track>,
     tappedIndex: Int,
     strategy: PlayFromLibrary,
     allSongs: List<Track>,
-  ) {
-    val (queue, startIndex) = computePlayFromLibraryQueue(
-      surroundingList = surroundingList,
-      tappedIndex = tappedIndex,
-      strategy = strategy,
-      allSongs = allSongs,
-    )
-    if (queue.isEmpty()) return
-    playQueue(queue, startIndex)
-  }
-
-  /**
-   * D.9a.5 — build the queue for a tap on a track inside a detail
-   * surface (album / artist / playlist).
-   *
-   *  - [PlayFromItemDetails.ShownItem]: queue = the detail view's track
-   *    list, start at [tappedIndex] (default Auxio behaviour);
-   *  - [PlayFromItemDetails.Album]: queue = all tracks on the same
-   *    album as the tapped track;
-   *  - [PlayFromItemDetails.Artist]: queue = all tracks credited to
-   *    the same artist as the tapped track.
-   *
-   * The Album / Artist branches scope the queue to the relevant subset
-   * of the surrounding list. If the surrounding list happens to already
-   * be a single album / single artist (the common case from inside
-   * AlbumDetailScreen / ArtistDetailScreen), the result is identical to
-   * `ShownItem`. The branch matters for surfaces that mix tracks from
-   * multiple albums / artists into one list (e.g. a playlist).
-   */
+  ) = transportImpl.playFromLibrary(surroundingList, tappedIndex, strategy, allSongs)
   override fun playFromDetail(
     surroundingList: List<Track>,
     tappedIndex: Int,
     strategy: PlayFromItemDetails,
-  ) {
-    val (queue, startIndex) = computePlayFromDetailQueue(
-      surroundingList = surroundingList,
-      tappedIndex = tappedIndex,
-      strategy = strategy,
-    )
-    if (queue.isEmpty()) return
-    playQueue(queue, startIndex)
-  }
+  ) = transportImpl.playFromDetail(surroundingList, tappedIndex, strategy)
+  override fun performCustomBarAction(action: CustomBarAction) =
+    transportImpl.performCustomBarAction(action)
+  override fun performCustomNotificationAction(
+    action: com.eight87.tonearmboy.ui.settings.CustomNotificationAction,
+  ) = transportImpl.performCustomNotificationAction(action)
 
-  /**
-   * D.9a.1 — invoked from the mini-player play button's long-press
-   * handler. Picker maps to a one-shot transport command.
-   */
-  override fun performCustomBarAction(action: CustomBarAction) {
-    val ctl = controller ?: return
-    when (action) {
-      CustomBarAction.SkipNext -> ctl.seekToNextMediaItem()
-      CustomBarAction.ShuffleToggle -> ctl.shuffleModeEnabled = !ctl.shuffleModeEnabled
-      CustomBarAction.RepeatToggle -> ctl.repeatMode = nextRepeatMode(ctl.repeatMode)
-      CustomBarAction.None -> Unit
-    }
-    projector.pushPlaybackState()
-  }
-
-  /**
-   * D.9a.2 — invoked from the notification's secondary action button
-   * (forwarded by `PlaybackService`'s session callback) when the user
-   * taps it. The toggle semantics are: Repeat advances OFF -> ALL ->
-   * ONE -> OFF; Shuffle flips on / off; None is a no-op.
-   */
-  override fun performCustomNotificationAction(action: com.eight87.tonearmboy.ui.settings.CustomNotificationAction) {
-    val ctl = controller ?: return
-    when (action) {
-      com.eight87.tonearmboy.ui.settings.CustomNotificationAction.RepeatMode ->
-        ctl.repeatMode = nextRepeatMode(ctl.repeatMode)
-      com.eight87.tonearmboy.ui.settings.CustomNotificationAction.Shuffle ->
-        ctl.shuffleModeEnabled = !ctl.shuffleModeEnabled
-      com.eight87.tonearmboy.ui.settings.CustomNotificationAction.None -> Unit
-    }
-    projector.pushPlaybackState()
-  }
-
-  private fun nextRepeatMode(current: Int): Int = when (current) {
-    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-    else -> Player.REPEAT_MODE_OFF
-  }
+  override fun addToQueue(track: Track) = queueImpl.addToQueue(track)
+  override fun seekToQueueIndex(index: Int) = queueImpl.seekToQueueIndex(index)
+  override fun removeQueueItem(index: Int) = queueImpl.removeQueueItem(index)
+  override fun removeQueueItemsByMediaIds(deletedMediaIds: Set<String>): Int =
+    queueImpl.removeQueueItemsByMediaIds(deletedMediaIds)
+  override fun moveQueueItem(from: Int, to: Int) = queueImpl.moveQueueItem(from, to)
 
   // -- Internals -------------------------------------------------------------
 
@@ -823,7 +610,7 @@ internal fun computePlayFromDetailQueue(
   }
 }
 
-private fun Track.toMediaItem(): MediaItem {
+internal fun Track.toMediaItem(): MediaItem {
   // Phase E.1 / E.2: feed the MediaSession enough metadata for the
   // System UI notification + lock-screen surface to render properly.
   // We point artworkUri at the file URI of the audio file itself —

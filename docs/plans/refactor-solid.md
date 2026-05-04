@@ -60,7 +60,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 - [x] **R.C.1** Define `NowPlayingState`, `TransportCommands`, `QueueCommands`, `ReplayGainCommands` interfaces in `playback/`. `MiniPlayer` and `NowPlayingScreen` migrate to take only what they read (Playback-F4).
 - [x] **R.C.2** Extract `PlaybackStateProjector` — owns `_state` + `_queue` + `pushState`. Split `pushPlaybackState()` (cheap, position-only, on the 250 ms ticker) from `pushQueueSnapshot()` (listener-driven only) so the queue isn't recomputed every position tick (Playback-F5).
-- [ ] **R.C.3** Extract `TransportCommands` impl + `QueueCommands` impl as separate classes wrapping the `MediaController`.
+- [x] **R.C.3** Extract `TransportCommands` impl + `QueueCommands` impl as separate classes wrapping the `MediaController`.
 - [ ] **R.C.4** Extract `ReplayGainController(library, scope)` — owns `applyReplayGainNow` + `computeQueueAlbumCoverage` + the settings-flag mirrors (`replayGainStrategy`, `replayGainPreampDb`). Removes `LibraryRepository` from `PlaybackUiController` entirely (Playback-F6).
 - [ ] **R.C.5** Move `SleepTimer` construction out of the controller into `AppGraph`; the controller no longer owns it (Playback-F10).
 - [ ] **R.C.6** `PlaybackUiController` shrinks to the connection lifecycle + listener attach + composing the four collaborators. Target: under 200 LOC.
