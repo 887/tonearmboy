@@ -50,7 +50,6 @@ import com.eight87.tonearmboy.ui.settings.catalog.SettingsCatalogPage
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsRowBinding
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.common.util.UnstableApi
-import com.eight87.tonearmboy.data.watcher.LibraryWatcherService
 import kotlinx.coroutines.launch
 
 // =============================================================================
@@ -440,6 +439,8 @@ fun SettingsContentScreen(
   onBack: () -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
+  // R.E.7 — injectable side-effect launchers (Settings-F6).
+  autoReload: AutoReloadController = DefaultAutoReloadController,
 ) {
   val automaticReloading by library.automaticReloading.flow.collectAsState(
     initial = false,
@@ -476,11 +477,7 @@ fun SettingsContentScreen(
       checked = automaticReloading,
       onCheckedChange = { value ->
         scope.launch { library.automaticReloading.set(value) }
-        if (value) {
-          LibraryWatcherService.start(context)
-        } else {
-          LibraryWatcherService.stop(context)
-        }
+        autoReload.setEnabled(context, value)
       },
     ),
     SettingsRowBinding.Picker(
@@ -609,6 +606,8 @@ fun SettingsAudioScreen(
   // Read from the NowPlayingState facet (audioSessionId is exposed
   // there). Nullable for the same test reason as `sleepTimer`.
   nowPlayingState: com.eight87.tonearmboy.playback.NowPlayingState? = null,
+  // R.E.7 — injectable equalizer launcher (Settings-F6).
+  equalizer: EqualizerLauncher = DefaultEqualizerLauncher,
 ) {
   val headsetAutoplay by settings.headsetAutoplay.flow.collectAsState(
     initial = false,
@@ -695,21 +694,9 @@ fun SettingsAudioScreen(
       onClick = {
         val sessionId = nowPlayingState?.audioSessionId?.value
           ?: androidx.media3.common.C.AUDIO_SESSION_ID_UNSET
-        val intent = SystemEqualizer.buildIntent(sessionId, context.packageName)
-        if (SystemEqualizer.resolves(context, intent)) {
-          runCatching { context.startActivity(intent) }
-            .onFailure {
-              scope.launch {
-                snackbarHostState.showSnackbar(
-                  "No system equalizer available on this device.",
-                )
-              }
-            }
-        } else {
+        if (!equalizer.launch(context, sessionId)) {
           scope.launch {
-            snackbarHostState.showSnackbar(
-              "No system equalizer available on this device.",
-            )
+            snackbarHostState.showSnackbar("No system equalizer available on this device.")
           }
         }
       },

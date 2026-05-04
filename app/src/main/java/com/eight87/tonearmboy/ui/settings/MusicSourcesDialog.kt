@@ -107,6 +107,8 @@ fun MusicSourcesDialog(
   settings: MusicSourcesSettings,
   scanner: LibraryScanner,
   onDismiss: () -> Unit,
+  // R.E.7 — injectable post-pick command (Settings-F6).
+  musicSources: MusicSourceCommands = DefaultMusicSourceCommands,
 ) {
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
@@ -128,8 +130,7 @@ fun MusicSourcesDialog(
     contract = ActivityResultContracts.OpenDocumentTree(),
   ) { uri: Uri? ->
     if (uri == null) return@rememberLauncherForActivityResult
-    val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-    runCatching { context.contentResolver.takePersistableUriPermission(uri, flags) }
+    musicSources.persistFolderPermission(context, uri)
     state = state.addFolder(uri.toString())
   }
 

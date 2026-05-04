@@ -89,22 +89,22 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 ---
 
-## Phase R.E — `TonearmboyApp` shrink: `RouteScope` + per-route renderers + extracted IO controllers
+## Phase R.E — `TonearmboyApp` shrink: `RouteScope` + per-route renderers + extracted IO controllers — shipped in commits `fa0dbfc..8e53ea5`
 
 **Why:** `TonearmboyApp.kt` at 820 LOC has every `entry<Destination>` inline-rendering its route with full data plumbing — adding a destination means editing this file (closed against extension). It also hosts SAF launchers (export/import), the playlist picker overlay, the music-sources dialog, the import-collision dialog, the deeplink reactor, and four `LaunchedEffect`s mirroring settings into the controller. Six unrelated change-axes.
 
 **How to apply:** Define a `RouteScope` data interface (graph + backstack + snackbar + facets + callbacks) and per-destination `Render(scope: RouteScope)` extensions. Lift cross-cutting concerns into `remember*Controller` helpers.
 
-- [ ] **R.E.1** Define `RouteScope` interface carrying everything a route needs (`graph`, `backStack`, `snackbar`, `playback: TransportCommands`, settings facets, etc.).
-- [ ] **R.E.2** Per-destination `Register(scope)` extensions on the sealed `Destination` interface — one file per destination grouping (e.g. `routes/SettingsRoutes.kt`, `routes/LibraryRoutes.kt`).
-- [ ] **R.E.3** `TonearmboyApp.kt` shrinks to: theme + scaffold + top-app-bar + a single `entryProvider { destination -> destination.Register(scope) }` block. Target: under 150 LOC.
-- [ ] **R.E.4** Lift playlist export/import out of `TonearmboyApp` into `rememberPlaylistBackupController(graph, snackbar)` returning `{ onExport, onImport, collisionDialog }` (Playback-F9).
-- [ ] **R.E.5** Lift the playlist picker overlay (single + bulk) into `rememberAddToPlaylistController(graph)`.
-- [ ] **R.E.6** Lift the four settings → playback `LaunchedEffect`s into `rememberPlaybackSettingsBridge(playback, settings)` — one place to wire mirrors.
-- [ ] **R.E.7** Push side-effect launchers out of settings sub-pages into injectable interfaces: `AutoReloadController`, `EqualizerLauncher`, `MusicSourceCommands` (Settings-F6).
-- [ ] **R.E.8** Define `SessionActivityIntentFactory` interface; `PlaybackService` uses it instead of `Intent(this, MainActivity::class.java)` so service no longer imports the UI module (Playback-F8).
-- [ ] **R.E.9** Verify: deep-link from notification, every nav route, SAF import collision dialog, AVD config-change survival.
-- [ ] **R.E.10** Ship + tick.
+- [x] **R.E.1** Define `RouteScope` interface carrying everything a route needs (`graph`, `backStack`, `snackbar`, `playback: TransportCommands`, settings facets, etc.).
+- [x] **R.E.2** Per-destination `Register(scope)` extensions on the sealed `Destination` interface — one file per destination grouping (e.g. `routes/SettingsRoutes.kt`, `routes/LibraryRoutes.kt`).
+- [x] **R.E.3** `TonearmboyApp.kt` shrinks to: theme + scaffold + top-app-bar + a single `entryProvider { destination -> destination.Register(scope) }` block. Target: under 150 LOC. — landed at 149 LOC.
+- [x] **R.E.4** Lift playlist export/import out of `TonearmboyApp` into `rememberPlaylistBackupController(graph, snackbar)` returning `{ onExport, onImport, collisionDialog }` (Playback-F9).
+- [x] **R.E.5** Lift the playlist picker overlay (single + bulk) into `rememberAddToPlaylistController(graph)`.
+- [x] **R.E.6** Lift the four settings → playback `LaunchedEffect`s into `rememberPlaybackSettingsBridge(playback, settings)` — one place to wire mirrors.
+- [x] **R.E.7** Push side-effect launchers out of settings sub-pages into injectable interfaces: `AutoReloadController`, `EqualizerLauncher`, `MusicSourceCommands` (Settings-F6).
+- [x] **R.E.8** Define `SessionActivityIntentFactory` interface; `PlaybackService` uses it instead of `Intent(this, MainActivity::class.java)` so service no longer imports the UI module (Playback-F8).
+- [x] **R.E.9** Verify: deep-link from notification, every nav route, SAF import collision dialog, AVD config-change survival.
+- [x] **R.E.10** Ship + tick.
 
 **Effort:** L (2 days). **Risk:** medium — `@Serializable` `Destination` keys must round-trip through `SavedStateHandle`; deep-link reactor has subtle ordering. **Blast radius:** nav + settings sub-pages; data + playback contract-stable.
 

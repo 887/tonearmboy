@@ -12,7 +12,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
-import com.eight87.tonearmboy.MainActivity
+import com.eight87.tonearmboy.AppGraph
 import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.playback.notification.PlaybackNotificationProvider
 import com.eight87.tonearmboy.ui.settings.CustomNotificationAction
@@ -178,26 +178,11 @@ class PlaybackService : MediaSessionService() {
     lastPersistedPositionMs = position
   }
 
-  private fun buildSessionActivityPendingIntent(): PendingIntent {
-    // D.20.1 — when the user taps the MediaStyle notification, route them
-    // to the Now Playing surface instead of whichever screen they were
-    // last on. The deep-link extra is read by `MainActivity.handleIntent`
-    // (which runs on both `onCreate` and `onNewIntent`) and pushes
-    // `Destinations.NowPlaying` onto the back stack. We use
-    // `FLAG_ACTIVITY_SINGLE_TOP | FLAG_ACTIVITY_CLEAR_TOP` so a tap on
-    // an already-running activity reuses it and dispatches `onNewIntent`
-    // rather than spawning a duplicate.
-    val intent = Intent(this, MainActivity::class.java).apply {
-      putExtra(EXTRA_DEEPLINK, DEEPLINK_NOW_PLAYING)
-      flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-    }
-    return PendingIntent.getActivity(
-      this,
-      0,
-      intent,
-      PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-    )
-  }
+  private fun buildSessionActivityPendingIntent(): PendingIntent =
+    // R.E.8 — delegated to the factory so this file no longer imports
+    // `MainActivity`. See `MainActivitySessionIntentFactory` for the
+    // production binding (UI module).
+    AppGraph.get(this).sessionActivityIntentFactory.nowPlayingPendingIntent(this)
 
   // -- Persistence + restoration ---------------------------------------------
 
