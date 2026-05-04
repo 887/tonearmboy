@@ -1,13 +1,14 @@
 package com.eight87.tonearmboy.ui.common
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,10 +56,10 @@ import kotlinx.coroutines.launch
 fun FastScrollbar(
   state: LazyListState,
   modifier: Modifier = Modifier,
-  thumbWidth: Dp = 6.dp,
-  thumbMinHeight: Dp = 48.dp,
-  thumbColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-  trackPadding: Dp = 2.dp,
+  thumbWidth: Dp = 8.dp,
+  thumbMinHeight: Dp = 56.dp,
+  thumbColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+  hitTargetWidth: Dp = 40.dp,
 ) {
   val totalItems by remember { derivedStateOf { state.layoutInfo.totalItemsCount } }
   val visibleItems by remember { derivedStateOf { state.layoutInfo.visibleItemsInfo.size } }
@@ -91,7 +92,7 @@ fun FastScrollbar(
     thumbWidth = thumbWidth,
     thumbMinHeight = thumbMinHeight,
     thumbColor = thumbColor,
-    trackPadding = trackPadding,
+    hitTargetWidth = hitTargetWidth,
     onScrollToFraction = { fraction ->
       val maxIndex = (totalItems - visibleItems).coerceAtLeast(0)
       val targetIndex = (fraction * maxIndex).toInt().coerceIn(0, maxIndex)
@@ -110,10 +111,10 @@ fun FastScrollbar(
 fun FastScrollbar(
   state: LazyGridState,
   modifier: Modifier = Modifier,
-  thumbWidth: Dp = 6.dp,
-  thumbMinHeight: Dp = 48.dp,
-  thumbColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-  trackPadding: Dp = 2.dp,
+  thumbWidth: Dp = 8.dp,
+  thumbMinHeight: Dp = 56.dp,
+  thumbColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+  hitTargetWidth: Dp = 40.dp,
 ) {
   val totalItems by remember { derivedStateOf { state.layoutInfo.totalItemsCount } }
   val visibleItems by remember { derivedStateOf { state.layoutInfo.visibleItemsInfo.size } }
@@ -140,7 +141,7 @@ fun FastScrollbar(
     thumbWidth = thumbWidth,
     thumbMinHeight = thumbMinHeight,
     thumbColor = thumbColor,
-    trackPadding = trackPadding,
+    hitTargetWidth = hitTargetWidth,
     onScrollToFraction = { fraction ->
       val maxIndex = (totalItems - visibleItems).coerceAtLeast(0)
       val targetIndex = (fraction * maxIndex).toInt().coerceIn(0, maxIndex)
@@ -164,7 +165,7 @@ private fun ScrollbarThumb(
   thumbWidth: Dp,
   thumbMinHeight: Dp,
   thumbColor: Color,
-  trackPadding: Dp,
+  hitTargetWidth: Dp,
   onScrollToFraction: suspend (Float) -> Unit,
 ) {
   val scope = rememberCoroutineScope()
@@ -177,15 +178,16 @@ private fun ScrollbarThumb(
   BoxWithConstraints(
     modifier = modifier
       .fillMaxHeight()
-      .width(thumbWidth + trackPadding * 2)
+      .width(hitTargetWidth)
       .semantics { testTag = "fast_scrollbar" },
   ) {
-    val trackHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { maxHeight.toPx() }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val trackHeightPx = with(density) { maxHeight.toPx() }
     val totalContentPx = avgItemSizePx * totalItems
     val viewportPx = trackHeightPx
     val maxScrollPx = (totalContentPx - viewportPx).coerceAtLeast(1f)
     val thumbHeightPx = (viewportPx / totalContentPx * trackHeightPx)
-      .coerceAtLeast(with(androidx.compose.ui.platform.LocalDensity.current) { thumbMinHeight.toPx() })
+      .coerceAtLeast(with(density) { thumbMinHeight.toPx() })
     val maxThumbTopPx = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
 
     val derivedTopPx = run {
@@ -193,16 +195,17 @@ private fun ScrollbarThumb(
       (currentScroll / maxScrollPx).coerceIn(0f, 1f) * maxThumbTopPx
     }
     val thumbTopPx = dragTopPxOverride ?: derivedTopPx
-    val thumbHeightDp = with(androidx.compose.ui.platform.LocalDensity.current) { thumbHeightPx.toDp() }
-    val thumbTopDp = with(androidx.compose.ui.platform.LocalDensity.current) { thumbTopPx.toDp() }
+    val thumbHeightDp = with(density) { thumbHeightPx.toDp() }
+    val thumbTopDp = with(density) { thumbTopPx.toDp() }
 
+    // Wide invisible hit target wraps the slim visual thumb. Drag on
+    // any pixel of this box (40dp wide by default) triggers a scroll;
+    // grabbing the visual 8dp thumb directly is no longer required.
     androidx.compose.foundation.layout.Box(
       modifier = Modifier
-        .offset(x = trackPadding, y = thumbTopDp)
-        .width(thumbWidth)
+        .offset(y = thumbTopDp)
+        .fillMaxWidth()
         .height(thumbHeightDp)
-        .clip(RoundedCornerShape(thumbWidth / 2))
-        .background(thumbColor)
         .semantics { testTag = "fast_scrollbar_thumb" }
         .pointerInput(maxThumbTopPx, totalItems) {
           detectVerticalDragGestures(
@@ -217,14 +220,17 @@ private fun ScrollbarThumb(
               scope.launch { onScrollToFraction(fraction) }
             },
           )
-        }
-        .pointerInput(maxThumbTopPx, totalItems) {
-          // Tap on the thumb itself doesn't scroll — but a tap on the
-          // surrounding track region (caught by the track's pointer
-          // input below) does. Empty handler here keeps the drag
-          // gesture from being intercepted by track-tap detection.
-          detectTapGestures()
         },
-    )
+      contentAlignment = Alignment.CenterEnd,
+    ) {
+      // Visual thumb — slim pill on the right edge of the hit target.
+      androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+          .width(thumbWidth)
+          .fillMaxHeight()
+          .clip(RoundedCornerShape(thumbWidth / 2))
+          .background(thumbColor),
+      )
+    }
   }
 }
