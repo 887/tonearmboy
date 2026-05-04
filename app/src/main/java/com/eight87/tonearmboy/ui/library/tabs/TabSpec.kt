@@ -2,6 +2,7 @@ package com.eight87.tonearmboy.ui.library.tabs
 
 import androidx.compose.runtime.Composable
 import com.eight87.tonearmboy.ui.library.TileItem
+import com.eight87.tonearmboy.ui.settings.TabSort
 
 /**
  * R.D.2 — strategy interface that collapses the five near-duplicate
@@ -39,12 +40,13 @@ interface TabSpec<T : Any> {
   fun id(item: T): Long
 
   /**
-   * Section letter for [item], or null when the current sort
-   * doesn't lend itself to alphabetical grouping. The renderer
-   * uses this both for sticky headers in list mode and for the
-   * alphabet bubble overlay on the FastScrollbar.
+   * Section letter for [item], or null when the current [sort]
+   * doesn't lend itself to alphabetical grouping (e.g. sort by
+   * Date, Duration, etc.). The renderer uses this both for
+   * sticky headers in list mode and for the alphabet bubble
+   * overlay on the FastScrollbar.
    */
-  fun sectionKey(item: T, intelligentSorting: Boolean): String?
+  fun sectionKey(item: T, sort: TabSort, intelligentSorting: Boolean): String?
 
   /**
    * Project [item] onto a [TileItem] for tile-grid rendering.

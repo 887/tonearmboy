@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
@@ -27,7 +23,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,24 +31,15 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.model.Track
-import com.eight87.tonearmboy.ui.common.FastScrollbar
-// EmptyState is in same package (tabs)
-import com.eight87.tonearmboy.ui.library.LibraryTileGrid
-// MultiSelectBar is in same package (tabs)
-// SectionHeader is in same package (tabs)
 import com.eight87.tonearmboy.ui.library.TileItem
 import com.eight87.tonearmboy.ui.library.initialKey
-import com.eight87.tonearmboy.ui.library.letterForFlatIndexInGrouped
-import com.eight87.tonearmboy.ui.library.letterForTileIndex
-import com.eight87.tonearmboy.ui.library.libraryListCard
 import com.eight87.tonearmboy.ui.library.sortNameKey
 import com.eight87.tonearmboy.ui.library.sortTracks
+import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 import com.eight87.tonearmboy.ui.settings.SortKey
 import com.eight87.tonearmboy.ui.settings.TabSort
 import com.eight87.tonearmboy.ui.settings.ViewMode
-import com.eight87.tonearmboy.ui.settings.catalog.SettingsDimens
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TracksListScreen(
   repository: TrackSource,
@@ -65,8 +51,7 @@ fun TracksListScreen(
   // screen and other repository-free callers still see the legacy
   // shape without explicit wiring.
   viewMode: ViewMode = ViewMode.List,
-  albumCoversMode: com.eight87.tonearmboy.ui.settings.AlbumCoversMode =
-    com.eight87.tonearmboy.ui.settings.AlbumCoversMode.Balanced,
+  albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
   onTrackClick: (List<Track>, Int) -> Unit,
   onComingSoon: (String) -> Unit,
   onAddToQueue: (Track) -> Unit = {},
@@ -106,15 +91,13 @@ fun TracksListScreen(
  * track list without needing to bypass `LibraryRepository`'s on-first-
  * subscription scanner trigger (which wipes a seeded in-memory DB).
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun TracksListContent(
   tracks: List<Track>,
   sort: TabSort,
   intelligentSorting: Boolean,
   viewMode: ViewMode = ViewMode.List,
-  albumCoversMode: com.eight87.tonearmboy.ui.settings.AlbumCoversMode =
-    com.eight87.tonearmboy.ui.settings.AlbumCoversMode.Balanced,
+  albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
   onTrackClick: (List<Track>, Int) -> Unit,
   onComingSoon: (String) -> Unit,
   onAddToQueue: (Track) -> Unit = {},
@@ -124,31 +107,19 @@ internal fun TracksListContent(
   onGoToArtist: (Track) -> Unit = {},
   onDeleteTracks: ((List<Track>) -> Unit)? = null,
 ) {
-  if (tracks.isEmpty()) {
-    EmptyState("No tracks yet.")
-    return
-  }
   val sorted = remember(tracks, sort, intelligentSorting) { sortTracks(tracks, sort, intelligentSorting) }
-  val grouped = remember(sorted, sort, intelligentSorting) {
-    if (sort.key == SortKey.Name) {
-      sorted.groupBy { initialKey(sortNameKey(it.title, intelligentSorting)) }
-    } else emptyMap()
-  }
-  val orderedKeys = remember(grouped) { grouped.keys.toList() }
-  // R.A.Q — tile-mode per-tile section keys, hoisted to function
-  // scope so the FastScrollbar's section-label lookup can read them.
-  val tileSectionKeys = remember(sorted, sort, intelligentSorting) {
-    if (sort.key == SortKey.Name)
-      sorted.map { initialKey(sortNameKey(it.title, intelligentSorting)) }
-    else emptyList()
-  }
-  val listState = rememberLazyListState()
-  val gridState = rememberLazyGridState()
-  val scope = rememberCoroutineScope()
-
   // R.D.4 — multi-select state hoisted into rememberSelectionState.
-  // Pure transition methods, unit-testable.
   val selection = rememberSelectionState<Long>()
+
+  val onAction: (Track, TrackRowAction) -> Unit = { track, action ->
+    val idx = sorted.indexOf(track).coerceAtLeast(0)
+    if (action == TrackRowAction.Delete && onDeleteTracks != null) {
+      onDeleteTracks(listOf(track))
+    } else {
+      handleTrackAction(track, sorted, idx, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon)
+    }
+  }
+  val spec = remember(albumCoversMode, onAction) { TracksTabSpec(albumCoversMode, onAction) }
 
   Column(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_screen" }) {
     if (selection.inSelectionMode) {
@@ -174,85 +145,70 @@ internal fun TracksListContent(
         },
       )
     }
-    Row(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_list" }) {
-      if (viewMode == ViewMode.List) {
-        LazyColumn(state = listState, modifier = Modifier.weight(1f).libraryListCard()) {
-          val rowFor: @Composable (Track) -> Unit = { track ->
-            val itemIndex = sorted.indexOf(track)
-            TrackRow(
-              track = track,
-              selected = selection.contains(track.id),
-              inSelectionMode = selection.inSelectionMode,
-              onClick = {
-                if (selection.inSelectionMode) selection.toggle(track.id)
-                else onTrackClick(sorted, itemIndex)
-              },
-              onLongClick = { selection.add(track.id) },
-              onAction = { action ->
-                if (action == TrackRowAction.Delete && onDeleteTracks != null) {
-                  onDeleteTracks(listOf(track))
-                } else {
-                  handleTrackAction(track, sorted, itemIndex, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon)
-                }
-              },
-            )
-          }
-          if (orderedKeys.isNotEmpty()) {
-            orderedKeys.forEach { key ->
-              val group = grouped.getValue(key)
-              stickyHeader { SectionHeader(key) }
-              items(group, key = { it.id }) { track -> rowFor(track) }
-            }
-          } else {
-            items(sorted, key = { it.id }) { track -> rowFor(track) }
-          }
-        }
-      } else {
-        // D.28.3 — Songs in tile mode: each tile is the track's album art
-        // resolved through CoverArt.
-        val tileItems = remember(sorted) {
-          sorted.map {
-            TileItem(
-              id = it.id,
-              title = it.title,
-              subtitle = it.artist?.takeIf(String::isNotBlank),
-              artUri = null,
-              albumArtId = it.mediaStoreAlbumId,
-            )
-          }
-        }
-        LibraryTileGrid(
-          tiles = tileItems,
-          sectionKeys = tileSectionKeys,
-          state = gridState,
-          albumCoversMode = albumCoversMode,
-          onTileClick = { tile ->
-            val idx = sorted.indexOfFirst { it.id == tile.id }
-            if (idx >= 0) {
-              if (selection.inSelectionMode) selection.toggle(tile.id)
-              else onTrackClick(sorted, idx)
-            }
-          },
-          onTileLongClick = { tile -> selection.add(tile.id) },
-          modifier = Modifier.weight(1f).padding(horizontal = SettingsDimens.PagePadding),
-        )
-      }
-      if (viewMode == ViewMode.List) {
-        FastScrollbar(
-          state = listState,
-          sectionLabelFor = if (orderedKeys.isNotEmpty()) {
-            { idx -> letterForFlatIndexInGrouped(orderedKeys, grouped, idx) }
-          } else null,
-        )
-      } else {
-        FastScrollbar(
-          state = gridState,
-          sectionLabelFor = if (tileSectionKeys.isNotEmpty()) {
-            { idx -> letterForTileIndex(tileSectionKeys, idx) }
-          } else null,
-        )
-      }
+    Box(modifier = Modifier.weight(1f).semantics { testTag = "tracks_list" }) {
+      LibraryTabRenderer(
+        spec = spec,
+        items = sorted,
+        sort = sort,
+        viewMode = viewMode,
+        intelligentSorting = intelligentSorting,
+        albumCoversMode = albumCoversMode,
+        onItemClick = { track ->
+          if (selection.inSelectionMode) selection.toggle(track.id)
+          else onTrackClick(sorted, sorted.indexOf(track).coerceAtLeast(0))
+        },
+        onItemLongClick = { track -> selection.add(track.id) },
+        selection = selection,
+      )
     }
+  }
+}
+
+/**
+ * R.D.3 — TabSpec for the Tracks tab. The most complex of the five:
+ * threads multi-select state and a per-row overflow menu through
+ * [LibraryTabRenderer.selection]. Constructor captures the
+ * [albumCoversMode] (read in tile mode) and the [onAction] callback
+ * (invoked by the row's overflow menu).
+ */
+internal class TracksTabSpec(
+  private val albumCoversMode: AlbumCoversMode,
+  private val onAction: (Track, TrackRowAction) -> Unit,
+) : TabSpec<Track> {
+  override val testTag: String = "tracks_tab"
+  override val emptyMessage: String = "No tracks yet."
+  override val supportsTileMode: Boolean = true
+
+  override fun id(item: Track): Long = item.id
+
+  override fun sectionKey(item: Track, sort: TabSort, intelligentSorting: Boolean): String? =
+    if (sort.key == SortKey.Name) initialKey(sortNameKey(item.title, intelligentSorting))
+    else null
+
+  override fun toTile(item: Track): TileItem = TileItem(
+    id = item.id,
+    title = item.title,
+    subtitle = item.artist?.takeIf(String::isNotBlank),
+    artUri = null,
+    albumArtId = item.mediaStoreAlbumId,
+  )
+
+  @Composable
+  override fun ListRow(
+    item: Track,
+    selected: Boolean,
+    inSelectionMode: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+  ) {
+    TrackRow(
+      track = item,
+      selected = selected,
+      inSelectionMode = inSelectionMode,
+      onClick = onClick,
+      onLongClick = onLongClick,
+      onAction = { action -> onAction(item, action) },
+    )
   }
 }
 

@@ -19,6 +19,7 @@ import com.eight87.tonearmboy.ui.library.letterForFlatIndex
 import com.eight87.tonearmboy.ui.library.letterForTileIndex
 import com.eight87.tonearmboy.ui.library.libraryListCard
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
+import com.eight87.tonearmboy.ui.settings.TabSort
 import com.eight87.tonearmboy.ui.settings.ViewMode
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsDimens
 
@@ -41,6 +42,7 @@ import com.eight87.tonearmboy.ui.settings.catalog.SettingsDimens
 fun <T : Any> LibraryTabRenderer(
   spec: TabSpec<T>,
   items: List<T>,
+  sort: TabSort,
   viewMode: ViewMode,
   intelligentSorting: Boolean,
   albumCoversMode: AlbumCoversMode,
@@ -54,8 +56,8 @@ fun <T : Any> LibraryTabRenderer(
     return
   }
 
-  val sectionKeys = remember(items, intelligentSorting) {
-    items.map { spec.sectionKey(it, intelligentSorting) ?: "" }
+  val sectionKeys = remember(items, sort, intelligentSorting) {
+    items.map { spec.sectionKey(it, sort, intelligentSorting) ?: "" }
       .takeIf { keys -> keys.any { it.isNotEmpty() } }
       ?: emptyList()
   }

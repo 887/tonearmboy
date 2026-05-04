@@ -1,36 +1,24 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTag
 import com.eight87.tonearmboy.data.PlaylistStore
-import com.eight87.tonearmboy.ui.common.FastScrollbar
-// EmptyState is in same package (tabs)
+import com.eight87.tonearmboy.data.model.Playlist
 import com.eight87.tonearmboy.ui.library.PlaylistsTilesScreen
-// SectionHeader is in same package (tabs)
-// TwoLineRow is in same package (tabs)
+import com.eight87.tonearmboy.ui.library.TileItem
 import com.eight87.tonearmboy.ui.library.initialKey
-import com.eight87.tonearmboy.ui.library.letterForFlatIndex
-import com.eight87.tonearmboy.ui.library.libraryListCard
+import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
+import com.eight87.tonearmboy.ui.settings.TabSort
 import com.eight87.tonearmboy.ui.settings.ViewMode
 
 /**
  * D.28 — Playlists tab dispatcher. Tile mode → the existing
- * [PlaylistsTilesScreen] (D.27.6); List mode → sticky-header letter
- * list with the alphabet rail mounted.
+ * [PlaylistsTilesScreen] (D.27.6) which has its own rename/delete/
+ * set-cover affordances; List mode → [LibraryTabRenderer] driven by
+ * [PlaylistsTabSpec].
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PlaylistsTabScreen(
   repository: PlaylistStore,
@@ -51,46 +39,15 @@ fun PlaylistsTabScreen(
     return
   }
   val playlists by repository.observePlaylists().collectAsState(initial = emptyList())
-  if (playlists.isEmpty()) {
-    EmptyState("No playlists yet. Tap + to create one.")
-    return
-  }
-  val sectionKeys = remember(playlists) {
-    playlists.map { initialKey(it.name.uppercase()) }
-  }
-  val orderedKeys = remember(sectionKeys) { sectionKeys.distinct() }
-  val listState = rememberLazyListState()
-  val scope = rememberCoroutineScope()
-
-  Row(modifier = Modifier.fillMaxSize().semantics { testTag = "playlists_tab" }) {
-    val grouped = remember(playlists, sectionKeys) {
-      playlists.zip(sectionKeys).groupBy({ it.second }, { it.first })
-    }
-    LazyColumn(
-      state = listState,
-      modifier = Modifier
-        .weight(1f)
-        .libraryListCard()
-        .semantics { testTag = "playlists_list" },
-    ) {
-      orderedKeys.forEach { key ->
-        stickyHeader { SectionHeader(key) }
-        items(grouped.getValue(key), key = { it.id }) { p ->
-          TwoLineRow(
-            primary = p.name,
-            secondary = "${p.trackCount} tracks",
-            onClick = { onPlaylistClick(p.id) },
-          )
-        }
-      }
-    }
-    FastScrollbar(
-      state = listState,
-      sectionLabelFor = if (orderedKeys.isNotEmpty()) {
-        { idx -> letterForFlatIndex(orderedKeys, sectionKeys, idx) }
-      } else null,
-    )
-  }
+  LibraryTabRenderer(
+    spec = PlaylistsTabSpec,
+    items = playlists,
+    sort = TabSort.Default,
+    viewMode = ViewMode.List,
+    intelligentSorting = false,
+    albumCoversMode = AlbumCoversMode.Default,
+    onItemClick = { onPlaylistClick(it.id) },
+  )
 }
 
 /** Pre-D.28 wrapper retained for the existing `PlaylistsListScreenTest` and callers. */
@@ -109,4 +66,37 @@ fun PlaylistsListScreen(
     onDeletePlaylist = onDeletePlaylist,
     onSetPlaylistCover = onSetPlaylistCover,
   )
+}
+
+/**
+ * R.D.3 — TabSpec for the Playlists tab. List-only inside this spec;
+ * tile mode is dispatched to [PlaylistsTilesScreen] before the
+ * renderer is reached.
+ */
+internal object PlaylistsTabSpec : TabSpec<Playlist> {
+  override val testTag: String = "playlists_tab"
+  override val emptyMessage: String = "No playlists yet. Tap + to create one."
+  override val supportsTileMode: Boolean = false
+
+  override fun id(item: Playlist): Long = item.id
+
+  override fun sectionKey(item: Playlist, sort: TabSort, intelligentSorting: Boolean): String? =
+    initialKey(item.name.uppercase())
+
+  override fun toTile(item: Playlist): TileItem? = null
+
+  @Composable
+  override fun ListRow(
+    item: Playlist,
+    selected: Boolean,
+    inSelectionMode: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+  ) {
+    TwoLineRow(
+      primary = item.name,
+      secondary = "${item.trackCount} tracks",
+      onClick = onClick,
+    )
+  }
 }
