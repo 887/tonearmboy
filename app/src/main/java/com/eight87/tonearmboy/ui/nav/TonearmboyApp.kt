@@ -25,7 +25,6 @@ import com.eight87.tonearmboy.ui.library.ArtistDetailScreen
 import com.eight87.tonearmboy.ui.library.GenreDetailScreen
 import com.eight87.tonearmboy.ui.library.LibraryScreen
 import com.eight87.tonearmboy.ui.library.PlaylistDetailScreen
-import com.eight87.tonearmboy.ui.library.PlaylistPickerSheet
 import com.eight87.tonearmboy.ui.playing.MiniPlayer
 import com.eight87.tonearmboy.ui.playing.NowPlayingScreen
 import com.eight87.tonearmboy.data.model.Track
@@ -148,12 +147,12 @@ fun TonearmboyApp(
     }
   }
 
-  // D.15.6.2 — track currently being added to a playlist; non-null
-  // shows the picker sheet on top of whichever destination triggered it.
-  var addingToPlaylistTrack by remember { mutableStateOf<Track?>(null) }
-  // D.27.2 — bulk version: selected ids from the multi-select bar
-  // routed through the same picker sheet.
-  var addingToPlaylistTrackIds by remember { mutableStateOf<List<Long>?>(null) }
+  // R.E.5 — add-to-playlist surface (single + bulk) lifted into AddToPlaylistController.
+  val addToPlaylist = rememberAddToPlaylistController(
+    playlists = graph.playlists,
+    snackbar = snackbarHostState,
+    applicationScope = graph.applicationScope,
+  )
   // D.27.5 — current library filter, owned at the app root so it
   // survives tab switches. Cleared on app close (no DataStore
   // persistence in v1, per the plan).
@@ -175,8 +174,6 @@ fun TonearmboyApp(
   )
   val onExportPlaylists = playlistBackup.onExport
   val onImportPlaylists = playlistBackup.onImport
-  val playlists by graph.playlists.observePlaylists()
-    .collectAsStateWithLifecycle(initialValue = emptyList())
   val onRefreshMusic: () -> Unit = {
     graph.applicationScope.launch {
       graph.scanner.rescanNow()
@@ -266,8 +263,8 @@ fun TonearmboyApp(
                 snackbarHostState.showSnackbar("Added to queue: ${track.title}")
               }
             },
-            onAddToPlaylist = { track -> addingToPlaylistTrack = track },
-            onAddTracksToPlaylist = { ids -> addingToPlaylistTrackIds = ids },
+            onAddToPlaylist = { track -> addToPlaylist.requestSingle(track) },
+            onAddTracksToPlaylist = { ids -> addToPlaylist.requestBulk(ids) },
             onRenamePlaylist = { id, name ->
               graph.applicationScope.launch {
                 graph.playlists.renamePlaylist(id, name)
@@ -317,7 +314,7 @@ fun TonearmboyApp(
                 backStack = backStack,
                 snackbarHostState = snackbarHostState,
                 applicationScope = graph.applicationScope,
-                onAddToPlaylist = { addingToPlaylistTrack = it },
+                onAddToPlaylist = { addToPlaylist.requestSingle(it) },
                 onDeleteTracks = onDeleteTracks,
               )
             },
@@ -346,7 +343,7 @@ fun TonearmboyApp(
                 backStack = backStack,
                 snackbarHostState = snackbarHostState,
                 applicationScope = graph.applicationScope,
-                onAddToPlaylist = { addingToPlaylistTrack = it },
+                onAddToPlaylist = { addToPlaylist.requestSingle(it) },
                 onDeleteTracks = onDeleteTracks,
               )
             },
@@ -374,7 +371,7 @@ fun TonearmboyApp(
                 backStack = backStack,
                 snackbarHostState = snackbarHostState,
                 applicationScope = graph.applicationScope,
-                onAddToPlaylist = { addingToPlaylistTrack = it },
+                onAddToPlaylist = { addToPlaylist.requestSingle(it) },
                 onDeleteTracks = onDeleteTracks,
               )
             },
@@ -406,7 +403,7 @@ fun TonearmboyApp(
               // can append to an existing playlist or create a new one.
               val trackIds = mediaIds.mapNotNull { it.toLongOrNull() }
               if (trackIds.isNotEmpty()) {
-                addingToPlaylistTrackIds = trackIds
+                addToPlaylist.requestBulk(trackIds)
               }
             },
           )
@@ -606,56 +603,9 @@ fun TonearmboyApp(
       },
     )
 
-    // D.15.6.2 — global "Add to playlist" picker overlay. Hosted at the
-    // app level so any track-row action (library, detail screens) can
-    // trigger the same sheet.
-    addingToPlaylistTrack?.let { track ->
-      PlaylistPickerSheet(
-        playlists = playlists,
-        onDismiss = { addingToPlaylistTrack = null },
-        onPick = { p ->
-          addingToPlaylistTrack = null
-          graph.applicationScope.launch {
-            graph.playlists.addTrackToPlaylist(p.id, track.id)
-            snackbarHostState.showSnackbar("Added \"${track.title}\" to ${p.name}")
-          }
-        },
-        onCreateAndPick = { name ->
-          addingToPlaylistTrack = null
-          graph.applicationScope.launch {
-            val id = graph.playlists.createPlaylist(name)
-            graph.playlists.addTrackToPlaylist(id, track.id)
-            snackbarHostState.showSnackbar("Added \"${track.title}\" to $name")
-          }
-        },
-      )
-    }
-
-    // D.27.2 — bulk Add-to-playlist overlay. Same picker UI as the
-    // single-track flow above, but the pick target receives the whole
-    // selected-id list and applies them in one launch block. Snackbar
-    // copy reflects the count.
-    addingToPlaylistTrackIds?.let { ids ->
-      PlaylistPickerSheet(
-        playlists = playlists,
-        onDismiss = { addingToPlaylistTrackIds = null },
-        onPick = { p ->
-          addingToPlaylistTrackIds = null
-          graph.applicationScope.launch {
-            ids.forEach { tid -> graph.playlists.addTrackToPlaylist(p.id, tid) }
-            snackbarHostState.showSnackbar("Added ${ids.size} tracks to ${p.name}")
-          }
-        },
-        onCreateAndPick = { name ->
-          addingToPlaylistTrackIds = null
-          graph.applicationScope.launch {
-            val id = graph.playlists.createPlaylist(name)
-            ids.forEach { tid -> graph.playlists.addTrackToPlaylist(id, tid) }
-            snackbarHostState.showSnackbar("Added ${ids.size} tracks to $name")
-          }
-        },
-      )
-    }
+    // R.E.5 — global Add-to-playlist picker overlay (single + bulk)
+    // rendered from the AddToPlaylistController.
+    addToPlaylist.Overlay()
 
     // D.17.3 — Auxio-pattern Music sources dialog. Toggled from the
     // Settings root row (RowKind.OpenDialog) and from search results
