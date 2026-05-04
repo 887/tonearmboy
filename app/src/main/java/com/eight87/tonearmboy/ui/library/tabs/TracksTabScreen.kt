@@ -146,32 +146,29 @@ internal fun TracksListContent(
   val gridState = rememberLazyGridState()
   val scope = rememberCoroutineScope()
 
-  // Phase F.3 — multi-select state. Long-press enters select mode and
-  // toggles the long-pressed track's id; subsequent taps then toggle
-  // selection rather than start playback. Tapping the close icon in
-  // the contextual bar exits.
-  var selectedIds by remember { mutableStateOf(emptySet<Long>()) }
-  val inSelectionMode = selectedIds.isNotEmpty()
+  // R.D.4 — multi-select state hoisted into rememberSelectionState.
+  // Pure transition methods, unit-testable.
+  val selection = rememberSelectionState<Long>()
 
   Column(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_screen" }) {
-    if (inSelectionMode) {
+    if (selection.inSelectionMode) {
       MultiSelectBar(
-        count = selectedIds.size,
-        onClose = { selectedIds = emptySet() },
+        count = selection.size,
+        onClose = { selection.clear() },
         onAddToPlaylist = onAddTracksToPlaylist?.let { addMany ->
           {
             // D.27.2 — capture the snapshot ids before clearing the
             // selection so the picker sheet sees the right batch even
             // if the user dismisses without picking and re-enters.
-            val ids = selectedIds.toList()
-            selectedIds = emptySet()
+            val ids = selection.snapshot()
+            selection.clear()
             addMany(ids)
           }
         },
         onDelete = onDeleteTracks?.let { delete ->
           {
-            val selectedTracks = sorted.filter { it.id in selectedIds }
-            selectedIds = emptySet()
+            val selectedTracks = sorted.filter { selection.contains(it.id) }
+            selection.clear()
             delete(selectedTracks)
           }
         },
@@ -179,25 +176,18 @@ internal fun TracksListContent(
     }
     Row(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_list" }) {
       if (viewMode == ViewMode.List) {
-        // D.16.1 — tracks card. The alphabet scroller stays *outside* the
-        // card so it floats over the right margin, the way Settings'
-        // sub-page surfaces float their accent strip.
         LazyColumn(state = listState, modifier = Modifier.weight(1f).libraryListCard()) {
           val rowFor: @Composable (Track) -> Unit = { track ->
             val itemIndex = sorted.indexOf(track)
-            val selected = track.id in selectedIds
             TrackRow(
               track = track,
-              selected = selected,
-              inSelectionMode = inSelectionMode,
+              selected = selection.contains(track.id),
+              inSelectionMode = selection.inSelectionMode,
               onClick = {
-                if (inSelectionMode) {
-                  selectedIds = selectedIds.toggle(track.id)
-                } else {
-                  onTrackClick(sorted, itemIndex)
-                }
+                if (selection.inSelectionMode) selection.toggle(track.id)
+                else onTrackClick(sorted, itemIndex)
               },
-              onLongClick = { selectedIds = selectedIds + track.id },
+              onLongClick = { selection.add(track.id) },
               onAction = { action ->
                 if (action == TrackRowAction.Delete && onDeleteTracks != null) {
                   onDeleteTracks(listOf(track))
@@ -219,9 +209,7 @@ internal fun TracksListContent(
         }
       } else {
         // D.28.3 — Songs in tile mode: each tile is the track's album art
-        // resolved through CoverArt. We still respect the section-key
-        // grouping when sorted by Name so the alphabet rail can scroll
-        // the grid by letter (D.28.5).
+        // resolved through CoverArt.
         val tileItems = remember(sorted) {
           sorted.map {
             TileItem(
@@ -241,11 +229,11 @@ internal fun TracksListContent(
           onTileClick = { tile ->
             val idx = sorted.indexOfFirst { it.id == tile.id }
             if (idx >= 0) {
-              if (inSelectionMode) selectedIds = selectedIds.toggle(tile.id)
+              if (selection.inSelectionMode) selection.toggle(tile.id)
               else onTrackClick(sorted, idx)
             }
           },
-          onTileLongClick = { tile -> selectedIds = selectedIds + tile.id },
+          onTileLongClick = { tile -> selection.add(tile.id) },
           modifier = Modifier.weight(1f).padding(horizontal = SettingsDimens.PagePadding),
         )
       }
@@ -267,9 +255,6 @@ internal fun TracksListContent(
     }
   }
 }
-
-private fun <T> Set<T>.toggle(value: T): Set<T> =
-  if (value in this) this - value else this + value
 
 private fun handleTrackAction(
   track: Track,
