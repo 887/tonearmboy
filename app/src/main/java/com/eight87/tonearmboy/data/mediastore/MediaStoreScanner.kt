@@ -7,7 +7,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import androidx.media3.common.util.UnstableApi
-import com.eight87.tonearmboy.data.model.Track
+import com.eight87.tonearmboy.data.model.ScannedTrack
 import com.eight87.tonearmboy.playback.replaygain.ReplayGainTagReader
 import com.eight87.tonearmboy.playback.replaygain.ReplayGainTags
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +55,7 @@ class MediaStoreScanner(
     separators: Set<String> = emptySet(),
     scopePathPrefixes: Set<String> = emptySet(),
     onProgress: ((scanned: Int, total: Int, currentTitle: String?) -> Unit)? = null,
-  ): List<Track> {
+  ): List<ScannedTrack> {
     if (!MediaStorePermissions.hasAudioPermission(context)) {
       Log.w(TAG, "scanTracks: no audio permission, skipping")
       return emptyList()
@@ -116,7 +116,7 @@ class MediaStoreScanner(
     genreById: Map<Long, String>,
     separators: Set<String>,
     onProgress: ((Int, Int, String?) -> Unit)?,
-  ): List<Track> {
+  ): List<ScannedTrack> {
     val idIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
     val titleIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
     val artistIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
@@ -134,7 +134,7 @@ class MediaStoreScanner(
     // The ReplayGain reader involves a Media3 MetadataRetriever per file
     // with a 1500ms timeout — sequentially that's 25min on a 1k-track
     // library and ANRs the IO threadpool. Pass 2 parallelises it.
-    data class Stub(val track: Track, val uri: Uri)
+    data class Stub(val track: ScannedTrack, val uri: Uri)
     val total = cursor.count.coerceAtLeast(0)
     val stubs = ArrayList<Stub>(total)
     while (cursor.moveToNext()) {
@@ -152,7 +152,7 @@ class MediaStoreScanner(
       val title = cursor.getString(titleIdx) ?: ""
 
       stubs += Stub(
-        track = Track(
+        track = ScannedTrack(
           id = id,
           title = title,
           artist = primaryArtist,
@@ -185,7 +185,7 @@ class MediaStoreScanner(
     // Bounded concurrency = 4. Each read is a short blocking section
     // wrapped by the reader's 1500ms timeout. Bounded so we don't
     // saturate Dispatchers.IO and starve the rest of the app.
-    val out = ArrayList<Track>(stubs.size)
+    val out = ArrayList<ScannedTrack>(stubs.size)
     val scanned = java.util.concurrent.atomic.AtomicInteger(0)
     runBlocking {
       val sem = kotlinx.coroutines.sync.Semaphore(REPLAYGAIN_PARALLELISM)
