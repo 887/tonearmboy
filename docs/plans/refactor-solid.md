@@ -114,7 +114,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 
 **Why:** Each item below is independent and ships standalone. Pick whichever lands in front of the next feature you touch — they don't block each other and don't block earlier phases.
 
-- [ ] **R.F.1** Unify `TrackRow` + `DetailTrackRow` + `QueueRow` behind one composable + sealed `TrackContextAction` (UI-F5). Removes a duplicated enum + future-proofs new actions.
+- [x] **R.F.1** Unify `TrackRow` + `DetailTrackRow` + `QueueRow` behind one composable + sealed `TrackContextAction` (UI-F5). Removes a duplicated enum + future-proofs new actions. — shipped: shared `TrackContextAction` enum + `TrackContextMenu` composable replace `TrackRowAction`/`AlbumDetailTrackAction`. `QueueRow` kept separate — its drag-handle / leading-X / active-highlight shape doesn't fold cleanly behind a single composable.
 - [ ] **R.F.2** Per-variant `ConditionUi` registry on `FilterCondition` (label + summary + `@Composable Editor` + default factory). Editor screen iterates the registry — true OCP for new variants (UI-F10).
 - [ ] **R.F.3** Extract `PlaybackTransportRow(state, callbacks, iconSize)` shared between `MiniPlayer` and `NowPlayingScreen`. Mini-player passes `iconSize = 24.dp`, NowPlaying passes 36/56 (UI-F11).
 - [ ] **R.F.4** Split `Track` into `Track` (cache-faithful domain) + `ScannedTrack` (scan-only superset with splitter outputs + album-level ReplayGain). Removes the silent contract drift in `Mapping.toDomain` (Data-F4 + F10).
@@ -126,8 +126,8 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [ ] **R.F.10** Extract `MediaStoreCursorReader` + `ReplayGainEnricher` from `MediaStoreScanner`; drop `runBlocking`, make API `suspend` (Data-F5).
 - [ ] **R.F.11** Extract `QueuePersistenceController` + `NotificationLayoutController` from `PlaybackService`; service `onCreate` becomes wiring only (Playback-F7).
 - [x] **R.F.12** Add `repository.observeTracksForAlbum/Artist/Genre/observeYearSpan` Flows; detail screens stop filtering in Compose (UI-F7 + F14).
-- [ ] **R.F.13** Fold `RowKind` into `SettingsRowBinding` so each binding carries its own `@Composable Render(entry)`; the `null` arm becomes a compile-time error (Settings-F9).
-- [ ] **R.F.14** Co-locate `SettingsCatalog` row definitions per section file; one aggregator `flatten`s. Removes the 683-LOC central edit-magnet (Settings-F7).
+- [x] **R.F.13** Fold `RowKind` into `SettingsRowBinding` so each binding carries its own `@Composable Render(entry)`; the `null` arm becomes a compile-time error (Settings-F9).
+- [x] **R.F.14** Co-locate `SettingsCatalog` row definitions per section file; one aggregator `flatten`s. Removes the 683-LOC central edit-magnet (Settings-F7).
 - [x] **R.F.15** Replace `Group` enum with inline `GroupRef`; render order via list position. Removes `PersonalizeBehaviour`-style hacks (Settings-F8).
 - [x] **R.F.16** Rename `popToOrPush` to `popToFirstOrPush` (or fix to `indexOfLast` to match doc), so the LSP contract matches the name (Playback-F12).
 - [x] **R.F.17** `rememberSettingPicker<T>(...)` helper so each sub-page body becomes a `bindings` list, not 100+ LOC of `var xPicker by remember { mutableStateOf(false) }` (Settings-F5).

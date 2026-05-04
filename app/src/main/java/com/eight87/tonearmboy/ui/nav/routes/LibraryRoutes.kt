@@ -13,7 +13,7 @@ import com.eight87.tonearmboy.data.db.CustomTabEntity
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.playback.PlaybackUiController
 import com.eight87.tonearmboy.ui.library.AlbumDetailScreen
-import com.eight87.tonearmboy.ui.library.AlbumDetailTrackAction
+import com.eight87.tonearmboy.ui.library.TrackContextAction
 import com.eight87.tonearmboy.ui.library.ArtistDetailScreen
 import com.eight87.tonearmboy.ui.library.CustomTabEditorScreen
 import com.eight87.tonearmboy.ui.library.FilterUniverse
@@ -335,7 +335,7 @@ fun CustomTabEditor.Register(scope: RouteScope) {
 @OptIn(UnstableApi::class)
 internal fun handleDetailTrackAction(
   track: Track,
-  action: AlbumDetailTrackAction,
+  action: TrackContextAction,
   playback: PlaybackUiController,
   backStack: TonearmboyBackStack,
   snackbar: SnackbarHostState,
@@ -344,23 +344,23 @@ internal fun handleDetailTrackAction(
   onDeleteTracks: (List<Track>) -> Unit,
 ) {
   when (action) {
-    AlbumDetailTrackAction.Play -> playback.playTrack(track)
-    AlbumDetailTrackAction.AddToQueue -> {
+    TrackContextAction.Play -> playback.playTrack(track)
+    TrackContextAction.AddToQueue -> {
       playback.addToQueue(track)
       applicationScope.launch {
         snackbar.showSnackbar("Added to queue: ${track.title}")
       }
     }
-    AlbumDetailTrackAction.AddToPlaylist -> onAddToPlaylist(track)
-    AlbumDetailTrackAction.GoToAlbum -> {
+    TrackContextAction.AddToPlaylist -> onAddToPlaylist(track)
+    TrackContextAction.GoToAlbum -> {
       val name = track.album ?: return
       backStack.push(AlbumDetail(name, track.albumArtist ?: track.artist))
     }
-    AlbumDetailTrackAction.GoToArtist -> {
+    TrackContextAction.GoToArtist -> {
       val name = track.albumArtist?.takeIf { it.isNotBlank() } ?: track.artist ?: return
       backStack.push(ArtistDetail(name))
     }
     // Phase F.2 — single-track delete from album/artist/genre detail.
-    AlbumDetailTrackAction.Delete -> onDeleteTracks(listOf(track))
+    TrackContextAction.Delete -> onDeleteTracks(listOf(track))
   }
 }

@@ -2,7 +2,7 @@ package com.eight87.tonearmboy.ui.library
 
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.playback.computePlayFromLibraryQueue
-import com.eight87.tonearmboy.ui.library.tabs.TrackRowAction
+import com.eight87.tonearmboy.ui.library.TrackContextAction
 import com.eight87.tonearmboy.ui.settings.PlayFromLibrary
 import com.eight87.tonearmboy.ui.settings.SortDirection
 import com.eight87.tonearmboy.ui.settings.SortKey
@@ -137,14 +137,14 @@ class TracksListScreenTest {
     // the row's `handleTrackAction` switch (Compose-side wiring is
     // asserted by the integration smoke test).
     val expected = setOf(
-      TrackRowAction.Play,
-      TrackRowAction.AddToQueue,
-      TrackRowAction.AddToPlaylist,
-      TrackRowAction.GoToAlbum,
-      TrackRowAction.GoToArtist,
-      TrackRowAction.Delete,
+      TrackContextAction.Play,
+      TrackContextAction.AddToQueue,
+      TrackContextAction.AddToPlaylist,
+      TrackContextAction.GoToAlbum,
+      TrackContextAction.GoToArtist,
+      TrackContextAction.Delete,
     )
-    assertEquals(expected, TrackRowAction.entries.toSet())
+    assertEquals(expected, TrackContextAction.entries.toSet())
   }
 
   // --- play-from-library strategy threading -------------------------------
