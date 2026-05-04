@@ -98,7 +98,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [ ] **R.E.1** Define `RouteScope` interface carrying everything a route needs (`graph`, `backStack`, `snackbar`, `playback: TransportCommands`, settings facets, etc.).
 - [ ] **R.E.2** Per-destination `Register(scope)` extensions on the sealed `Destination` interface — one file per destination grouping (e.g. `routes/SettingsRoutes.kt`, `routes/LibraryRoutes.kt`).
 - [ ] **R.E.3** `TonearmboyApp.kt` shrinks to: theme + scaffold + top-app-bar + a single `entryProvider { destination -> destination.Register(scope) }` block. Target: under 150 LOC.
-- [ ] **R.E.4** Lift playlist export/import out of `TonearmboyApp` into `rememberPlaylistBackupController(graph, snackbar)` returning `{ onExport, onImport, collisionDialog }` (Playback-F9).
+- [x] **R.E.4** Lift playlist export/import out of `TonearmboyApp` into `rememberPlaylistBackupController(graph, snackbar)` returning `{ onExport, onImport, collisionDialog }` (Playback-F9).
 - [ ] **R.E.5** Lift the playlist picker overlay (single + bulk) into `rememberAddToPlaylistController(graph)`.
 - [x] **R.E.6** Lift the four settings → playback `LaunchedEffect`s into `rememberPlaybackSettingsBridge(playback, settings)` — one place to wire mirrors.
 - [ ] **R.E.7** Push side-effect launchers out of settings sub-pages into injectable interfaces: `AutoReloadController`, `EqualizerLauncher`, `MusicSourceCommands` (Settings-F6).
