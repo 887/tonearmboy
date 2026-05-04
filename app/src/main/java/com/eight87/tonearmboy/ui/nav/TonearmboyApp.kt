@@ -700,7 +700,8 @@ fun TonearmboyApp(
             onBack = { backStack.pop() },
             onComingSoon = onComingSoon,
             snackbarHostState = snackbarHostState,
-            playback = playback,
+            sleepTimer = graph.sleepTimer,
+            nowPlayingState = playback,
           )
         }
       },

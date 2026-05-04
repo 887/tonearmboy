@@ -64,22 +64,36 @@ class PlaybackUiController(private val applicationContext: Context) :
    */
   override val audioSessionId: StateFlow<Int> = PlayerHolder.audioSessionId
 
+  // R.C.5 — SleepTimer construction moved to AppGraph; the timer is
+  // now built independently and wired via the three small public
+  // methods below ([pauseSilently], [addPlayerListener],
+  // [removePlayerListener]). The controller is no longer the timer's
+  // composition root.
+
   /**
-   * Phase H.3 — process-wide sleep timer. Lives on this controller's
-   * scope so cancellation lines up with [release] / [shutdown]. The UI
-   * calls into [sleepTimer] directly; the controller does not wrap it
-   * because the timer's API surface is small and stable.
+   * R.C.5 — pause the active MediaController without touching state
+   * tracking. Used by [SleepTimer] when its countdown elapses.
+   * `withContext(Main)` so the call lands on the Media3 binder
+   * thread regardless of which dispatcher the timer fires on.
    */
-  val sleepTimer: SleepTimer by lazy {
-    SleepTimer(
-      scope = scope,
-      pauseAction = {
-        // Run on the Main looper since MediaController is bound there.
-        scope.launch { controller?.pause() }
-      },
-      addPlayerListener = { l -> controller?.addListener(l) },
-      removePlayerListener = { l -> controller?.removeListener(l) },
-    )
+  fun pauseSilently() {
+    scope.launch { controller?.pause() }
+  }
+
+  /**
+   * R.C.5 — register an external [Player.Listener]. Used by
+   * [SleepTimer]'s "wait for end of track" mode to detect
+   * `MEDIA_ITEM_TRANSITION_REASON_AUTO`. No-op when the controller
+   * isn't bound; the listener is held by the caller and re-registers
+   * on next [connect].
+   */
+  fun addPlayerListener(l: Player.Listener) {
+    controller?.addListener(l)
+  }
+
+  /** R.C.5 — symmetric removal for [addPlayerListener]. */
+  fun removePlayerListener(l: Player.Listener) {
+    controller?.removeListener(l)
   }
 
   /**
