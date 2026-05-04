@@ -1,7 +1,7 @@
 package com.eight87.tonearmboy.ui.settings
 
 import com.eight87.tonearmboy.ui.nav.SettingsAbout
-import com.eight87.tonearmboy.ui.settings.catalog.Group
+import com.eight87.tonearmboy.ui.settings.catalog.Groups
 import com.eight87.tonearmboy.ui.settings.catalog.RowKind
 import com.eight87.tonearmboy.ui.settings.catalog.Section
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsCatalog
@@ -11,7 +11,7 @@ import org.junit.Test
 
 /**
  * D.16.4 — verifies the About entry is wired into the catalog and routes
- * to the [SettingsAbout] destination. About lives in its own [Group.About]
+ * to the [SettingsAbout] destination. About lives in its own [Groups.About]
  * category at the bottom of Settings root (not under Library — see the
  * post-D.16 user correction). Pinning these expectations here means a
  * stealth removal or re-categorisation during a refactor breaks the test.
@@ -22,7 +22,7 @@ class AboutCatalogTest {
   fun about_entry_routes_to_settings_about_destination() {
     val entry = SettingsCatalog.byId(SettingsCatalog.ID_ABOUT)
     assertEquals(Section.Root, entry.section)
-    assertEquals(Group.About, entry.group)
+    assertEquals(Groups.About, entry.group)
     assertEquals(RowKind.Navigate, entry.kind)
     assertEquals(SettingsAbout, entry.destination)
   }
@@ -30,7 +30,7 @@ class AboutCatalogTest {
   @Test
   fun about_is_its_own_group_at_root() {
     val rootEntries = SettingsCatalog.bySection(Section.Root)
-    val aboutEntries = rootEntries.filter { it.group == Group.About }
+    val aboutEntries = rootEntries.filter { it.group == Groups.About }
     assertEquals("Exactly one About entry expected", 1, aboutEntries.size)
     assertEquals(SettingsCatalog.ID_ABOUT, aboutEntries.single().id)
   }
@@ -38,13 +38,13 @@ class AboutCatalogTest {
   @Test
   fun about_appears_after_library_group_in_root_order() {
     val rootEntries = SettingsCatalog.bySection(Section.Root)
-    val firstLibraryIdx = rootEntries.indexOfFirst { it.group == Group.Library }
-    val aboutIdx = rootEntries.indexOfFirst { it.group == Group.About }
+    val firstLibraryIdx = rootEntries.indexOfFirst { it.group == Groups.Library }
+    val aboutIdx = rootEntries.indexOfFirst { it.group == Groups.About }
     assertTrue("Library group must exist in root", firstLibraryIdx >= 0)
     assertTrue("About group must exist in root", aboutIdx >= 0)
     assertTrue(
       "About must render after the entire Library group",
-      aboutIdx > rootEntries.indexOfLast { it.group == Group.Library },
+      aboutIdx > rootEntries.indexOfLast { it.group == Groups.Library },
     )
   }
 

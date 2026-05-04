@@ -73,10 +73,10 @@ fun SettingsCatalogPage(
 ) {
   val bindingsById = bindings.associateBy { it.id }
   val pageEntries = SettingsCatalog.bySection(section)
-  val grouped: List<Pair<Group, List<SettingsCatalogEntry>>> =
-    pageEntries.groupBy { it.group }
-      .map { (g, list) -> g to list }
-      .sortedBy { Group.entries.indexOf(it.first) }
+  // R.F.15 — render order follows the order entries appear in the
+  // catalog (preserved by groupBy in Kotlin).
+  val grouped: List<Pair<GroupRef, List<SettingsCatalogEntry>>> =
+    pageEntries.groupBy { it.group }.map { (g, list) -> g to list }
 
   Column(
     modifier = modifier
@@ -145,17 +145,5 @@ private fun RowFromBinding(
   }
 }
 
-/** Human-readable group titles. The card header above each card. */
-fun groupTitleFor(group: Group): String = when (group) {
-  Group.Appearance -> "Appearance"
-  Group.Behaviour -> "Behaviour"
-  Group.Library -> "Library"
-  Group.About -> "About"
-  Group.Theme -> "Theme"
-  Group.Display -> "Display"
-  Group.PersonalizeBehaviour -> "Behaviour"
-  Group.Music -> "Music"
-  Group.Images -> "Images"
-  Group.Playback -> "Playback"
-  Group.VolumeNormalization -> "Volume normalization"
-}
+/** R.F.15 — group titles now ride the GroupRef inline. */
+fun groupTitleFor(group: GroupRef): String = group.label
