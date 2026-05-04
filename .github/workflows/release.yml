@@ -61,11 +61,11 @@ jobs:
           TAG: ${{ steps.skip_check.outputs.tag }}
         run: |
           set -euo pipefail
-          # If the release exists AND has an asset matching tonearm-*.apk,
+          # If the release exists AND has an asset matching tonearmboy-*.apk,
           # the local build already shipped this tag. Nothing to do.
           if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
                 --json assets --jq '.assets[].name' 2>/dev/null \
-              | grep -qE '^tonearm-.*\.apk$'; then
+              | grep -qE '^tonearmboy-.*\.apk$'; then
             echo "APK already attached to release ${TAG} — skipping rebuild."
             echo "skip=true" >>"${GITHUB_OUTPUT}"
           else
@@ -134,8 +134,8 @@ jobs:
         run: |
           set -euo pipefail
           # Strip the leading 'v' so the asset name matches the local-build pattern
-          # (tonearm-<version>-<sha7>.apk, no leading 'v').
-          NAME="tonearm-${TAG#v}.apk"
+          # (tonearmboy-<version>-<sha7>.apk, no leading 'v').
+          NAME="tonearmboy-${TAG#v}.apk"
           mkdir -p release
           cp "${BUILD_APK}" "release/${NAME}"
           SHA="$(sha256sum "release/${NAME}" | awk '{print $1}')"
@@ -155,7 +155,7 @@ jobs:
           if ! gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             gh release create "${TAG}" "${APK_PATH}" \
               --repo "${GITHUB_REPOSITORY}" \
-              --title "tonearm ${TAG}" \
+              --title "tonearmboy ${TAG}" \
               --notes "Built by GitHub Actions fallback workflow.\n\nAPK SHA-256: \`${APK_SHA}\`"
           else
             gh release upload "${TAG}" "${APK_PATH}" --clobber --repo "${GITHUB_REPOSITORY}"

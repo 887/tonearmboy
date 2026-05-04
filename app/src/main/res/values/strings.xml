@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">tonearm</string>
+    <string name="app_name">tonearmboy</string>
     <!-- Phase E.1: name shown in the system notification settings for the playback channel. -->
     <string name="playback_notification_channel_name">Playback</string>
 </resources>

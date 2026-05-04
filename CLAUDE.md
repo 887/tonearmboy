@@ -1,4 +1,4 @@
-# tonearm — Claude instructions
+# tonearmboy — Claude instructions
 
 Modern Android music player. Kotlin + Jetpack Compose + Media3 + Room. Built entirely from the CLI, no Android Studio required, no QEMU emulator.
 
@@ -41,7 +41,7 @@ Useful subcommands:
 
 ```bash
 android create list                                  # browse project templates
-android create --name=tonearm --output=. <template>  # scaffold a new project
+android create --name=tonearmboy --output=. <template>  # scaffold a new project
 android sdk install platforms/android-34 build-tools/34.0.0
 android run --apks=app/build/outputs/apk/debug/app-debug.apk
 android docs search <query>                          # query the Android Knowledge Base
@@ -107,8 +107,8 @@ Canonical loop:
 ```bash
 JAVA_HOME=/usr/lib/jvm/java-26-openjdk ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleDebug
 adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
-adb -s emulator-5554 shell am start -n com.eight87.tonearm/.MainActivity
-adb -s emulator-5554 exec-out screencap -p | magick - -resize 50% /tmp/tonearm.png   # then Read the PNG
+adb -s emulator-5554 shell am start -n com.eight87.tonearmboy/.MainActivity
+adb -s emulator-5554 exec-out screencap -p | magick - -resize 50% /tmp/tonearmboy.png   # then Read the PNG
 ```
 
 The AVD is 1080x2400 native, which is too big to read comfortably — pipe screencaps through `magick - -resize 50%` to land at 540x1200 (quarter the pixels, easier to inspect, tap coords are still computed against the device's native 1080x2400, just multiply scaled image coords by 2). Skip the resize only when you genuinely need pixel-accurate detail.
@@ -124,14 +124,14 @@ Or all-in-one via Android CLI when build + run is the same step.
 For raw ADB inspection during dev:
 
 ```bash
-adb logcat -s tonearm:* AudioFocus:* MediaSession:*
-adb shell am start -n com.eight87.tonearm/.MainActivity
+adb logcat -s tonearmboy:* AudioFocus:* MediaSession:*
+adb shell am start -n com.eight87.tonearmboy/.MainActivity
 ```
 
 ## File conventions
 
 - Single-module to start. Split into `:core` / `:data` / `:ui` only when the single-module size warrants it; do not premature-modularize.
-- Package root: `com.eight87.tonearm`.
+- Package root: `com.eight87.tonearmboy`.
 - Composable functions: PascalCase, no `@Composable` on private helpers unless they take a Modifier.
 - ViewModels: one per screen, talk to the data layer via repository interfaces.
 - No DI framework in v1 (Hilt/Koin) — pass dependencies as constructor params. Add DI later if/when the manual wiring hurts.
@@ -169,7 +169,7 @@ The user follows Paul Graham's *Keep Your Identity Small*. App copy (settings de
 ## Release workflow
 
 The user's intended pattern: **vibing from their phone with the Claude app**,
-they tell Claude "ship a new build of tonearm." Claude opens a session against
+they tell Claude "ship a new build of tonearmboy." Claude opens a session against
 this repo on the dev machine and runs the local build. The user then pulls the
 APK via [Obtainium](https://github.com/ImranR98/Obtainium) on their phone,
 which auto-detects the new GitHub Release.
@@ -191,7 +191,7 @@ scripts/build-release-apk.sh
 
 What `--gh-release` does:
 
-1. Builds `release/tonearm-<version>-<sha7>.apk` (debug-signed by default).
+1. Builds `release/tonearmboy-<version>-<sha7>.apk` (debug-signed by default).
 2. Generates release notes from `git log <prev-tag>..HEAD` plus a
    "Verify build" table containing the commit hash and APK SHA-256.
 3. Creates the GitHub Release `v<version>-<sha7>` with the APK attached.

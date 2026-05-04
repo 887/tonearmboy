@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fetch-test-music.sh — download CC-licensed test fixtures for tonearm.
+# fetch-test-music.sh — download CC-licensed test fixtures for tonearmboy.
 #
 # Pulls four SoundHelix sample tracks (CC-BY-SA, stable URL since ~2010),
 # tags them with ID3v2 metadata, and embeds album art on half of them so

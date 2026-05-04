@@ -16,9 +16,9 @@
 #   scripts/library-smoke-test.sh
 set -euo pipefail
 
-APP_ID="com.eight87.tonearm"
+APP_ID="com.eight87.tonearmboy"
 RECEIVER="${APP_ID}/.data.LibraryScanReceiver"
-ACTION="com.eight87.tonearm.action.LIBRARY_SCAN"
+ACTION="com.eight87.tonearmboy.action.LIBRARY_SCAN"
 APK="app/build/outputs/apk/debug/app-debug.apk"
 TMPDIR="${TMPDIR:-/tmp}"
 DEVICE="${ADB_DEVICE:-}"
@@ -41,14 +41,14 @@ FIXTURE_NAMES=(alpha beta gamma delta)
 LOCAL_FIXTURES=()
 REMOTE_FIXTURES=()
 for name in "${FIXTURE_NAMES[@]}"; do
-  local_path="${TMPDIR}/tonearm-lib-${name}.mp3"
-  remote_path="/sdcard/Music/tonearm-lib-${name}.mp3"
+  local_path="${TMPDIR}/tonearmboy-lib-${name}.mp3"
+  remote_path="/sdcard/Music/tonearmboy-lib-${name}.mp3"
   echo "[fixture] generating ${local_path}"
   ffmpeg -y -loglevel error \
     -f lavfi -i "sine=frequency=440:duration=1" \
-    -metadata title="Tonearm ${name}" \
-    -metadata artist="Tonearm Test" \
-    -metadata album="Tonearm Smoke" \
+    -metadata title="Tonearmboy ${name}" \
+    -metadata artist="Tonearmboy Test" \
+    -metadata album="Tonearmboy Smoke" \
     -metadata genre="Rock" \
     -ac 2 -b:a 96k "$local_path"
   LOCAL_FIXTURES+=("$local_path")
@@ -78,13 +78,13 @@ echo "[scan] broadcasting LIBRARY_SCAN"
 # Wait for the SCAN_COMPLETE marker, up to 30 seconds.
 ready=0
 for _ in $(seq 1 60); do
-  if "${ADB[@]}" logcat -d -s tonearm:I 2>/dev/null | grep -q "library-smoke: SCAN_COMPLETE"; then
+  if "${ADB[@]}" logcat -d -s tonearmboy:I 2>/dev/null | grep -q "library-smoke: SCAN_COMPLETE"; then
     ready=1; break
   fi
   sleep 0.5
 done
 
-logs="$("${ADB[@]}" logcat -d -s tonearm:I 2>/dev/null || true)"
+logs="$("${ADB[@]}" logcat -d -s tonearmboy:I 2>/dev/null || true)"
 
 cleanup() {
   echo "[cleanup] removing remote fixtures"
@@ -106,8 +106,8 @@ fi
 # Assert each seeded title appeared in the scan dump.
 fail=0
 for name in "${FIXTURE_NAMES[@]}"; do
-  if ! grep -q "Tonearm ${name}" <<< "$logs"; then
-    echo "missing fixture in scan: Tonearm ${name}" >&2
+  if ! grep -q "Tonearmboy ${name}" <<< "$logs"; then
+    echo "missing fixture in scan: Tonearmboy ${name}" >&2
     fail=$((fail + 1))
   fi
 done

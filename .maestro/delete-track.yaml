@@ -11,7 +11,7 @@
 #
 # Run with the Maestro CLI:
 #   maestro test .maestro/delete-track.yaml
-appId: com.eight87.tonearm
+appId: com.eight87.tonearmboy
 ---
 - launchApp:
     clearState: false

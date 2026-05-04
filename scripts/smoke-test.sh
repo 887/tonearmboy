@@ -8,7 +8,7 @@
 #
 # Fixtures are kept local (in /tmp by default) and are NOT committed.
 #
-# Requirements: ffmpeg, adb, an installed tonearm debug APK on the
+# Requirements: ffmpeg, adb, an installed tonearmboy debug APK on the
 # connected device. Tested against `emulator-5554` (API 36).
 #
 # Usage:
@@ -17,10 +17,10 @@
 #
 set -euo pipefail
 
-TAG="tonearm-smoke"
-APP_ID="com.eight87.tonearm"
+TAG="tonearmboy-smoke"
+APP_ID="com.eight87.tonearmboy"
 RECEIVER="${APP_ID}/.playback.SmokeTestReceiver"
-ACTION="com.eight87.tonearm.action.SMOKE_PLAY"
+ACTION="com.eight87.tonearmboy.action.SMOKE_PLAY"
 TMPDIR="${TMPDIR:-/tmp}"
 DEVICE="${ADB_DEVICE:-}"
 ADB=(adb)
@@ -47,14 +47,14 @@ generate() {
 pass=0; fail=0; failed_codecs=()
 
 for codec in "${CODECS[@]}"; do
-  fixture="${TMPDIR}/tonearm-smoke.${codec}"
+  fixture="${TMPDIR}/tonearmboy-smoke.${codec}"
   # Land the fixture in the app's *internal* data dir so the player can
   # read it without any storage permission. Scoped storage on API 30+
   # blocks raw file:// reads of /sdcard for app processes; pushing via
   # /data/local/tmp + `run-as` is the canonical workaround for a debug
   # build's smoke test.
-  remote_tmp="/data/local/tmp/tonearm-smoke.${codec}"
-  remote="/data/data/${APP_ID}/files/tonearm-smoke.${codec}"
+  remote_tmp="/data/local/tmp/tonearmboy-smoke.${codec}"
+  remote="/data/data/${APP_ID}/files/tonearmboy-smoke.${codec}"
   echo "[${codec}] generating ${fixture}"
   generate "$codec" "$fixture"
   echo "[${codec}] pushing to ${remote}"
@@ -70,7 +70,7 @@ for codec in "${CODECS[@]}"; do
   # Poll logcat for a STATE_READY line for up to 15 seconds.
   ready=0
   for _ in $(seq 1 30); do
-    if "${ADB[@]}" logcat -d -s tonearm:I 2>/dev/null | grep -q "STATE_READY for"; then
+    if "${ADB[@]}" logcat -d -s tonearmboy:I 2>/dev/null | grep -q "STATE_READY for"; then
       ready=1; break
     fi
     sleep 0.5
@@ -81,7 +81,7 @@ for codec in "${CODECS[@]}"; do
     pass=$((pass+1))
   else
     echo "[${codec}] FAIL — no STATE_READY within 15s"
-    "${ADB[@]}" logcat -d -s tonearm:* | tail -20 || true
+    "${ADB[@]}" logcat -d -s tonearmboy:* | tail -20 || true
     fail=$((fail+1)); failed_codecs+=("$codec")
   fi
 
