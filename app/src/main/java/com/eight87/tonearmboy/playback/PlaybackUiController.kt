@@ -2,7 +2,6 @@ package com.eight87.tonearmboy.playback
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -10,24 +9,13 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.model.Track
-import com.eight87.tonearmboy.playback.replaygain.computeGain
-import com.eight87.tonearmboy.playback.replaygain.linearGainFromDb
 import com.eight87.tonearmboy.ui.settings.CustomBarAction
 import com.eight87.tonearmboy.ui.settings.PlayFromItemDetails
 import com.eight87.tonearmboy.ui.settings.PlayFromLibrary
 import com.eight87.tonearmboy.ui.settings.ReplayGainStrategy
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -143,111 +131,23 @@ class PlaybackUiController(private val applicationContext: Context) :
     projector = projector,
   )
 
-  /**
-   * D.9b.1 / D.9b.2 — current ReplayGain strategy + pre-amp dB,
-   * pushed in by the activity's settings observer. Volatile so the
-   * Player.Listener can read the latest values without a lock.
-   */
-  @Volatile
-  private var replayGainStrategy: ReplayGainStrategy = ReplayGainStrategy.Off
-  @Volatile
-  private var replayGainPreampDb: Float = 0f
+  // R.C.4 — ReplayGain owns its own settings + the volume math +
+  // the queue-coverage scan + the library handle. Controller
+  // forwards `setReplayGain` and asks for an immediate `applyNow`
+  // from the listener / connect handshake; LibraryRepository is
+  // no longer reachable from this class.
+  private val replayGainController = ReplayGainController(
+    scope = scope,
+    controllerProvider = { controller },
+  )
 
-  /**
-   * Library handle used to look up album-level gain + album track
-   * count when we recompute the gain on a track transition. Set once
-   * by the activity (no DI framework). When null, the controller
-   * falls back to track gain from the [MediaItem] metadata.
-   */
-  @Volatile
-  private var library: TrackSource? = null
-
+  /** Hand the ReplayGain controller a library handle so it can look up album-level gain. */
   fun setLibrary(repo: TrackSource) {
-    library = repo
+    replayGainController.setLibrary(repo)
   }
 
-  /**
-   * Update the current ReplayGain settings and re-apply the resulting
-   * volume to the active player. Called from the activity's settings
-   * observer.
-   */
-  override fun setReplayGain(strategy: ReplayGainStrategy, preampDb: Float) {
-    replayGainStrategy = strategy
-    replayGainPreampDb = preampDb
-    scope.launch { applyReplayGainNow() }
-  }
-
-  /**
-   * Recompute the current track's gain and write it to
-   * [Player.setVolume]. Looks up the active track + album from the
-   * library cache; falls back gracefully when the cache is empty
-   * (e.g. tests).
-   */
-  private suspend fun applyReplayGainNow() {
-    val ctl = controller ?: return
-    val item = ctl.currentMediaItem ?: run {
-      ctl.volume = 1f
-      return
-    }
-    val trackId = item.mediaId.toLongOrNull()
-    val track = trackId?.let { library?.trackById(it) }
-    val trackGainDb = track?.replayGainTrackDb
-    val (albumGainDb, _) = if (track != null) {
-      library?.albumReplayGain(track.album, track.albumArtist ?: track.artist) ?: (null to null)
-    } else {
-      null to null
-    }
-    val coverage = if (track == null) 0f else computeQueueAlbumCoverage(ctl, track)
-    val gainDb = computeGain(replayGainStrategy, trackGainDb, albumGainDb, coverage)
-    val total = gainDb + replayGainPreampDb
-    val volume = linearGainFromDb(total)
-    Log.i(
-      "tonearmboy-rg",
-      "applyReplayGain strategy=$replayGainStrategy preamp=$replayGainPreampDb " +
-        "trackDb=$trackGainDb albumDb=$albumGainDb coverage=$coverage " +
-        "totalDb=$total volume=$volume",
-    )
-    // Player.setVolume runs on the Main looper; we're already there
-    // when invoked from the listener.
-    ctl.volume = volume
-  }
-
-  /**
-   * Estimate how much of the playing track's album is queued.
-   * Smart-mode trips into album behaviour at >= 75% (see
-   * `SMART_THRESHOLD`). We compare the count of queued items that
-   * share the playing track's `(album, albumArtist|artist)` key
-   * against the library's full count of tracks for that album.
-   */
-  private suspend fun computeQueueAlbumCoverage(
-    ctl: MediaController,
-    playing: Track,
-  ): Float {
-    val albumName = playing.album ?: return 0f
-    val albumArtistKey = playing.albumArtist ?: playing.artist
-    var queuedFromAlbum = 0
-    val lib = library
-    val n = ctl.mediaItemCount
-    for (i in 0 until n) {
-      val mi = ctl.getMediaItemAt(i)
-      val mid = mi.mediaId.toLongOrNull() ?: continue
-      // Cheap path: the MediaMetadata carries albumTitle / albumArtist
-      // for items already in the queue, so we don't have to round-trip
-      // every queue item through the DB.
-      val md = mi.mediaMetadata
-      val miAlbum = md.albumTitle?.toString()
-      val miAlbumArtist = md.albumArtist?.toString() ?: md.artist?.toString()
-      if (miAlbum == albumName && miAlbumArtist == albumArtistKey) queuedFromAlbum++
-      else if (miAlbum == null && lib != null) {
-        // Fall back to a DB lookup when the queue item came from a
-        // surface that didn't tag the metadata.
-        val t = lib.trackById(mid) ?: continue
-        if (t.album == albumName && (t.albumArtist ?: t.artist) == albumArtistKey) queuedFromAlbum++
-      }
-    }
-    val totalForAlbum = lib?.trackCountForAlbum(albumName, albumArtistKey) ?: queuedFromAlbum
-    return if (totalForAlbum <= 0) 0f else queuedFromAlbum.toFloat() / totalForAlbum.toFloat()
-  }
+  override fun setReplayGain(strategy: ReplayGainStrategy, preampDb: Float) =
+    replayGainController.setReplayGain(strategy, preampDb)
 
   private val listener = object : Player.Listener {
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -264,7 +164,7 @@ class PlaybackUiController(private val applicationContext: Context) :
         }
       }
       // D.9b.1: re-apply ReplayGain whenever the playing item changes.
-      scope.launch { applyReplayGainNow() }
+      scope.launch { replayGainController.applyReplayGainNow() }
       // R.C.2 — currentMediaItemIndex shifts on transition; queue
       // snapshot's currentIndex must follow.
       projector.pushAll()
@@ -335,7 +235,7 @@ class PlaybackUiController(private val applicationContext: Context) :
     connectionPhase = ConnectionPhase.Connected
     // Apply the persisted ReplayGain settings to the freshly connected
     // controller before any track plays.
-    scope.launch { applyReplayGainNow() }
+    scope.launch { replayGainController.applyReplayGainNow() }
     // R.C.2 — initial connect needs both state + queue rendered.
     projector.pushAll()
     if (!positionTickerStarted) {
