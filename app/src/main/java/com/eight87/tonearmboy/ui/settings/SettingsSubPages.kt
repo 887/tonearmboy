@@ -106,8 +106,9 @@ fun SettingsLookAndFeelScreen(
     initial = true,
   )
   val scope = rememberCoroutineScope()
-  var themePicker by remember { mutableStateOf(false) }
-  var baseThemePicker by remember { mutableStateOf(false) }
+  // R.F.17 — picker state controllers (Settings-F5).
+  val themePicker = rememberSettingPickerState()
+  val baseThemePicker = rememberSettingPickerState()
   var colorPicker by remember { mutableStateOf(false) }
 
   // D.25.1 — when Custom is the active base theme, render a coloured
@@ -129,7 +130,7 @@ fun SettingsLookAndFeelScreen(
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_THEME,
       currentLabel = themeLabel(themePref),
-      onClick = { themePicker = true },
+      onClick = themePicker::show,
     ),
     // D.20.4 / D.25.1 — base-theme picker. Custom-color is a fourth
     // option that opens a real colour picker; the trailing swatch
@@ -137,7 +138,7 @@ fun SettingsLookAndFeelScreen(
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_BASE_THEME,
       currentLabel = baseThemeLabel(baseTheme),
-      onClick = { baseThemePicker = true },
+      onClick = baseThemePicker::show,
       trailing = customSwatch,
     ),
     SettingsRowBinding.Toggle(
@@ -156,40 +157,28 @@ fun SettingsLookAndFeelScreen(
     )
   }
 
-  if (themePicker) {
-    RadioPicker(
-      title = "Theme",
-      options = ThemePreference.entries,
-      label = ::themeLabel,
-      current = themePref,
-      onPick = { scope.launch { theme.theme.set(it) }; themePicker = false },
-      onDismiss = { themePicker = false },
-    )
-  }
-  if (baseThemePicker) {
-    // D.25.1 — the picker offers four options. Tapping Custom closes
-    // the radio dialog and opens the colour picker; the other three
-    // commit immediately like before.
-    RadioPicker(
-      title = "Base theme",
-      options = baseThemePickerOptions,
-      label = ::baseThemeLabel,
-      // Match by *kind* — the radio dialog's Custom sentinel carries
-      // a placeholder seed, but the live state's Custom carries the
-      // user's saved seed. We still want the bullet to land on Custom
-      // when the user has previously picked one.
-      current = baseThemeMatch(baseTheme),
-      onPick = { picked ->
-        baseThemePicker = false
-        if (picked is BaseTheme.Custom) {
-          colorPicker = true
-        } else {
-          scope.launch { theme.baseTheme.set(picked) }
-        }
-      },
-      onDismiss = { baseThemePicker = false },
-    )
-  }
+  themePicker.Render(
+    title = "Theme",
+    options = ThemePreference.entries,
+    label = ::themeLabel,
+    current = themePref,
+    onPick = { scope.launch { theme.theme.set(it) } },
+  )
+  // D.25.1 — base-theme picker. Tapping Custom hands off to the colour
+  // picker; the other three commit immediately like before.
+  baseThemePicker.Render(
+    title = "Base theme",
+    options = baseThemePickerOptions,
+    label = ::baseThemeLabel,
+    current = baseThemeMatch(baseTheme),
+    onPick = { picked ->
+      if (picked is BaseTheme.Custom) {
+        colorPicker = true
+      } else {
+        scope.launch { theme.baseTheme.set(picked) }
+      }
+    },
+  )
   if (colorPicker) {
     // Re-open from the saved seed when the user already had Custom
     // selected; otherwise fall back to the placeholder Material 3
@@ -255,11 +244,12 @@ fun SettingsPersonalizeScreen(
     initial = false,
   )
   val scope = rememberCoroutineScope()
+  // R.F.17 — picker state controllers (Settings-F5).
   var showLibraryTabs by remember { mutableStateOf(false) }
-  var customBarPicker by remember { mutableStateOf(false) }
-  var customNotifPicker by remember { mutableStateOf(false) }
-  var playFromLibPicker by remember { mutableStateOf(false) }
-  var playFromDetailPicker by remember { mutableStateOf(false) }
+  val customBarPicker = rememberSettingPickerState()
+  val customNotifPicker = rememberSettingPickerState()
+  val playFromLibPicker = rememberSettingPickerState()
+  val playFromDetailPicker = rememberSettingPickerState()
 
   val bindings = listOf(
     SettingsRowBinding.Picker(
@@ -270,22 +260,22 @@ fun SettingsPersonalizeScreen(
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_CUSTOM_PLAYBACK_BAR_ACTION,
       currentLabel = customBarActionLabel(customBarAction),
-      onClick = { customBarPicker = true },
+      onClick = customBarPicker::show,
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_CUSTOM_NOTIFICATION_ACTION,
       currentLabel = customNotificationActionLabel(customNotificationAction),
-      onClick = { customNotifPicker = true },
+      onClick = customNotifPicker::show,
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_PLAY_FROM_LIBRARY,
       currentLabel = playFromLibraryLabel(playFromLibrary),
-      onClick = { playFromLibPicker = true },
+      onClick = playFromLibPicker::show,
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_PLAY_FROM_ITEM_DETAILS,
       currentLabel = playFromItemDetailsLabel(playFromItemDetails),
-      onClick = { playFromDetailPicker = true },
+      onClick = playFromDetailPicker::show,
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_REMEMBER_SHUFFLE,
@@ -346,52 +336,34 @@ fun SettingsPersonalizeScreen(
       },
     )
   }
-  if (customBarPicker) {
-    RadioPicker(
-      title = "Custom playback bar action",
-      options = CustomBarAction.entries,
-      label = ::customBarActionLabel,
-      current = customBarAction,
-      onPick = { scope.launch { playback.customBarAction.set(it) }; customBarPicker = false },
-      onDismiss = { customBarPicker = false },
-    )
-  }
-  if (customNotifPicker) {
-    RadioPicker(
-      title = "Custom notification action",
-      options = CustomNotificationAction.entries,
-      label = ::customNotificationActionLabel,
-      current = customNotificationAction,
-      onPick = {
-        scope.launch { playback.customNotificationAction.set(it) }
-        customNotifPicker = false
-      },
-      onDismiss = { customNotifPicker = false },
-    )
-  }
-  if (playFromLibPicker) {
-    RadioPicker(
-      title = "When playing from the library",
-      options = PlayFromLibrary.entries,
-      label = ::playFromLibraryLabel,
-      current = playFromLibrary,
-      onPick = { scope.launch { playback.playFromLibrary.set(it) }; playFromLibPicker = false },
-      onDismiss = { playFromLibPicker = false },
-    )
-  }
-  if (playFromDetailPicker) {
-    RadioPicker(
-      title = "When playing from item details",
-      options = PlayFromItemDetails.entries,
-      label = ::playFromItemDetailsLabel,
-      current = playFromItemDetails,
-      onPick = {
-        scope.launch { playback.playFromItemDetails.set(it) }
-        playFromDetailPicker = false
-      },
-      onDismiss = { playFromDetailPicker = false },
-    )
-  }
+  customBarPicker.Render(
+    title = "Custom playback bar action",
+    options = CustomBarAction.entries,
+    label = ::customBarActionLabel,
+    current = customBarAction,
+    onPick = { scope.launch { playback.customBarAction.set(it) } },
+  )
+  customNotifPicker.Render(
+    title = "Custom notification action",
+    options = CustomNotificationAction.entries,
+    label = ::customNotificationActionLabel,
+    current = customNotificationAction,
+    onPick = { scope.launch { playback.customNotificationAction.set(it) } },
+  )
+  playFromLibPicker.Render(
+    title = "When playing from the library",
+    options = PlayFromLibrary.entries,
+    label = ::playFromLibraryLabel,
+    current = playFromLibrary,
+    onPick = { scope.launch { playback.playFromLibrary.set(it) } },
+  )
+  playFromDetailPicker.Render(
+    title = "When playing from item details",
+    options = PlayFromItemDetails.entries,
+    label = ::playFromItemDetailsLabel,
+    current = playFromItemDetails,
+    onPick = { scope.launch { playback.playFromItemDetails.set(it) } },
+  )
 }
 
 internal fun customBarActionLabel(action: CustomBarAction): String = when (action) {
@@ -464,7 +436,8 @@ fun SettingsContentScreen(
     initial = false,
   )
   val scope = rememberCoroutineScope()
-  var albumCoversPicker by remember { mutableStateOf(false) }
+  // R.F.17 — picker state controllers (Settings-F5).
+  val albumCoversPicker = rememberSettingPickerState()
   var separatorsPicker by remember { mutableStateOf(false) }
   val context = LocalContext.current
 
@@ -510,7 +483,7 @@ fun SettingsContentScreen(
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_ALBUM_COVERS,
       currentLabel = albumCoversLabel(albumCoversMode),
-      onClick = { albumCoversPicker = true },
+      onClick = albumCoversPicker::show,
     ),
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_FORCE_SQUARE_COVERS,
@@ -528,19 +501,13 @@ fun SettingsContentScreen(
     )
   }
 
-  if (albumCoversPicker) {
-    RadioPicker(
-      title = "Album covers",
-      options = AlbumCoversMode.entries,
-      label = ::albumCoversLabel,
-      current = albumCoversMode,
-      onPick = {
-        scope.launch { library.albumCoversMode.set(it) }
-        albumCoversPicker = false
-      },
-      onDismiss = { albumCoversPicker = false },
-    )
-  }
+  albumCoversPicker.Render(
+    title = "Album covers",
+    options = AlbumCoversMode.entries,
+    label = ::albumCoversLabel,
+    current = albumCoversMode,
+    onPick = { scope.launch { library.albumCoversMode.set(it) } },
+  )
 
   if (separatorsPicker) {
     MultiSelectPicker(
@@ -629,7 +596,8 @@ fun SettingsAudioScreen(
   )
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
-  var rgStrategyPicker by remember { mutableStateOf(false) }
+  // R.F.17 — picker state controller (Settings-F5).
+  val rgStrategyPicker = rememberSettingPickerState()
   var rgPreampDialog by remember { mutableStateOf(false) }
   var sleepDialog by remember { mutableStateOf(false) }
 
@@ -681,7 +649,7 @@ fun SettingsAudioScreen(
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
       currentLabel = replayGainStrategyLabel(replayGainStrategy),
-      onClick = { rgStrategyPicker = true },
+      onClick = rgStrategyPicker::show,
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_REPLAYGAIN_PREAMP,
@@ -730,19 +698,13 @@ fun SettingsAudioScreen(
     )
   }
 
-  if (rgStrategyPicker) {
-    RadioPicker(
-      title = "ReplayGain strategy",
-      options = ReplayGainStrategy.entries,
-      label = ::replayGainStrategyLabel,
-      current = replayGainStrategy,
-      onPick = {
-        scope.launch { settings.replayGainStrategy.set(it) }
-        rgStrategyPicker = false
-      },
-      onDismiss = { rgStrategyPicker = false },
-    )
-  }
+  rgStrategyPicker.Render(
+    title = "ReplayGain strategy",
+    options = ReplayGainStrategy.entries,
+    label = ::replayGainStrategyLabel,
+    current = replayGainStrategy,
+    onPick = { scope.launch { settings.replayGainStrategy.set(it) } },
+  )
   if (rgPreampDialog) {
     ReplayGainPreampDialog(
       currentDb = replayGainPreampDb,

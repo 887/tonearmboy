@@ -130,7 +130,7 @@ The phases below attack these in unblock-order: narrow data interfaces first (ch
 - [ ] **R.F.14** Co-locate `SettingsCatalog` row definitions per section file; one aggregator `flatten`s. Removes the 683-LOC central edit-magnet (Settings-F7).
 - [x] **R.F.15** Replace `Group` enum with inline `GroupRef`; render order via list position. Removes `PersonalizeBehaviour`-style hacks (Settings-F8).
 - [x] **R.F.16** Rename `popToOrPush` to `popToFirstOrPush` (or fix to `indexOfLast` to match doc), so the LSP contract matches the name (Playback-F12).
-- [ ] **R.F.17** `rememberSettingPicker<T>(...)` helper so each sub-page body becomes a `bindings` list, not 100+ LOC of `var xPicker by remember { mutableStateOf(false) }` (Settings-F5).
+- [x] **R.F.17** `rememberSettingPicker<T>(...)` helper so each sub-page body becomes a `bindings` list, not 100+ LOC of `var xPicker by remember { mutableStateOf(false) }` (Settings-F5).
 - [x] **R.F.18** `CustomTabContent` callbacks grouped by audience (`TrackInteractions` / `NavInteractions`); ARTISTS/ALBUMS/GENRES branches drop 5 unused params (UI-F8).
 - [x] **R.F.19** `PlaylistsTilesScreen` extracts `PlaylistDialogHost` + sealed `PlaylistDialogState` (UI-F9).
 
