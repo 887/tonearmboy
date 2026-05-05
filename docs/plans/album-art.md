@@ -1,6 +1,6 @@
 # tonearmboy — album-art roadmap
 
-## Status: 🟡 IN PROGRESS — Phase A shipped (commit `9d0a948`); B/C/D/E pending.
+## Status: 🟡 IN PROGRESS — Phase A shipped (commit `9d0a948`, migration fix `dcf4aa4`); Phase C shipped (commit `dcf4aa4`); B/D/E pending.
 
 ## Why
 
@@ -85,17 +85,19 @@ playlist-cover pattern).
 **Effort:** M (1 day). **Risk:** low–medium (filesystem walking adds
 to scan time on large libraries).
 
-## Phase C — refresh-album-art action
+## Phase C — refresh-album-art action (shipped in `dcf4aa4`)
 
-- [ ] **C.1** Add a Settings › Library row "Refresh album art" that
-  invalidates Coil's disk cache for `content://media/.../albumart/*`
-  URIs and triggers a rescan. Useful when the user has dropped new
-  `cover.jpg` files and wants the change to land without a full
-  rescan.
-- [ ] **C.2** Snackbar feedback ("Album art refreshed").
-- [ ] **C.3** Ship + tick.
+- [x] **C.1** Settings › Library row "Refresh album art" between
+  Rescan and the playlist export rows. `Icons.Outlined.Image`. On
+  tap drops Coil's memory + disk caches via
+  `SingletonImageLoader.get(context).memoryCache?.clear() /
+  diskCache?.clear()`. The user's pinned overrides (Phase A) are
+  unaffected — only the render cache is cleared, so the next
+  `CoverArt` re-reads from disk.
+- [x] **C.2** Snackbar feedback "Album art cache cleared" (en + de).
+- [x] **C.3** Ship + tick.
 
-**Effort:** XS (1–2 hours). **Risk:** low.
+**Effort:** XS (~1 hour landed). **Risk:** none.
 
 ## Phase D — MusicBrainz Cover Art Archive (deferred)
 
