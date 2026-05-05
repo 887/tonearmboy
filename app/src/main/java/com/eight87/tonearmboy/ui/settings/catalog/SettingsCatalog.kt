@@ -154,7 +154,6 @@ object SettingsCatalog {
   const val ID_MULTI_VALUE_SEPARATORS = "content.multi_value_separators"
   const val ID_INTELLIGENT_SORTING = "content.intelligent_sorting"
   const val ID_HIDE_COLLABORATORS = "content.hide_collaborators"
-  const val ID_AUTO_DISCOVER_ALBUM_ART = "content.auto_discover_album_art"
   const val ID_ALBUM_COVERS = "content.album_covers"
   const val ID_FORCE_SQUARE_COVERS = "content.force_square_covers"
 

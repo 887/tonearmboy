@@ -54,7 +54,6 @@ interface LibrarySettings {
   val automaticReloading: Setting<Boolean>
   val intelligentSorting: Setting<Boolean>
   val hideCollaborators: Setting<Boolean>
-  val autoDiscoverAlbumArt: Setting<Boolean>
   val forceSquareCovers: Setting<Boolean>
   val albumCoversMode: Setting<AlbumCoversMode>
   val multiValueSeparators: Setting<Set<MultiValueSeparator>>

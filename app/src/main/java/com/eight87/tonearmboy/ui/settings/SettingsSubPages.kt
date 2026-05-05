@@ -465,9 +465,6 @@ fun SettingsContentScreen(
   val hideCollaborators by library.hideCollaborators.flow.collectAsState(
     initial = false,
   )
-  val autoDiscoverAlbumArt by library.autoDiscoverAlbumArt.flow.collectAsState(
-    initial = false,
-  )
   val albumCoversMode by library.albumCoversMode.flow.collectAsState(
     initial = AlbumCoversMode.Default,
   )
@@ -506,18 +503,6 @@ fun SettingsContentScreen(
       id = SettingsCatalog.ID_HIDE_COLLABORATORS,
       checked = hideCollaborators,
       onCheckedChange = { scope.launch { library.hideCollaborators.set(it) } },
-    ),
-    SettingsRowBinding.Toggle(
-      id = SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
-      checked = autoDiscoverAlbumArt,
-      onCheckedChange = { value ->
-        scope.launch { library.autoDiscoverAlbumArt.set(value) }
-        scope.launch {
-          snackbarHostState.showSnackbar(
-            context.getString(R.string.settings_content_auto_discover_album_art_unavailable),
-          )
-        }
-      },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_ALBUM_COVERS,

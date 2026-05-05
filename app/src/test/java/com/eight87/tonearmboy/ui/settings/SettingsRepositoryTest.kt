@@ -36,7 +36,6 @@ class SettingsRepositoryTest {
     repo.setRememberShuffle(false)
     repo.setIntelligentSorting(true)
     repo.setForceSquareCovers(false)
-    repo.setAutoDiscoverAlbumArt(false)
     repo.setCustomBarAction(CustomBarAction.Default)
     repo.setCustomNotificationAction(CustomNotificationAction.Default)
     repo.setPauseOnRepeat(false)
@@ -71,7 +70,6 @@ class SettingsRepositoryTest {
     assertEquals(LibraryTab.DefaultOrder, repo.libraryTabs.flow.first())
     assertEquals(true, repo.intelligentSorting.flow.first())
     assertEquals(false, repo.forceSquareCovers.flow.first())
-    assertEquals(false, repo.autoDiscoverAlbumArt.flow.first())
     assertEquals(CustomBarAction.Default, repo.customBarAction.flow.first())
     assertEquals(CustomNotificationAction.Default, repo.customNotificationAction.flow.first())
     assertEquals(false, repo.pauseOnRepeat.flow.first())
@@ -120,13 +118,6 @@ class SettingsRepositoryTest {
     assertEquals(LibraryTab.Albums, order[0])
     assertEquals(LibraryTab.Songs, order[1])
     assertTrue(order.containsAll(LibraryTab.entries))
-  }
-
-  @Test
-  fun autoDiscoverAlbumArt_defaultsOff_andRoundTrips() = runTest {
-    assertEquals(false, repo.autoDiscoverAlbumArt.flow.first())
-    repo.setAutoDiscoverAlbumArt(true)
-    assertEquals(true, repo.autoDiscoverAlbumArt.flow.first())
   }
 
   @Test

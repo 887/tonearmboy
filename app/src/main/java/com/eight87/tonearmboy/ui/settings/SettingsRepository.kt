@@ -479,9 +479,6 @@ class SettingsRepository(private val context: Context) :
   override val hideCollaborators: Setting<Boolean> = booleanSetting(
     store, KEY_HIDE_COLLABORATORS, false,
   )
-  override val autoDiscoverAlbumArt: Setting<Boolean> = booleanSetting(
-    store, KEY_AUTO_DISCOVER_ALBUM_ART, false,
-  )
   override val forceSquareCovers: Setting<Boolean> = booleanSetting(
     store, KEY_FORCE_SQUARE_COVERS, false,
   )
@@ -558,7 +555,6 @@ class SettingsRepository(private val context: Context) :
   suspend fun setLibraryTabs(value: List<LibraryTab>) = libraryTabs.set(value)
   suspend fun setIntelligentSorting(value: Boolean) = intelligentSorting.set(value)
   suspend fun setForceSquareCovers(value: Boolean) = forceSquareCovers.set(value)
-  suspend fun setAutoDiscoverAlbumArt(value: Boolean) = autoDiscoverAlbumArt.set(value)
   suspend fun setCustomBarAction(value: CustomBarAction) = customBarAction.set(value)
   suspend fun setCustomNotificationAction(value: CustomNotificationAction) =
     customNotificationAction.set(value)
@@ -648,7 +644,6 @@ class SettingsRepository(private val context: Context) :
     internal val KEY_LIBRARY_TABS = stringPreferencesKey("library_tabs")
     internal val KEY_INTELLIGENT_SORTING = booleanPreferencesKey("intelligent_sorting")
     internal val KEY_FORCE_SQUARE_COVERS = booleanPreferencesKey("force_square_covers")
-    internal val KEY_AUTO_DISCOVER_ALBUM_ART = booleanPreferencesKey("auto_discover_album_art")
     internal val KEY_CUSTOM_BAR_ACTION = stringPreferencesKey("custom_bar_action")
     internal val KEY_CUSTOM_NOTIFICATION_ACTION = stringPreferencesKey("custom_notification_action")
     internal val KEY_PAUSE_ON_REPEAT = booleanPreferencesKey("pause_on_repeat")

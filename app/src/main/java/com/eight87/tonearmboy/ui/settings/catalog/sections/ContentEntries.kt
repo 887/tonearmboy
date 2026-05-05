@@ -2,7 +2,6 @@ package com.eight87.tonearmboy.ui.settings.catalog.sections
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CropSquare
-import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.Photo
@@ -77,20 +76,14 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     destination = SettingsContent,
     breadcrumb = listOf(SECTION_CONTENT, "Music", "Hide collaborators"),
   ),
-  SettingsCatalogEntry(
-    id = SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
-    label = "Auto-discover missing album art",
-    subtitle = "Fetch covers from MusicBrainz Cover Art Archive for albums missing local art (Phase H).",
-    labelRes = R.string.settings_content_auto_discover_album_art_label,
-    subtitleRes = R.string.settings_content_auto_discover_album_art_subtitle,
-    keywords = listOf("cover", "art", "musicbrainz", "fetch", "download"),
-    icon = Icons.Outlined.ImageSearch,
-    section = Section.Content,
-    group = Groups.Music,
-    kind = RowKind.Toggle,
-    destination = SettingsContent,
-    breadcrumb = listOf(SECTION_CONTENT, "Music", "Auto-discover missing album art"),
-  ),
+  // G+ — `ID_AUTO_DISCOVER_ALBUM_ART` removed. Was a persisted boolean
+  // with no consumer; tapping the toggle showed a "Coming in v1.1 —
+  // for now, manual cover-art import only" snackbar but neither the
+  // manual import nor the auto-discover path was actually wired. The
+  // full album-art roadmap (per-album override, custom folder
+  // sources, MusicBrainz Cover Art Archive) is captured in
+  // `docs/plans/album-art.md`; until any of it is real the toggle
+  // doesn't earn its place on the settings page.
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_ALBUM_COVERS,
     label = "Album covers",

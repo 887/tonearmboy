@@ -64,7 +64,6 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_MULTI_VALUE_SEPARATORS,
       SettingsCatalog.ID_INTELLIGENT_SORTING,
       SettingsCatalog.ID_HIDE_COLLABORATORS,
-      SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
       SettingsCatalog.ID_ALBUM_COVERS,
       SettingsCatalog.ID_FORCE_SQUARE_COVERS,
       // Audio.
