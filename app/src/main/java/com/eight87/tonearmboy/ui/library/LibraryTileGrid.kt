@@ -83,6 +83,12 @@ fun LibraryTileGrid(
   onTileClick: (TileItem) -> Unit = {},
   onTileLongClick: (TileItem) -> Unit = {},
   albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
+  /**
+   * Grid layout. Default `Adaptive(160.dp)` matches the pre-G+ shape;
+   * `ViewMode.TwoColumn` callers pass `Fixed(2)` for the new
+   * pinned-two-columns mode.
+   */
+  columns: GridCells = GridCells.Adaptive(minSize = 160.dp),
 ) {
   // Build the (header letter, runStartIndex, runLength) tuples once so
   // both the renderer and the alphabet helpers can reason about the
@@ -95,7 +101,7 @@ fun LibraryTileGrid(
 
   LazyVerticalGrid(
     state = state,
-    columns = GridCells.Adaptive(minSize = 160.dp),
+    columns = columns,
     contentPadding = contentPadding,
     horizontalArrangement = Arrangement.spacedBy(8.dp),
     verticalArrangement = Arrangement.spacedBy(8.dp),

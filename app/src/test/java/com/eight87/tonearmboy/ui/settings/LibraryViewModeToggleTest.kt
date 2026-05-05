@@ -96,8 +96,10 @@ class LibraryViewModeToggleTest {
   }
 
   @Test
-  fun toggle_helper_flips_each_direction() {
+  fun toggle_helper_cycles_through_three_states() {
+    // G+ — toggle now cycles List → Tile → TwoColumn → List.
     assertEquals(ViewMode.Tile, ViewMode.List.toggle())
-    assertEquals(ViewMode.List, ViewMode.Tile.toggle())
+    assertEquals(ViewMode.TwoColumn, ViewMode.Tile.toggle())
+    assertEquals(ViewMode.List, ViewMode.TwoColumn.toggle())
   }
 }

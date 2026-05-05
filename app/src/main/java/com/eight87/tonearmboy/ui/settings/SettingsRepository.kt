@@ -332,10 +332,18 @@ data class TabSort(val key: SortKey, val direction: SortDirection) {
 enum class ViewMode {
   List,
   Tile,
+  // G+ — pinned two-column tile grid. Tile keeps the adaptive
+  // 160-dp-min layout (3+ columns on phones); TwoColumn forces exactly
+  // two columns for larger artwork on every tab.
+  TwoColumn,
   ;
 
-  /** Flip List→Tile / Tile→List. Convenience for the toggle icon. */
-  fun toggle(): ViewMode = if (this == List) Tile else List
+  /** Cycle List → Tile → TwoColumn → List. */
+  fun toggle(): ViewMode = when (this) {
+    List -> Tile
+    Tile -> TwoColumn
+    TwoColumn -> List
+  }
 
   companion object {
     fun fromStored(raw: String?): ViewMode? =

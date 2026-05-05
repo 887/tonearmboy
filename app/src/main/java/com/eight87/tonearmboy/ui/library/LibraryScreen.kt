@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
@@ -309,15 +310,22 @@ fun LibraryScreen(
             },
             modifier = Modifier.semantics { testTag = "topbar_view_mode" },
           ) {
-            if (activeViewMode == ViewMode.Tile) {
-              Icon(
-                Icons.AutoMirrored.Filled.ViewList,
-                contentDescription = stringResource(R.string.library_cd_view_mode_to_list),
-              )
-            } else {
-              Icon(
+            // Icon shows the *next* mode (tap-to-switch).
+            // List → tap shows Tile (adaptive grid).
+            // Tile → tap shows TwoColumn.
+            // TwoColumn → tap shows List.
+            when (activeViewMode) {
+              ViewMode.List -> Icon(
                 Icons.Filled.GridView,
                 contentDescription = stringResource(R.string.library_cd_view_mode_to_tile),
+              )
+              ViewMode.Tile -> Icon(
+                Icons.Filled.ViewModule,
+                contentDescription = stringResource(R.string.library_cd_view_mode_to_tile),
+              )
+              ViewMode.TwoColumn -> Icon(
+                Icons.AutoMirrored.Filled.ViewList,
+                contentDescription = stringResource(R.string.library_cd_view_mode_to_list),
               )
             }
           }

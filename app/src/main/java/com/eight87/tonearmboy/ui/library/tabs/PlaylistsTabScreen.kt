@@ -30,13 +30,14 @@ fun PlaylistsTabScreen(
   onDeletePlaylist: (Long) -> Unit = {},
   onSetPlaylistCover: (Long, String?) -> Unit = { _, _ -> },
 ) {
-  if (viewMode == ViewMode.Tile) {
+  if (viewMode == ViewMode.Tile || viewMode == ViewMode.TwoColumn) {
     PlaylistsTilesScreen(
       repository = repository,
       onPlaylistClick = onPlaylistClick,
       onRenamePlaylist = onRenamePlaylist,
       onDeletePlaylist = onDeletePlaylist,
       onSetPlaylistCover = onSetPlaylistCover,
+      twoColumn = viewMode == ViewMode.TwoColumn,
     )
     return
   }

@@ -89,6 +89,7 @@ fun PlaylistsTilesScreen(
   onRenamePlaylist: (Long, String) -> Unit = { _, _ -> },
   onDeletePlaylist: (Long) -> Unit = {},
   onSetPlaylistCover: (Long, String?) -> Unit = { _, _ -> },
+  twoColumn: Boolean = false,
 ) {
   val playlists by repository.observePlaylists().collectAsState(initial = emptyList())
   val context = LocalContext.current
@@ -114,7 +115,7 @@ fun PlaylistsTilesScreen(
     } else {
       val gridState = rememberLazyGridState()
       LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 140.dp),
+        columns = if (twoColumn) GridCells.Fixed(2) else GridCells.Adaptive(minSize = 140.dp),
         state = gridState,
         contentPadding = PaddingValues(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
