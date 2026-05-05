@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  T.A.2 — Settings sub-page strings.
+
+  Naming: settings_<surface>_<role>; settings_cd_<thing> for icon
+  content-descriptions; error_settings_<thing> for snackbar fallbacks.
+  Grouped per sub-page (Common chrome / Catalog: Look and Feel /
+  Personalize / Content / Audio / Root / About; then dialogs:
+  Music sources / Library tabs / Sleep timer / ReplayGain pre-amp /
+  Color picker / Playlist import collision / Rescan confirm / Easter
+  egg / Picker labels / Multi-value separators / Search overlay).
+
+  See also: app/src/main/res/values/strings.xml (canonical entries
+  owned by other agents). All values/*.xml files merge at build time.
+-->
+<resources>
+
+  <!-- ===== Common chrome (top-bar titles, back button, dialog buttons) ===== -->
+  <string name="settings_title">Settings</string>
+  <string name="settings_lookandfeel_title">Look and Feel</string>
+  <string name="settings_personalize_title">Personalize</string>
+  <string name="settings_content_title">Content</string>
+  <string name="settings_audio_title">Audio</string>
+  <string name="settings_about_title">About</string>
+  <string name="settings_cd_back">Back</string>
+  <string name="settings_dialog_save">Save</string>
+  <string name="settings_dialog_cancel">Cancel</string>
+  <string name="settings_dialog_close">Close</string>
+  <string name="settings_dialog_confirm">Confirm</string>
+  <string name="settings_dialog_delete">Delete</string>
+
+  <!-- ===== Catalog: Root entries ===== -->
+  <string name="settings_root_lookandfeel_label">Look and Feel</string>
+  <string name="settings_root_lookandfeel_subtitle">Theme, color scheme, layout.</string>
+  <string name="settings_root_personalize_label">Personalize</string>
+  <string name="settings_root_personalize_subtitle">Library tabs, behaviour, custom actions.</string>
+  <string name="settings_root_content_label">Content</string>
+  <string name="settings_root_content_subtitle">Sorting, separators, album covers.</string>
+  <string name="settings_root_audio_label">Audio</string>
+  <string name="settings_root_audio_subtitle">Playback, volume normalization.</string>
+  <string name="settings_root_music_sources_label">Music sources</string>
+  <string name="settings_root_music_sources_subtitle">Choose how the library finds your music.</string>
+  <string name="settings_root_refresh_label">Refresh music</string>
+  <string name="settings_root_refresh_subtitle">Reload the library, using cached tags when possible.</string>
+  <string name="settings_root_rescan_label">Rescan music</string>
+  <string name="settings_root_rescan_subtitle">Clear the cache and re-read everything. Slower but more complete.</string>
+  <string name="settings_root_export_playlists_label">Export playlists</string>
+  <string name="settings_root_export_playlists_subtitle">Save all playlists to a JSON file.</string>
+  <string name="settings_root_import_playlists_label">Import playlists</string>
+  <string name="settings_root_import_playlists_subtitle">Load playlists from a JSON file.</string>
+  <string name="settings_root_about_label">About</string>
+  <string name="settings_root_about_subtitle">Version, build, license, and credits.</string>
+
+  <!-- Rescan confirmation dialog. -->
+  <string name="settings_rescan_dialog_title">Rescan library?</string>
+  <string name="settings_rescan_dialog_text">This clears cached metadata and re-reads MediaStore. Playback is not interrupted.</string>
+  <string name="settings_rescan_dialog_confirm">Rescan</string>
+
+  <!-- ===== Catalog: Look and Feel ===== -->
+  <string name="settings_lookandfeel_theme_label">Theme</string>
+  <string name="settings_lookandfeel_base_theme_label">Base theme</string>
+  <string name="settings_lookandfeel_base_theme_subtitle">Foundation colors. Album art tint sits on top.</string>
+  <string name="settings_lookandfeel_album_art_tint_label">Tint chrome by album art</string>
+  <string name="settings_lookandfeel_album_art_tint_subtitle">Bias surfaces toward the playing track\'s dominant color.</string>
+
+  <!-- Theme picker labels. -->
+  <string name="settings_lookandfeel_theme_automatic">Automatic</string>
+  <string name="settings_lookandfeel_theme_light">Light</string>
+  <string name="settings_lookandfeel_theme_dark">Dark</string>
+
+  <!-- Base theme labels. -->
+  <string name="settings_lookandfeel_base_theme_default_android">Default Android (Material You)</string>
+  <string name="settings_lookandfeel_base_theme_default_colors">Default colors</string>
+  <string name="settings_lookandfeel_base_theme_pure_black">Pure black</string>
+  <string name="settings_lookandfeel_base_theme_custom">Custom color</string>
+
+  <!-- ===== Catalog: Personalize ===== -->
+  <string name="settings_personalize_library_tabs_label">Library tabs</string>
+  <string name="settings_personalize_custom_bar_action_label">Custom playback bar action</string>
+  <string name="settings_personalize_custom_notification_action_label">Custom notification action</string>
+  <string name="settings_personalize_play_from_library_label">When playing from the library</string>
+  <string name="settings_personalize_play_from_item_details_label">When playing from item details</string>
+  <string name="settings_personalize_remember_shuffle_label">Remember shuffle</string>
+  <string name="settings_personalize_remember_shuffle_subtitle">Restore the previous shuffle state on relaunch.</string>
+
+  <!-- Custom bar action picker labels. -->
+  <string name="settings_personalize_bar_action_skip_next">Skip to next</string>
+  <string name="settings_personalize_bar_action_shuffle_toggle">Shuffle toggle</string>
+  <string name="settings_personalize_bar_action_repeat_toggle">Repeat mode toggle</string>
+  <string name="settings_personalize_bar_action_none">None</string>
+
+  <!-- Custom notification action picker labels. -->
+  <string name="settings_personalize_notification_action_repeat">Repeat mode</string>
+  <string name="settings_personalize_notification_action_shuffle">Shuffle</string>
+  <string name="settings_personalize_notification_action_none">None</string>
+
+  <!-- Play-from-library picker labels. -->
+  <string name="settings_personalize_play_from_library_all_songs">Play from all songs</string>
+  <string name="settings_personalize_play_from_library_item_only">Play from item only</string>
+  <string name="settings_personalize_play_from_library_current_filter">Play from current filter</string>
+
+  <!-- Play-from-item-details picker labels. -->
+  <string name="settings_personalize_play_from_item_shown">Play from shown item</string>
+  <string name="settings_personalize_play_from_item_album">Play from album</string>
+  <string name="settings_personalize_play_from_item_artist">Play from artist</string>
+
+  <!-- Library tabs row preview when no tabs visible. -->
+  <string name="settings_personalize_library_tabs_default">Default</string>
+
+  <!-- ===== Catalog: Content ===== -->
+  <string name="settings_content_automatic_reloading_label">Automatic reloading</string>
+  <string name="settings_content_automatic_reloading_subtitle">Watch for library changes and rescan automatically. Runs a foreground service.</string>
+  <string name="settings_content_multi_value_separators_label">Multi-value separators</string>
+  <string name="settings_content_intelligent_sorting_label">Intelligent sorting</string>
+  <string name="settings_content_intelligent_sorting_subtitle">Ignore leading articles (English, French, German, Spanish, Italian, Dutch) when sorting.</string>
+  <string name="settings_content_hide_collaborators_label">Hide collaborators</string>
+  <string name="settings_content_hide_collaborators_subtitle">Show only the primary album artist; collapse featured-artist credits.</string>
+  <string name="settings_content_auto_discover_album_art_label">Auto-discover missing album art</string>
+  <string name="settings_content_auto_discover_album_art_subtitle">Fetch covers from MusicBrainz Cover Art Archive for albums missing local art (Phase H).</string>
+  <string name="settings_content_album_covers_label">Album covers</string>
+  <string name="settings_content_force_square_covers_label">Force square album covers</string>
+  <string name="settings_content_force_square_covers_subtitle">Render covers as squares instead of rounded rectangles.</string>
+
+  <!-- Album covers picker labels. -->
+  <string name="settings_content_album_covers_balanced">Balanced</string>
+  <string name="settings_content_album_covers_on">Always load</string>
+  <string name="settings_content_album_covers_off">Never load</string>
+
+  <!-- Multi-value separators picker labels + Off preview. -->
+  <string name="settings_content_separators_off">Off</string>
+  <string name="settings_content_separators_semicolon">Semicolon  ;</string>
+  <string name="settings_content_separators_slash">Slash  /</string>
+  <string name="settings_content_separators_comma">Comma  ,</string>
+  <string name="settings_content_separators_ampersand">Ampersand  &amp;</string>
+  <string name="settings_content_separators_feat">feat.</string>
+  <string name="settings_content_separators_ft">ft.</string>
+
+  <!-- Snackbar fired when auto-discover-album-art toggled (deferred to v1.1). -->
+  <string name="settings_content_auto_discover_album_art_unavailable">Coming in v1.1 — for now, manual cover-art import only.</string>
+  <!-- Snackbar fired when separator selection changes. -->
+  <string name="settings_content_separators_change_applied">Multi-value separator change applied. Run Settings &gt; Library &gt; Rescan music to pick up existing tracks.</string>
+
+  <!-- ===== Catalog: Audio ===== -->
+  <string name="settings_audio_headset_autoplay_label">Headset autoplay</string>
+  <string name="settings_audio_headset_autoplay_subtitle">Begin playback automatically when headphones connect.</string>
+  <string name="settings_audio_rewind_before_skip_label">Rewind before skipping back</string>
+  <string name="settings_audio_rewind_before_skip_subtitle">Tap previous within a few seconds rewinds; otherwise jumps to the previous track.</string>
+  <string name="settings_audio_pause_on_repeat_label">Pause on repeat</string>
+  <string name="settings_audio_pause_on_repeat_subtitle">Pause at the end of the first play instead of looping the same track.</string>
+  <string name="settings_audio_remember_pause_label">Remember pause</string>
+  <string name="settings_audio_remember_pause_subtitle">Restore the paused position on relaunch.</string>
+  <string name="settings_audio_replaygain_strategy_label">ReplayGain strategy</string>
+  <string name="settings_audio_replaygain_preamp_label">ReplayGain pre-amp</string>
+  <string name="settings_audio_sleep_timer_label">Sleep timer</string>
+  <string name="settings_audio_sleep_timer_subtitle">Pause playback after a delay.</string>
+  <string name="settings_audio_system_equalizer_label">System equalizer</string>
+  <string name="settings_audio_system_equalizer_subtitle">Open the system audio effect panel.</string>
+
+  <!-- ReplayGain strategy picker labels. -->
+  <string name="settings_audio_replaygain_off">Off</string>
+  <string name="settings_audio_replaygain_track">Track</string>
+  <string name="settings_audio_replaygain_album">Album</string>
+  <string name="settings_audio_replaygain_smart">Smart</string>
+
+  <!-- ReplayGain pre-amp dialog. -->
+  <string name="settings_audio_replaygain_preamp_dialog_title">ReplayGain pre-amp</string>
+  <string name="settings_audio_replaygain_preamp_dialog_text">Adds a constant offset on top of the strategy gain. Negative values attenuate; positive values clamp at 0 dB (Player.volume cannot amplify above unity).</string>
+  <string name="settings_audio_replaygain_preamp_reset">Reset to 0 dB</string>
+
+  <!-- Sleep-timer row subtitles (live). %1$d = remaining minutes integer. -->
+  <string name="settings_audio_sleep_timer_running_subtitle">Active — about %1$d min remaining</string>
+  <string name="settings_audio_sleep_timer_waiting_subtitle">Waiting for end of song</string>
+
+  <!-- Snackbars for sleep-timer and equalizer hand-off. %1$d = duration minutes. -->
+  <string name="settings_audio_sleep_timer_set_snackbar">Sleep timer set for %1$d min</string>
+  <string name="error_settings_no_system_equalizer">No system equalizer available on this device.</string>
+
+  <!-- ===== About sub-page ===== -->
+  <string name="settings_about_card_build">Build</string>
+  <string name="settings_about_card_source">Source</string>
+  <string name="settings_about_card_credits">Credits</string>
+  <string name="settings_about_application_label">Application</string>
+  <string name="settings_about_application_subtitle">tonearmboy — modern Android music player</string>
+  <string name="settings_about_version_label">Version</string>
+  <string name="settings_about_build_date_label">Build date</string>
+  <string name="settings_about_github_label">GitHub repository</string>
+  <string name="settings_about_github_subtitle">github.com/887/tonearmboy</string>
+  <string name="settings_about_license_label">License</string>
+  <string name="settings_about_license_subtitle">MIT — see LICENSE. All direct deps (AndroidX, Media3, Kotlin, Coil, Robolectric) are Apache-2.0 / MIT — no GPL contamination.</string>
+  <string name="settings_about_credits_cleanroom_label">Visual references only</string>
+  <string name="settings_about_credits_cleanroom_subtitle">No code copied from the projects below. Clean-room implementation, MIT-licensed throughout.</string>
+  <string name="settings_about_credits_auxio_label">Auxio (GPL-3.0)</string>
+  <string name="settings_about_credits_auxio_subtitle">Visual reference for the player surface and library chrome. github.com/OxygenCobalt/Auxio</string>
+  <string name="settings_about_credits_harmony_label">Harmony Music (GPL-3.0)</string>
+  <string name="settings_about_credits_harmony_subtitle">Chrome reference (rail-and-content boundary, M3 Expressive cards). github.com/anandnet/Harmony-Music</string>
+  <string name="settings_about_credits_media3_label">Media3 + Compose + Room</string>
+  <string name="settings_about_credits_media3_subtitle">AndroidX libraries: ExoPlayer/MediaSession, Jetpack Compose, Room.</string>
+
+  <!-- Version + build-date dynamic templates.
+       %1$s = version name, %2$s = git sha. -->
+  <string name="settings_about_version_subtitle">tonearmboy %1$s (%2$s)</string>
+  <!-- %1$s = build date string. -->
+  <string name="settings_about_build_date_subtitle">Built %1$s (UTC)</string>
+
+  <!-- Easter egg snackbars + image content-description. -->
+  <string name="settings_about_easter_egg_first">Click 2 more times for a treat</string>
+  <string name="settings_about_easter_egg_second">1 more time</string>
+  <string name="settings_about_easter_egg_fox_cd">Stay pawsitive</string>
+
+  <!-- ===== Music sources dialog ===== -->
+  <string name="settings_music_sources_dialog_title">Music sources</string>
+  <string name="settings_cd_close">Close</string>
+  <string name="settings_music_sources_load_from_title">Load From</string>
+  <string name="settings_music_sources_segment_filepicker">File picker</string>
+  <string name="settings_music_sources_segment_system">System</string>
+  <string name="settings_music_sources_filepicker_subtitle">Load music from the folders that you select. Slower, but more reliable. Requires the vanilla file manager app to be installed.</string>
+  <string name="settings_music_sources_system_subtitle">Scan the system MediaStore index. Faster, automatic.</string>
+  <string name="settings_music_sources_folders_title">Folders to Load</string>
+  <string name="settings_cd_add_folder">Add folder</string>
+  <string name="settings_cd_remove_folder">Remove folder</string>
+  <string name="settings_music_sources_no_folders">No folders configured. Tap + to add one.</string>
+  <string name="settings_music_sources_internal_storage">Internal shared storage</string>
+  <string name="settings_music_sources_more_settings_title">More settings</string>
+  <string name="settings_cd_more_settings_collapse">Collapse</string>
+  <string name="settings_cd_more_settings_expand">Expand</string>
+  <string name="settings_music_sources_more_settings_body">Multi-value separators are configured in Settings › Personalize › Multi-value separators.</string>
+
+  <!-- ===== Library tabs dialog ===== -->
+  <string name="settings_library_tabs_dialog_title">Library tabs</string>
+  <string name="settings_library_tabs_builtins_header">Built-in tabs</string>
+  <string name="settings_library_tabs_custom_header">Custom tabs</string>
+  <string name="settings_library_tabs_no_custom">No custom tabs yet.</string>
+  <string name="settings_library_tabs_add_custom">Add custom tab</string>
+  <string name="settings_cd_add_custom_tab">Add custom tab</string>
+  <string name="settings_cd_drag_to_reorder">Drag to reorder</string>
+  <string name="settings_cd_edit">Edit</string>
+  <string name="settings_cd_delete">Delete</string>
+  <string name="settings_library_tabs_delete_dialog_title">Delete custom tab</string>
+  <!-- %1$s = the custom tab name -->
+  <string name="settings_library_tabs_delete_dialog_text">Delete \"%1$s\"? This cannot be undone.</string>
+  <!-- Custom-tab content type short labels (shown under the tab name). -->
+  <string name="settings_library_tabs_content_songs">Songs</string>
+  <string name="settings_library_tabs_content_albums">Albums</string>
+  <string name="settings_library_tabs_content_artists">Artists</string>
+  <string name="settings_library_tabs_content_genres">Genres</string>
+
+  <!-- ===== Sleep timer dialog ===== -->
+  <string name="settings_sleep_timer_dialog_title">Sleep timer</string>
+  <string name="settings_sleep_timer_choose_duration">Choose a duration:</string>
+  <!-- %1$d = preset duration in minutes -->
+  <string name="settings_sleep_timer_preset_minutes">%1$dm</string>
+  <string name="settings_sleep_timer_custom_label">Custom:</string>
+  <string name="settings_cd_decrease">Decrease</string>
+  <string name="settings_cd_increase">Increase</string>
+  <!-- %1$d = custom duration in minutes -->
+  <string name="settings_sleep_timer_custom_minutes">%1$d min</string>
+  <string name="settings_sleep_timer_start">Start</string>
+  <string name="settings_sleep_timer_wait_for_end">Wait for end of song</string>
+  <string name="settings_sleep_timer_waiting_body">Waiting for the current song to end…</string>
+  <string name="settings_sleep_timer_cancel_button">Cancel timer</string>
+  <string name="settings_sleep_timer_remaining">remaining</string>
+  <string name="settings_sleep_timer_will_wait">Will wait until the current song finishes.</string>
+
+  <!-- ===== Color picker dialog ===== -->
+  <string name="settings_color_picker_title">Pick a seed color</string>
+
+  <!-- ===== Playlist import collision dialog ===== -->
+  <string name="settings_playlist_import_collision_title">Playlist names already exist</string>
+  <string name="settings_playlist_import_collision_intro">These playlists already exist in your library:</string>
+  <string name="settings_playlist_import_collision_explainer">Overwrite replaces existing tracks. Merge appends new tracks to the existing playlists. Cancel skips just the colliding playlists; non-colliding ones still import.</string>
+  <string name="settings_playlist_import_overwrite">Overwrite</string>
+  <string name="settings_playlist_import_merge">Merge</string>
+  <string name="settings_playlist_import_cancel_collisions">Cancel collisions</string>
+
+  <!-- ===== Settings search overlay ===== -->
+  <string name="settings_search_bar_label">Search settings</string>
+  <string name="settings_search_field_placeholder">Search settings</string>
+  <string name="settings_cd_search_settings">Search settings</string>
+  <string name="settings_cd_clear">Clear</string>
+  <string name="settings_search_empty_initial">Start typing to search every setting.</string>
+  <!-- %1$s = the search query -->
+  <string name="settings_search_no_matches">No settings match \"%1$s\".</string>
+</resources>

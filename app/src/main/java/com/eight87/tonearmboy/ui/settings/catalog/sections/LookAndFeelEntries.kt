@@ -3,6 +3,7 @@ package com.eight87.tonearmboy.ui.settings.catalog.sections
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ColorLens
 import androidx.compose.material.icons.outlined.Palette
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.ui.nav.SettingsLookAndFeel
 import com.eight87.tonearmboy.ui.settings.catalog.Groups
 import com.eight87.tonearmboy.ui.settings.catalog.RowKind
@@ -16,6 +17,8 @@ internal val LookAndFeelEntries: List<SettingsCatalogEntry> = listOf(
     id = SettingsCatalog.ID_THEME,
     label = "Theme",
     subtitle = null,
+    labelRes = R.string.settings_lookandfeel_theme_label,
+    subtitleRes = null,
     keywords = listOf("dark", "light", "automatic", "system"),
     icon = Icons.Outlined.Palette,
     section = Section.LookAndFeel,
@@ -31,6 +34,8 @@ internal val LookAndFeelEntries: List<SettingsCatalogEntry> = listOf(
     id = SettingsCatalog.ID_BASE_THEME,
     label = "Base theme",
     subtitle = "Foundation colors. Album art tint sits on top.",
+    labelRes = R.string.settings_lookandfeel_base_theme_label,
+    subtitleRes = R.string.settings_lookandfeel_base_theme_subtitle,
     keywords = listOf(
       "dynamic", "material you", "brand", "palette",
       "amoled", "oled", "pure black", "static",
@@ -46,6 +51,8 @@ internal val LookAndFeelEntries: List<SettingsCatalogEntry> = listOf(
     id = SettingsCatalog.ID_ALBUM_ART_TINT,
     label = "Tint chrome by album art",
     subtitle = "Bias surfaces toward the playing track's dominant color.",
+    labelRes = R.string.settings_lookandfeel_album_art_tint_label,
+    subtitleRes = R.string.settings_lookandfeel_album_art_tint_subtitle,
     keywords = listOf("palette", "tint", "album", "cover", "art", "color"),
     icon = Icons.Outlined.Palette,
     section = Section.LookAndFeel,

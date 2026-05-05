@@ -24,9 +24,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.ui.settings.catalog.Section
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsCard
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsCatalog
@@ -89,10 +91,13 @@ fun SettingsScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("Settings") },
+        title = { Text(stringResource(R.string.settings_title)) },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(
+              Icons.AutoMirrored.Filled.ArrowBack,
+              contentDescription = stringResource(R.string.settings_cd_back),
+            )
           }
         },
       )
@@ -130,19 +135,21 @@ fun SettingsScreen(
         ) {
           items.forEachIndexed { index, entry ->
             val binding = bindingsById[entry.id]
+            val resolvedLabel = stringResource(entry.labelRes)
+            val resolvedSubtitle = entry.subtitleRes?.let { stringResource(it) }
             when (binding) {
               is SettingsRowBinding.Action -> SettingsRow(
                 id = entry.id,
                 icon = entry.icon,
-                label = entry.label,
-                subtitle = binding.subtitleOverride ?: entry.subtitle,
+                label = resolvedLabel,
+                subtitle = binding.subtitleOverride ?: resolvedSubtitle,
                 onClick = binding.onClick,
               )
               else -> SettingsRow(
                 id = entry.id,
                 icon = entry.icon,
-                label = entry.label,
-                subtitle = entry.subtitle,
+                label = resolvedLabel,
+                subtitle = resolvedSubtitle,
                 onClick = null,
               )
             }
@@ -156,13 +163,17 @@ fun SettingsScreen(
   if (confirmRescan) {
     AlertDialog(
       onDismissRequest = { confirmRescan = false },
-      title = { Text("Rescan library?") },
-      text = { Text("This clears cached metadata and re-reads MediaStore. Playback is not interrupted.") },
+      title = { Text(stringResource(R.string.settings_rescan_dialog_title)) },
+      text = { Text(stringResource(R.string.settings_rescan_dialog_text)) },
       confirmButton = {
-        TextButton(onClick = { onRescanMusic(); confirmRescan = false }) { Text("Rescan") }
+        TextButton(onClick = { onRescanMusic(); confirmRescan = false }) {
+          Text(stringResource(R.string.settings_rescan_dialog_confirm))
+        }
       },
       dismissButton = {
-        TextButton(onClick = { confirmRescan = false }) { Text("Cancel") }
+        TextButton(onClick = { confirmRescan = false }) {
+          Text(stringResource(R.string.settings_dialog_cancel))
+        }
       },
     )
   }

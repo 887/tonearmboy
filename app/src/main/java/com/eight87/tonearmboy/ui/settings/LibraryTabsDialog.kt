@@ -29,9 +29,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.db.CustomTabContentType
 import com.eight87.tonearmboy.data.db.CustomTabEntity
 import com.eight87.tonearmboy.ui.common.DragReorderColumn
@@ -90,15 +93,19 @@ fun LibraryTabsDialog(
   var customOrder by remember(model.customTabs) { mutableStateOf(model.customTabs) }
   var pendingDeletion by remember { mutableStateOf<CustomTabEntity?>(null) }
 
+  val context = LocalContext.current
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("Library tabs") },
+    title = { Text(stringResource(R.string.settings_library_tabs_dialog_title)) },
     text = {
       Column(modifier = Modifier
         .fillMaxWidth()
         .heightIn(max = 520.dp)
         .semantics { testTag = "library_tabs_editor" }) {
-        Text("Built-in tabs", style = MaterialTheme.typography.titleSmall)
+        Text(
+          stringResource(R.string.settings_library_tabs_builtins_header),
+          style = MaterialTheme.typography.titleSmall,
+        )
         DragReorderColumn(
           items = builtInOrder,
           itemKey = { it.name },
@@ -121,10 +128,13 @@ fun LibraryTabsDialog(
         }
 
         Spacer(Modifier.height(12.dp))
-        Text("Custom tabs", style = MaterialTheme.typography.titleSmall)
+        Text(
+          stringResource(R.string.settings_library_tabs_custom_header),
+          style = MaterialTheme.typography.titleSmall,
+        )
         if (customOrder.isEmpty()) {
           Text(
-            "No custom tabs yet.",
+            stringResource(R.string.settings_library_tabs_no_custom),
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(vertical = 8.dp),
           )
@@ -144,6 +154,7 @@ fun LibraryTabsDialog(
               onEdit = { onEditCustomTab(tab) },
               onDelete = { pendingDeletion = tab },
               dragHandleModifier = dragHandleModifier,
+              context = context,
             )
           }
         }
@@ -156,10 +167,13 @@ fun LibraryTabsDialog(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           IconButton(onClick = onAddCustomTab) {
-            Icon(Icons.Filled.Add, contentDescription = "Add custom tab")
+            Icon(
+              Icons.Filled.Add,
+              contentDescription = stringResource(R.string.settings_cd_add_custom_tab),
+            )
           }
           Text(
-            "Add custom tab",
+            stringResource(R.string.settings_library_tabs_add_custom),
             modifier = Modifier
               .padding(start = 4.dp)
               .weight(1f),
@@ -167,22 +181,30 @@ fun LibraryTabsDialog(
         }
       }
     },
-    confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    confirmButton = {
+      TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.settings_dialog_close))
+      }
+    },
   )
 
   pendingDeletion?.let { target ->
     AlertDialog(
       onDismissRequest = { pendingDeletion = null },
-      title = { Text("Delete custom tab") },
-      text = { Text("Delete \"${target.name}\"? This cannot be undone.") },
+      title = { Text(stringResource(R.string.settings_library_tabs_delete_dialog_title)) },
+      text = {
+        Text(stringResource(R.string.settings_library_tabs_delete_dialog_text, target.name))
+      },
       confirmButton = {
         TextButton(onClick = {
           onDeleteCustomTab(target)
           pendingDeletion = null
-        }) { Text("Delete") }
+        }) { Text(stringResource(R.string.settings_dialog_delete)) }
       },
       dismissButton = {
-        TextButton(onClick = { pendingDeletion = null }) { Text("Cancel") }
+        TextButton(onClick = { pendingDeletion = null }) {
+          Text(stringResource(R.string.settings_dialog_cancel))
+        }
       },
     )
   }
@@ -207,7 +229,7 @@ private fun BuiltInRow(
   ) {
     Icon(
       Icons.Filled.DragHandle,
-      contentDescription = "Drag to reorder",
+      contentDescription = stringResource(R.string.settings_cd_drag_to_reorder),
       modifier = dragHandleModifier
         .padding(8.dp)
         .semantics { testTag = "drag_handle_${tab.name}" },
@@ -223,6 +245,7 @@ private fun CustomTabRow(
   onEdit: () -> Unit,
   onDelete: () -> Unit,
   dragHandleModifier: Modifier,
+  context: android.content.Context,
 ) {
   Row(
     modifier = Modifier
@@ -234,7 +257,7 @@ private fun CustomTabRow(
   ) {
     Icon(
       Icons.Filled.DragHandle,
-      contentDescription = "Drag to reorder",
+      contentDescription = stringResource(R.string.settings_cd_drag_to_reorder),
       modifier = dragHandleModifier
         .padding(8.dp)
         .semantics { testTag = "drag_handle_custom_${tab.id}" },
@@ -242,27 +265,32 @@ private fun CustomTabRow(
     Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
       Text(tab.name, style = MaterialTheme.typography.bodyLarge)
       Text(
-        contentTypeShortLabel(tab.contentType),
+        contentTypeShortLabel(context, tab.contentType),
         style = MaterialTheme.typography.bodySmall,
       )
     }
     IconButton(
       onClick = onEdit,
       modifier = Modifier.semantics { testTag = "edit_custom_${tab.id}" },
-    ) { Icon(Icons.Filled.Edit, contentDescription = "Edit") }
+    ) { Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.settings_cd_edit)) }
     IconButton(
       onClick = onDelete,
       modifier = Modifier.semantics { testTag = "delete_custom_${tab.id}" },
-    ) { Icon(Icons.Filled.Delete, contentDescription = "Delete") }
+    ) { Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.settings_cd_delete)) }
   }
 }
 
-private fun contentTypeShortLabel(ct: CustomTabContentType): String = when (ct) {
-  CustomTabContentType.SONGS -> "Songs"
-  CustomTabContentType.ALBUMS -> "Albums"
-  CustomTabContentType.ARTISTS -> "Artists"
-  CustomTabContentType.GENRES -> "Genres"
-}
+private fun contentTypeShortLabel(
+  context: android.content.Context,
+  ct: CustomTabContentType,
+): String = context.getString(
+  when (ct) {
+    CustomTabContentType.SONGS -> R.string.settings_library_tabs_content_songs
+    CustomTabContentType.ALBUMS -> R.string.settings_library_tabs_content_albums
+    CustomTabContentType.ARTISTS -> R.string.settings_library_tabs_content_artists
+    CustomTabContentType.GENRES -> R.string.settings_library_tabs_content_genres
+  },
+)
 
 // D.21.3: `DragReorderColumn` graduated to `ui/common/DragReorderColumn.kt`
 // so the queue sheet can reuse the same lift / drag / drop helper. Same

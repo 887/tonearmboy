@@ -24,9 +24,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.playback.SleepTimer
 import com.eight87.tonearmboy.playback.SleepTimerState
 
@@ -48,13 +50,13 @@ fun SleepTimerDialog(
 ) {
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("Sleep timer") },
+    title = { Text(stringResource(R.string.settings_sleep_timer_dialog_title)) },
     text = {
       Column(modifier = Modifier.semantics { testTag = "sleep_timer_dialog" }) {
         when (state) {
           is SleepTimerState.Running -> RunningBody(state)
           SleepTimerState.WaitingForTrackEnd -> Text(
-            "Waiting for the current song to end…",
+            stringResource(R.string.settings_sleep_timer_waiting_body),
             style = MaterialTheme.typography.bodyMedium,
           )
           SleepTimerState.Idle -> IdleBody(onStart = onStart)
@@ -64,16 +66,22 @@ fun SleepTimerDialog(
     confirmButton = {
       when (state) {
         is SleepTimerState.Running, SleepTimerState.WaitingForTrackEnd ->
-          TextButton(onClick = { onCancel(); onDismiss() }) { Text("Cancel timer") }
+          TextButton(onClick = { onCancel(); onDismiss() }) {
+            Text(stringResource(R.string.settings_sleep_timer_cancel_button))
+          }
         SleepTimerState.Idle -> {
           // Idle commit lives inside IdleBody; here we just close.
-          TextButton(onClick = onDismiss) { Text("Close") }
+          TextButton(onClick = onDismiss) {
+            Text(stringResource(R.string.settings_dialog_close))
+          }
         }
       }
     },
     dismissButton = {
       if (state !is SleepTimerState.Running && state !is SleepTimerState.WaitingForTrackEnd) {
-        TextButton(onClick = onDismiss) { Text("Cancel") }
+        TextButton(onClick = onDismiss) {
+          Text(stringResource(R.string.settings_dialog_cancel))
+        }
       }
     },
   )
@@ -87,7 +95,7 @@ private fun IdleBody(
   var waitForEndOfTrack by remember { mutableStateOf(false) }
 
   Text(
-    "Choose a duration:",
+    stringResource(R.string.settings_sleep_timer_choose_duration),
     style = MaterialTheme.typography.bodyMedium,
     modifier = Modifier.padding(bottom = 8.dp),
   )
@@ -102,7 +110,10 @@ private fun IdleBody(
           .weight(1f)
           .semantics { testTag = "sleep_timer_preset_${minutes}m" },
       ) {
-        Text("${minutes}m", style = MaterialTheme.typography.labelMedium)
+        Text(
+          stringResource(R.string.settings_sleep_timer_preset_minutes, minutes),
+          style = MaterialTheme.typography.labelMedium,
+        )
       }
     }
   }
@@ -112,13 +123,21 @@ private fun IdleBody(
       .padding(top = 12.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Text("Custom:", modifier = Modifier.padding(end = 8.dp))
+    Text(
+      stringResource(R.string.settings_sleep_timer_custom_label),
+      modifier = Modifier.padding(end = 8.dp),
+    )
     IconButton(
       onClick = { customMinutes = (customMinutes - 5).coerceAtLeast(1) },
       modifier = Modifier.semantics { testTag = "sleep_timer_custom_minus" },
-    ) { Icon(Icons.Filled.Remove, contentDescription = "Decrease") }
+    ) {
+      Icon(
+        Icons.Filled.Remove,
+        contentDescription = stringResource(R.string.settings_cd_decrease),
+      )
+    }
     Text(
-      "$customMinutes min",
+      stringResource(R.string.settings_sleep_timer_custom_minutes, customMinutes),
       style = MaterialTheme.typography.titleMedium,
       modifier = Modifier
         .padding(horizontal = 8.dp)
@@ -127,13 +146,18 @@ private fun IdleBody(
     IconButton(
       onClick = { customMinutes = (customMinutes + 5).coerceAtMost(720) },
       modifier = Modifier.semantics { testTag = "sleep_timer_custom_plus" },
-    ) { Icon(Icons.Filled.Add, contentDescription = "Increase") }
+    ) {
+      Icon(
+        Icons.Filled.Add,
+        contentDescription = stringResource(R.string.settings_cd_increase),
+      )
+    }
     OutlinedButton(
       onClick = { onStart(customMinutes * 60_000L, waitForEndOfTrack) },
       modifier = Modifier
         .padding(start = 8.dp)
         .semantics { testTag = "sleep_timer_custom_start" },
-    ) { Text("Start") }
+    ) { Text(stringResource(R.string.settings_sleep_timer_start)) }
   }
   Row(
     modifier = Modifier
@@ -146,7 +170,10 @@ private fun IdleBody(
       onCheckedChange = { waitForEndOfTrack = it },
       modifier = Modifier.semantics { testTag = "sleep_timer_wait_song" },
     )
-    Text("Wait for end of song", modifier = Modifier.padding(start = 4.dp))
+    Text(
+      stringResource(R.string.settings_sleep_timer_wait_for_end),
+      modifier = Modifier.padding(start = 4.dp),
+    )
   }
 }
 
@@ -161,12 +188,12 @@ private fun RunningBody(running: SleepTimerState.Running) {
     modifier = Modifier.semantics { testTag = "sleep_timer_remaining" },
   )
   Text(
-    "remaining",
+    stringResource(R.string.settings_sleep_timer_remaining),
     style = MaterialTheme.typography.bodyMedium,
   )
   if (running.waitForEndOfTrack) {
     Text(
-      "Will wait until the current song finishes.",
+      stringResource(R.string.settings_sleep_timer_will_wait),
       style = MaterialTheme.typography.bodySmall,
       modifier = Modifier.padding(top = 8.dp),
     )

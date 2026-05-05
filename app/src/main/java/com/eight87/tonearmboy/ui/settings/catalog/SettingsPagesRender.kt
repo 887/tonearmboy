@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
@@ -48,8 +49,8 @@ sealed class SettingsRowBinding {
       SettingsRow(
         id = entry.id,
         icon = entry.icon,
-        label = entry.label,
-        subtitle = subtitleOverride ?: entry.subtitle,
+        label = stringResource(entry.labelRes),
+        subtitle = subtitleOverride ?: entry.subtitleRes?.let { stringResource(it) },
         onClick = onClick,
       )
     }
@@ -66,8 +67,8 @@ sealed class SettingsRowBinding {
       SettingsToggleRow(
         id = entry.id,
         icon = entry.icon,
-        label = entry.label,
-        subtitle = entry.subtitle,
+        label = stringResource(entry.labelRes),
+        subtitle = entry.subtitleRes?.let { stringResource(it) },
         checked = checked,
         onCheckedChange = onCheckedChange,
       )
@@ -91,7 +92,7 @@ sealed class SettingsRowBinding {
       SettingsRow(
         id = entry.id,
         icon = entry.icon,
-        label = entry.label,
+        label = stringResource(entry.labelRes),
         subtitle = currentLabel,
         onClick = onClick,
         trailing = trailing,
@@ -112,8 +113,8 @@ sealed class SettingsRowBinding {
       SettingsRow(
         id = entry.id,
         icon = entry.icon,
-        label = entry.label,
-        subtitle = entry.subtitle,
+        label = stringResource(entry.labelRes),
+        subtitle = entry.subtitleRes?.let { stringResource(it) },
         onClick = null,
       )
     }

@@ -17,7 +17,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 
 /**
  * R.F.17 — single-radio settings picker bundled with its show/hide
@@ -79,6 +81,10 @@ fun <T> SettingPickerState.Render(
         }
       }
     },
-    confirmButton = { TextButton(onClick = ::hide) { Text("Close") } },
+    confirmButton = {
+      TextButton(onClick = ::hide) {
+        Text(stringResource(R.string.settings_dialog_close))
+      }
+    },
   )
 }
