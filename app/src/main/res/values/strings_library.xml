@@ -13,6 +13,18 @@
 -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
 
+  <!-- T.A.7 — library scan snackbars + nav-routes residual snackbars. -->
+  <string name="library_scan_refreshed">Refreshed music library</string>
+  <string name="library_scan_rescanned">Rescanned music library</string>
+  <string name="library_coming_soon">%1$s — coming in v1.1</string>
+  <string name="library_added_to_queue">Added to queue: %1$s</string>
+  <string name="library_playlist_renamed">Renamed to \"%1$s\"</string>
+  <string name="library_playlist_deleted">Playlist deleted</string>
+  <string name="library_playlist_updated">Updated playlist (added %1$d, removed %2$d)</string>
+  <string name="library_playlist_cover_cleared">Playlist cover cleared</string>
+  <string name="library_playlist_cover_updated">Playlist cover updated</string>
+
+
   <!-- Library top-bar content-descriptions. -->
   <string name="library_cd_search">Search</string>
   <string name="library_cd_sort">Sort</string>

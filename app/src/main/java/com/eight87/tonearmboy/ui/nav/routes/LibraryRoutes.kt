@@ -50,6 +50,7 @@ import kotlinx.coroutines.launch
 @OptIn(UnstableApi::class)
 @Composable
 fun LibraryRoot.Register(scope: RouteScope) {
+  val context = androidx.compose.ui.platform.LocalContext.current
   with(scope) {
     LibraryScreen(
       tracks = graph.tracks,
@@ -93,7 +94,9 @@ fun LibraryRoot.Register(scope: RouteScope) {
       onAddToQueue = { track ->
         playback.addToQueue(track)
         applicationScope.launch {
-          snackbar.showSnackbar("Added to queue: ${track.title}")
+          snackbar.showSnackbar(
+            context.getString(com.eight87.tonearmboy.R.string.library_added_to_queue, track.title),
+          )
         }
       },
       onAddToPlaylist = { track -> addToPlaylist.requestSingle(track) },
@@ -101,20 +104,27 @@ fun LibraryRoot.Register(scope: RouteScope) {
       onRenamePlaylist = { id, name ->
         applicationScope.launch {
           graph.playlists.renamePlaylist(id, name)
-          snackbar.showSnackbar("Renamed to \"$name\"")
+          snackbar.showSnackbar(
+            context.getString(com.eight87.tonearmboy.R.string.library_playlist_renamed, name),
+          )
         }
       },
       onDeletePlaylist = { id ->
         applicationScope.launch {
           graph.playlists.deletePlaylist(id)
-          snackbar.showSnackbar("Playlist deleted")
+          snackbar.showSnackbar(
+            context.getString(com.eight87.tonearmboy.R.string.library_playlist_deleted),
+          )
         }
       },
       onSetPlaylistCover = { id, uri ->
         applicationScope.launch {
           graph.playlists.setPlaylistCoverUri(id, uri)
           snackbar.showSnackbar(
-            if (uri == null) "Playlist cover cleared" else "Playlist cover updated",
+            context.getString(
+              if (uri == null) com.eight87.tonearmboy.R.string.library_playlist_cover_cleared
+              else com.eight87.tonearmboy.R.string.library_playlist_cover_updated,
+            ),
           )
         }
       },
@@ -129,6 +139,7 @@ fun LibraryRoot.Register(scope: RouteScope) {
 @OptIn(UnstableApi::class)
 @Composable
 fun AlbumDetail.Register(scope: RouteScope) {
+  val context = androidx.compose.ui.platform.LocalContext.current
   with(scope) {
     AlbumDetailScreen(
       trackSource = graph.tracks,
@@ -149,6 +160,7 @@ fun AlbumDetail.Register(scope: RouteScope) {
           track = track, action = action,
           playback = playback, backStack = backStack,
           snackbar = snackbar, applicationScope = applicationScope,
+          context = context,
           onAddToPlaylist = { addToPlaylist.requestSingle(it) },
           onDeleteTracks = onDeleteTracks,
         )
@@ -161,6 +173,7 @@ fun AlbumDetail.Register(scope: RouteScope) {
 @OptIn(UnstableApi::class)
 @Composable
 fun ArtistDetail.Register(scope: RouteScope) {
+  val context = androidx.compose.ui.platform.LocalContext.current
   with(scope) {
     ArtistDetailScreen(
       trackSource = graph.tracks,
@@ -180,6 +193,7 @@ fun ArtistDetail.Register(scope: RouteScope) {
           track = track, action = action,
           playback = playback, backStack = backStack,
           snackbar = snackbar, applicationScope = applicationScope,
+          context = context,
           onAddToPlaylist = { addToPlaylist.requestSingle(it) },
           onDeleteTracks = onDeleteTracks,
         )
@@ -193,6 +207,7 @@ fun ArtistDetail.Register(scope: RouteScope) {
 @OptIn(UnstableApi::class)
 @Composable
 fun GenreDetail.Register(scope: RouteScope) {
+  val context = androidx.compose.ui.platform.LocalContext.current
   with(scope) {
     GenreDetailScreen(
       trackSource = graph.tracks,
@@ -210,6 +225,7 @@ fun GenreDetail.Register(scope: RouteScope) {
           track = track, action = action,
           playback = playback, backStack = backStack,
           snackbar = snackbar, applicationScope = applicationScope,
+          context = context,
           onAddToPlaylist = { addToPlaylist.requestSingle(it) },
           onDeleteTracks = onDeleteTracks,
         )
@@ -245,6 +261,7 @@ fun PlaylistDetail.Register(scope: RouteScope) {
 fun PlaylistTrackPicker.Register(scope: RouteScope) {
   val sectionTitle = LocalSectionTitle.current
   LaunchedEffect(Unit) { sectionTitle.value = "Add tracks" }
+  val context = androidx.compose.ui.platform.LocalContext.current
   with(scope) {
     TrackPickerScreen(
       trackSource = graph.tracks,
@@ -268,7 +285,11 @@ fun PlaylistTrackPicker.Register(scope: RouteScope) {
             graph.playlists.reorderPlaylist(playlistId, remaining)
           }
           snackbar.showSnackbar(
-            "Updated playlist (added ${toAdd.size}, removed ${toRemove.size})",
+            context.getString(
+              com.eight87.tonearmboy.R.string.library_playlist_updated,
+              toAdd.size,
+              toRemove.size,
+            ),
           )
         }
         backStack.pop()
@@ -340,6 +361,7 @@ internal fun handleDetailTrackAction(
   backStack: TonearmboyBackStack,
   snackbar: SnackbarHostState,
   applicationScope: CoroutineScope,
+  context: android.content.Context,
   onAddToPlaylist: (Track) -> Unit,
   onDeleteTracks: (List<Track>) -> Unit,
 ) {
@@ -348,7 +370,9 @@ internal fun handleDetailTrackAction(
     TrackContextAction.AddToQueue -> {
       playback.addToQueue(track)
       applicationScope.launch {
-        snackbar.showSnackbar("Added to queue: ${track.title}")
+        snackbar.showSnackbar(
+          context.getString(com.eight87.tonearmboy.R.string.library_added_to_queue, track.title),
+        )
       }
     }
     TrackContextAction.AddToPlaylist -> onAddToPlaylist(track)

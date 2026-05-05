@@ -1,6 +1,6 @@
 # tonearmboy — translations plan
 
-## Status: 🟡 IN PROGRESS — Phase T.A starts after the next user kick-off.
+## Status: 🟡 IN PROGRESS — Phase T.A done; T.B/T.C/T.D/T.E pending.
 
 ## The model
 
@@ -42,9 +42,9 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 - [x] **T.A.4** NowPlaying + MiniPlayer + queue. ~50 strings. *(shipped — ~35 strings in `values/strings_playing.xml`. SleepTimerDialog handled by T.A.2.)*
 - [x] **T.A.5** Permissions + first-launch + system messages. ~40 strings. *(shipped — 24 entries in `values/strings_permission.xml`. `library_scan_*` rescan/refresh snackbars in `ui/nav/RouteScopeFactory.kt` deferred to T.A.7.)*
 - [x] **T.A.6** Search + playlist picker + collision dialog. ~30 strings. *(shipped — ~50 strings + 6 plurals in `values/strings_playlist.xml`. Surfaces: `SearchScreen`, `SettingsSearchScreen`, `PlaylistPickerSheet`, `PlaylistsTilesScreen`, `PlaylistDialogHost`, `PlaylistImportDialog`, `AddToPlaylistController`, `PlaylistBackupController`.)*
-- [ ] **T.A.7** Audit pass: grep for any remaining `Text("…")` or `contentDescription = "…"` in `ui/**` and confirm each is either resource-backed or genuinely internal.
-- [ ] **T.A.8** Verify: Robolectric tests green; AVD smoke confirms no string visibly broke.
-- [ ] **T.A.9** Ship + tick.
+- [x] **T.A.7** Audit pass: grep for any remaining `Text("…")` or `contentDescription = "…"` in `ui/**` and confirm each is either resource-backed or genuinely internal. *(swept the residual snackbars in `RouteScopeFactory.kt` + `LibraryRoutes.kt` into `library_scan_*` / `library_added_to_queue` / `library_playlist_renamed` / `library_playlist_deleted` / `library_playlist_cover_*` / `library_playlist_updated` / `library_coming_soon`. `handleDetailTrackAction` gained a `Context` param so its snackbar can resolve the format string.)*
+- [x] **T.A.8** Verify: Robolectric tests green; AVD smoke confirms no string visibly broke.
+- [x] **T.A.9** Ship + tick.
 
 **Effort:** L (1.5 days). **Risk:** low — mechanical, but tedious; tests catch most regressions. **Sequence note:** Best done AFTER R.D's `LibraryScreen` split because the resulting smaller files are easier to extract from. T.A.4 + T.A.5 can land before R.D since they're in `ui/playing/` and `ui/permission/`.
 
