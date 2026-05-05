@@ -75,6 +75,9 @@ fun rememberRouteScope(
   val rescannedMessage = androidx.compose.ui.res.stringResource(
     com.eight87.tonearmboy.R.string.library_scan_rescanned,
   )
+  val albumArtRefreshedMessage = androidx.compose.ui.res.stringResource(
+    com.eight87.tonearmboy.R.string.library_album_art_refreshed,
+  )
   val onRefreshMusic: () -> Unit = {
     graph.applicationScope.launch {
       graph.scanner.rescanNow()
@@ -85,6 +88,17 @@ fun rememberRouteScope(
     graph.applicationScope.launch {
       graph.scanner.rescanNow()
       snackbar.showSnackbar(rescannedMessage)
+    }
+  }
+  // album-art Phase C — drop Coil's memory + disk caches so the next
+  // `CoverArt` render re-reads from disk. The user's pinned overrides
+  // (Phase A) are unaffected; this just nukes the rendered cache.
+  val onRefreshAlbumArt: () -> Unit = {
+    graph.applicationScope.launch {
+      val loader = coil3.SingletonImageLoader.get(context)
+      loader.memoryCache?.clear()
+      loader.diskCache?.clear()
+      snackbar.showSnackbar(albumArtRefreshedMessage)
     }
   }
   val onComingSoon: (String) -> Unit = { feature ->
@@ -114,6 +128,7 @@ fun rememberRouteScope(
       override val onShowMusicSourcesDialog = showMusicSourcesDialog
       override val onRefreshMusic = onRefreshMusic
       override val onRescanMusic = onRescanMusic
+      override val onRefreshAlbumArt = onRefreshAlbumArt
       override val onOpenNowPlayingSheet = openNowPlayingSheet
     }
   }

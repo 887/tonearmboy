@@ -5,6 +5,7 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Palette
@@ -130,6 +131,25 @@ internal val RootEntries: List<SettingsCatalogEntry> = listOf(
     kind = RowKind.Action,
     destination = SettingsRootDest,
     breadcrumb = listOf(SECTION_SETTINGS, "Library", "Rescan music"),
+  ),
+  // album-art Phase C — refresh album art only. Drops Coil's caches
+  // so the next CoverArt render re-reads from MediaStore (or the
+  // user's pinned override URI). Useful when the user has dropped
+  // new `cover.jpg` files or replaced embedded art and wants the
+  // change to land without a full library rescan.
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_LIBRARY_REFRESH_ALBUM_ART,
+    label = "Refresh album art",
+    subtitle = "Reload covers from disk. Use this after replacing cover files.",
+    labelRes = R.string.settings_root_refresh_album_art_label,
+    subtitleRes = R.string.settings_root_refresh_album_art_subtitle,
+    keywords = listOf("cover", "art", "reload", "refresh", "album"),
+    icon = Icons.Outlined.Image,
+    section = Section.Root,
+    group = Groups.Library,
+    kind = RowKind.Action,
+    destination = SettingsRootDest,
+    breadcrumb = listOf(SECTION_SETTINGS, "Library", "Refresh album art"),
   ),
   // Phase H.5 — playlist backup actions. JSON envelope written via SAF;
   // tracks identified by (title, artist, album) so the file round-trips

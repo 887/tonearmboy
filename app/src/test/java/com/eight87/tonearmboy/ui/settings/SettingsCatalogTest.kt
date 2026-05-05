@@ -44,6 +44,7 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES,
       SettingsCatalog.ID_LIBRARY_REFRESH,
       SettingsCatalog.ID_LIBRARY_RESCAN,
+      SettingsCatalog.ID_LIBRARY_REFRESH_ALBUM_ART,
       // D.16.4 — About sub-page entry.
       SettingsCatalog.ID_ABOUT,
       // Look and Feel.

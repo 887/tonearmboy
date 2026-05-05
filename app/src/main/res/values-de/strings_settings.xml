@@ -44,6 +44,8 @@
   <string name="settings_root_refresh_subtitle">Bibliothek neu laden, dabei zwischengespeicherte Tags wo möglich verwenden.</string>
   <string name="settings_root_rescan_label">Musik neu einlesen</string>
   <string name="settings_root_rescan_subtitle">Cache leeren und alles neu einlesen. Langsamer, aber vollständiger.</string>
+  <string name="settings_root_refresh_album_art_label">Albumcover aktualisieren</string>
+  <string name="settings_root_refresh_album_art_subtitle">Cover neu von der Festplatte laden. Nutze das, nachdem du Cover-Dateien ersetzt hast.</string>
   <string name="settings_root_export_playlists_label">Playlists exportieren</string>
   <string name="settings_root_export_playlists_subtitle">Alle Playlists in eine JSON-Datei speichern.</string>
   <string name="settings_root_import_playlists_label">Playlists importieren</string>

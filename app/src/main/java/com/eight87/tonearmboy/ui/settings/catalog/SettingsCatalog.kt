@@ -135,6 +135,7 @@ object SettingsCatalog {
   const val ID_LIBRARY_MUSIC_SOURCES = "library.music_sources"
   const val ID_LIBRARY_REFRESH = "library.refresh"
   const val ID_LIBRARY_RESCAN = "library.rescan"
+  const val ID_LIBRARY_REFRESH_ALBUM_ART = "library.refresh_album_art"
   const val ID_ABOUT = "about"
 
   const val ID_THEME = "look_and_feel.theme"

@@ -56,6 +56,9 @@ interface RouteScope {
   val onShowMusicSourcesDialog: () -> Unit
   val onRefreshMusic: () -> Unit
   val onRescanMusic: () -> Unit
+  /** album-art Phase C — drop Coil's caches so the next CoverArt
+   *  render reloads from disk (covers / pinned overrides). */
+  val onRefreshAlbumArt: () -> Unit
 
   /**
    * Open the NowPlaying sheet (animate sheet progress 0 → 1). Replaces

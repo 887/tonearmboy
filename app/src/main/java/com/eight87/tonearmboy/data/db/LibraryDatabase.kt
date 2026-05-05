@@ -19,7 +19,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     CustomTabEntity::class,
     AlbumCoverEntity::class,
   ],
-  version = 5,
+  version = 6,
   exportSchema = true,
 )
 abstract class LibraryDatabase : RoomDatabase() {
@@ -100,6 +100,14 @@ abstract class LibraryDatabase : RoomDatabase() {
      * albums get no row, so the UI continues falling back to
      * MediaStore's `albumart` URI until the user explicitly picks an
      * override.
+     *
+     * **Bug:** the v5 ship of this migration declared `coverUri TEXT
+     * NOT NULL`, but the entity has it as `String?` (nullable —
+     * required for the tri-state). Room's schema-validator catches
+     * this at app start and crashes the activity. v5 → v6 recreates
+     * the table with the correct schema. This migration is left at
+     * the buggy NOT NULL on purpose so users who installed v5 hit
+     * the v5 → v6 path and get the correct column.
      */
     val MIGRATION_4_5 = object : Migration(4, 5) {
       override fun migrate(db: SupportSQLiteDatabase) {
@@ -107,6 +115,26 @@ abstract class LibraryDatabase : RoomDatabase() {
           "CREATE TABLE IF NOT EXISTS `album_covers` (" +
             "`albumKey` TEXT NOT NULL PRIMARY KEY, " +
             "`coverUri` TEXT NOT NULL)"
+        )
+      }
+    }
+
+    /**
+     * v5 -> v6: recreate `album_covers` with the correct nullable
+     * `coverUri` column. The v5 ship of MIGRATION_4_5 declared the
+     * column NOT NULL, which conflicts with `AlbumCoverEntity.coverUri:
+     * String?`. We drop and recreate; users who managed to pin a cover
+     * during the brief v5 window lose their pinned URIs (re-pickable
+     * from Album Detail), which is acceptable given the fix is hours
+     * old and Phase A is brand new.
+     */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS `album_covers`")
+        db.execSQL(
+          "CREATE TABLE IF NOT EXISTS `album_covers` (" +
+            "`albumKey` TEXT NOT NULL PRIMARY KEY, " +
+            "`coverUri` TEXT)"
         )
       }
     }
@@ -131,7 +159,13 @@ abstract class LibraryDatabase : RoomDatabase() {
         )
           // No fallbackToDestructiveMigration: schema is exported, so
           // we'll write proper migrations as the schema evolves.
-          .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+          .addMigrations(
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5,
+            MIGRATION_5_6,
+          )
           .build()
         instance = created
         return created

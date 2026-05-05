@@ -44,6 +44,8 @@
   <string name="settings_root_refresh_subtitle">Reload the library, using cached tags when possible.</string>
   <string name="settings_root_rescan_label">Rescan music</string>
   <string name="settings_root_rescan_subtitle">Clear the cache and re-read everything. Slower but more complete.</string>
+  <string name="settings_root_refresh_album_art_label">Refresh album art</string>
+  <string name="settings_root_refresh_album_art_subtitle">Reload covers from disk. Use this after replacing cover files.</string>
   <string name="settings_root_export_playlists_label">Export playlists</string>
   <string name="settings_root_export_playlists_subtitle">Save all playlists to a JSON file.</string>
   <string name="settings_root_import_playlists_label">Import playlists</string>

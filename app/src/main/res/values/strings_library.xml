@@ -16,6 +16,7 @@
   <!-- T.A.7 — library scan snackbars + nav-routes residual snackbars. -->
   <string name="library_scan_refreshed">Refreshed music library</string>
   <string name="library_scan_rescanned">Rescanned music library</string>
+  <string name="library_album_art_refreshed">Album art cache cleared</string>
   <string name="library_coming_soon">%1$s — coming in v1.1</string>
   <string name="library_added_to_queue">Added to queue: %1$s</string>
   <string name="library_playlist_renamed">Renamed to \"%1$s\"</string>
