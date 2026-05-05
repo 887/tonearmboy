@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -361,8 +363,22 @@ fun LibraryScreen(
   ) { innerPadding ->
     // Vertical-rail layout: rail on the left, content on the right.
     // The rail extends the full content height (Scaffold-padded so we
-    // sit under the top app bar and over the mini-player).
-    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+    // sit under the top app bar and over the mini-player). Consume
+    // ONLY top + horizontal insets — the bottom system inset is
+    // already accounted for by `libraryBottomPad` at the app root
+    // (TonearmboyApp), which sizes the library to end exactly at the
+    // mini-player's top edge. Reapplying the nav-bar inset here would
+    // stack on top of that and reopen the gap above the mini-player.
+    val layoutDir = androidx.compose.ui.platform.LocalLayoutDirection.current
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(
+          top = innerPadding.calculateTopPadding(),
+          start = innerPadding.calculateStartPadding(layoutDir),
+          end = innerPadding.calculateEndPadding(layoutDir),
+        ),
+    ) {
     // Library scan progress — appears at the top while a scan runs,
     // disappears when done. Bound to LibraryRepository.scanProgress.
     ScanProgressBar(scanner = scanner)
