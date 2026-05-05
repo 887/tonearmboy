@@ -4,6 +4,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -100,10 +103,30 @@ fun MiniPlayer(
     // so tests that `performClick` on the row dispatch the expand
     // handler. Tapping the play / prev / next buttons or close-X lands
     // on those inner clickables instead.
+    //
+    // G.1 — Auxio-style vertical-drag gestures on the info row:
+    // swipe up >= 64 dp triggers onExpand (same effect as the tap),
+    // swipe down >= 64 dp triggers onClose (same effect as the close X).
+    // Tap-to-expand still works because detectVerticalDragGestures only
+    // fires on actual drag motion.
+    val swipeThresholdPx = with(LocalDensity.current) { 64.dp.toPx() }
+    var dragOffsetY by remember { mutableStateOf(0f) }
     Row(
       modifier = Modifier
         .fillMaxWidth()
         .clickable(onClick = onExpand)
+        .pointerInput(swipeThresholdPx) {
+          detectVerticalDragGestures(
+            onDragEnd = {
+              when {
+                dragOffsetY <= -swipeThresholdPx -> onExpand()
+                dragOffsetY >= swipeThresholdPx -> onClose()
+              }
+              dragOffsetY = 0f
+            },
+            onDragCancel = { dragOffsetY = 0f },
+          ) { _, delta -> dragOffsetY += delta }
+        }
         .padding(horizontal = 12.dp, vertical = 6.dp)
         .semantics { testTag = "mini_player" },
       verticalAlignment = Alignment.CenterVertically,
