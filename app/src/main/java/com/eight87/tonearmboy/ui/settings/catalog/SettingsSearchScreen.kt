@@ -40,11 +40,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
+import com.eight87.tonearmboy.R
 
 /**
  * Pill-shaped search bar pinned at the top of the Settings root. Tapping
@@ -71,12 +73,12 @@ fun SettingsSearchBar(
   ) {
     Icon(
       imageVector = Icons.Filled.Search,
-      contentDescription = "Search settings",
+      contentDescription = stringResource(R.string.settings_search_cd_search),
       tint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(Modifier.size(12.dp))
     Text(
-      text = "Search settings",
+      text = stringResource(R.string.settings_search_placeholder),
       style = MaterialTheme.typography.bodyLarge,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -120,13 +122,13 @@ fun SettingsSearchScreen(
         IconButton(onClick = onBack) {
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
+            contentDescription = stringResource(R.string.settings_search_cd_back),
           )
         }
         TextField(
           value = query,
           onValueChange = { query = it },
-          placeholder = { Text("Search settings") },
+          placeholder = { Text(stringResource(R.string.settings_search_placeholder)) },
           singleLine = true,
           keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
           colors = TextFieldDefaults.colors(
@@ -138,7 +140,7 @@ fun SettingsSearchScreen(
           trailingIcon = {
             if (query.isNotEmpty()) {
               IconButton(onClick = { query = "" }) {
-                Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.settings_search_cd_clear))
               }
             }
           },
@@ -153,11 +155,11 @@ fun SettingsSearchScreen(
     Box(modifier = Modifier.fillMaxSize().padding(padding)) {
       when {
         query.isBlank() -> SearchEmptyState(
-          message = "Start typing to search every setting.",
+          message = stringResource(R.string.settings_search_empty_hint),
           tag = "search_empty_initial",
         )
         results.isEmpty() -> SearchEmptyState(
-          message = "No settings match \"$query\".",
+          message = stringResource(R.string.settings_search_no_matches, query),
           tag = "search_empty_no_matches",
         )
         else -> ResultsList(results = results, onResult = onResult)

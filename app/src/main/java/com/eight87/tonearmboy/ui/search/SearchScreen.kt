@@ -28,9 +28,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.ui.library.libraryListCard
@@ -62,10 +64,10 @@ fun SearchScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("Search") },
+        title = { Text(stringResource(R.string.search_title)) },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.search_cd_back))
           }
         },
       )
@@ -75,17 +77,17 @@ fun SearchScreen(
       OutlinedTextField(
         value = rawQuery,
         onValueChange = { rawQuery = it },
-        label = { Text("Search title, artist, album") },
+        label = { Text(stringResource(R.string.search_placeholder)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth().padding(16.dp).semantics { testTag = "search_input" },
       )
       if (rawQuery.isBlank()) {
         Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-          Text("Start typing to search.", style = MaterialTheme.typography.bodyMedium)
+          Text(stringResource(R.string.search_empty_hint), style = MaterialTheme.typography.bodyMedium)
         }
       } else if (results.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-          Text("No matches for \"$rawQuery\".", style = MaterialTheme.typography.bodyMedium)
+          Text(stringResource(R.string.search_no_matches, rawQuery), style = MaterialTheme.typography.bodyMedium)
         }
       } else {
         // D.16.1 — wrap search result rows in the M3 Expressive grouped
@@ -105,8 +107,9 @@ fun SearchScreen(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
               Text(t.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+              val unknown = stringResource(R.string.search_unknown_track_subtitle)
               Text(
-                listOfNotNull(t.artist, t.album).joinToString(" · ").ifEmpty { "Unknown" },
+                listOfNotNull(t.artist, t.album).joinToString(" · ").ifEmpty { unknown },
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
               )

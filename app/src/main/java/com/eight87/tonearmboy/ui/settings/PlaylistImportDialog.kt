@@ -7,9 +7,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.playlist.PlaylistImportCollisionPolicy
 
 /**
@@ -24,18 +26,16 @@ fun PlaylistImportCollisionDialog(
 ) {
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("Playlist names already exist") },
+    title = { Text(stringResource(R.string.playlist_collision_dialog_title)) },
     text = {
       Column(modifier = Modifier.semantics { testTag = "playlist_import_collision_dialog" }) {
-        Text("These playlists already exist in your library:")
+        Text(stringResource(R.string.playlist_collision_dialog_intro))
         Text(
           collidingNames.joinToString(", "),
           modifier = Modifier.padding(top = 4.dp),
         )
         Text(
-          "Overwrite replaces existing tracks. Merge appends new tracks " +
-            "to the existing playlists. Cancel skips just the colliding " +
-            "playlists; non-colliding ones still import.",
+          stringResource(R.string.playlist_collision_dialog_explanation),
           modifier = Modifier.padding(top = 8.dp),
         )
       }
@@ -44,18 +44,18 @@ fun PlaylistImportCollisionDialog(
       TextButton(
         onClick = { onPick(PlaylistImportCollisionPolicy.Overwrite) },
         modifier = Modifier.semantics { testTag = "playlist_import_overwrite" },
-      ) { Text("Overwrite") }
+      ) { Text(stringResource(R.string.playlist_collision_overwrite)) }
     },
     dismissButton = {
       Column {
         TextButton(
           onClick = { onPick(PlaylistImportCollisionPolicy.Merge) },
           modifier = Modifier.semantics { testTag = "playlist_import_merge" },
-        ) { Text("Merge") }
+        ) { Text(stringResource(R.string.playlist_collision_merge)) }
         TextButton(
           onClick = { onPick(PlaylistImportCollisionPolicy.Cancel) },
           modifier = Modifier.semantics { testTag = "playlist_import_skip" },
-        ) { Text("Cancel collisions") }
+        ) { Text(stringResource(R.string.playlist_collision_cancel)) }
       }
     },
   )

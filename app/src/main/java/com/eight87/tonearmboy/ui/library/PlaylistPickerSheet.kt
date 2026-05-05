@@ -29,9 +29,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.model.Playlist
 
 /**
@@ -67,7 +70,7 @@ fun PlaylistPickerSheet(
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       Text(
-        text = "Add to playlist",
+        text = stringResource(R.string.playlist_picker_title),
         style = MaterialTheme.typography.titleMedium,
       )
       HorizontalDivider()
@@ -80,12 +83,12 @@ fun PlaylistPickerSheet(
         verticalAlignment = Alignment.CenterVertically,
       ) {
         Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
-        Text("New playlist…", style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.playlist_picker_create_new), style = MaterialTheme.typography.titleSmall)
       }
       HorizontalDivider()
       if (playlists.isEmpty()) {
         Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-          Text("No playlists yet", style = MaterialTheme.typography.bodyMedium)
+          Text(stringResource(R.string.playlist_picker_empty), style = MaterialTheme.typography.bodyMedium)
         }
       } else {
         LazyColumn(modifier = Modifier.fillMaxWidth()) {
@@ -98,7 +101,10 @@ fun PlaylistPickerSheet(
                 .semantics { testTag = "playlist_picker_row" },
             ) {
               Text(p.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-              Text("${p.trackCount} tracks", style = MaterialTheme.typography.bodySmall)
+              Text(
+                pluralStringResource(R.plurals.playlist_track_count, p.trackCount, p.trackCount),
+                style = MaterialTheme.typography.bodySmall,
+              )
             }
             HorizontalDivider()
           }
@@ -111,12 +117,12 @@ fun PlaylistPickerSheet(
     var name by remember { mutableStateOf("") }
     AlertDialog(
       onDismissRequest = { showCreate = false },
-      title = { Text("New playlist") },
+      title = { Text(stringResource(R.string.playlist_create_dialog_title)) },
       text = {
         OutlinedTextField(
           value = name,
           onValueChange = { name = it },
-          label = { Text("Name") },
+          label = { Text(stringResource(R.string.playlist_name_label)) },
           singleLine = true,
         )
       },
@@ -127,10 +133,10 @@ fun PlaylistPickerSheet(
             onCreateAndPick(trimmed)
           }
           showCreate = false
-        }) { Text("Create") }
+        }) { Text(stringResource(R.string.playlist_create_confirm)) }
       },
       dismissButton = {
-        TextButton(onClick = { showCreate = false }) { Text("Cancel") }
+        TextButton(onClick = { showCreate = false }) { Text(stringResource(R.string.playlist_dialog_cancel)) }
       },
     )
   }

@@ -51,10 +51,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.PlaylistStore
 import com.eight87.tonearmboy.data.model.Playlist
 import com.eight87.tonearmboy.data.model.Track
@@ -103,7 +106,7 @@ fun PlaylistsTilesScreen(
         contentAlignment = Alignment.Center,
       ) {
         Text(
-          text = "No playlists yet. Tap + to create one.",
+          text = stringResource(R.string.playlist_tiles_empty),
           style = MaterialTheme.typography.bodyMedium,
           modifier = Modifier.semantics { testTag = "empty_state" },
         )
@@ -140,7 +143,7 @@ fun PlaylistsTilesScreen(
     ExtendedFloatingActionButton(
       onClick = { dialog = PlaylistDialogState.Create },
       icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-      text = { Text("New playlist") },
+      text = { Text(stringResource(R.string.playlist_tiles_new_fab)) },
       modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).semantics { testTag = "new_playlist_fab" },
     )
   }
@@ -216,17 +219,17 @@ private fun PlaylistTile(
         modifier = Modifier.semantics { testTag = "playlist_context_menu" },
       ) {
         DropdownMenuItem(
-          text = { Text("Rename") },
+          text = { Text(stringResource(R.string.playlist_context_rename)) },
           onClick = onRenameRequest,
           modifier = Modifier.semantics { testTag = "playlist_context_rename" },
         )
         DropdownMenuItem(
-          text = { Text("Choose cover") },
+          text = { Text(stringResource(R.string.playlist_context_choose_cover)) },
           onClick = onChooseCoverRequest,
           modifier = Modifier.semantics { testTag = "playlist_context_cover" },
         )
         DropdownMenuItem(
-          text = { Text("Delete") },
+          text = { Text(stringResource(R.string.playlist_context_delete)) },
           onClick = onDeleteRequest,
           modifier = Modifier.semantics { testTag = "playlist_context_delete" },
         )
@@ -241,7 +244,7 @@ private fun PlaylistTile(
         .semantics { testTag = "playlist_tile_name" },
     )
     Text(
-      text = "${playlist.trackCount} tracks",
+      text = pluralStringResource(R.plurals.playlist_track_count, playlist.trackCount, playlist.trackCount),
       style = MaterialTheme.typography.bodySmall,
       maxLines = 1,
       modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
@@ -268,18 +271,18 @@ internal fun NewPlaylistSheet(
         .padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      Text("New playlist", style = MaterialTheme.typography.titleMedium)
+      Text(stringResource(R.string.playlist_create_dialog_title), style = MaterialTheme.typography.titleMedium)
       OutlinedTextField(
         value = name,
         onValueChange = { name = it },
-        label = { Text("Name") },
+        label = { Text(stringResource(R.string.playlist_name_label)) },
         singleLine = true,
         modifier = Modifier
           .fillMaxWidth()
           .semantics { testTag = "new_playlist_field" },
       )
       Text(
-        text = "You can pick a cover image after creating the playlist.",
+        text = stringResource(R.string.playlist_new_sheet_hint),
         style = MaterialTheme.typography.bodySmall,
       )
       Button(
@@ -291,7 +294,7 @@ internal fun NewPlaylistSheet(
         modifier = Modifier
           .fillMaxWidth()
           .semantics { testTag = "new_playlist_confirm" },
-      ) { Text("Create") }
+      ) { Text(stringResource(R.string.playlist_create_confirm)) }
     }
   }
 }
@@ -324,13 +327,16 @@ internal fun PlaylistCoverChooserSheet(
         .padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      Text("Choose cover for \"${playlist.name}\"", style = MaterialTheme.typography.titleMedium)
+      Text(
+        stringResource(R.string.playlist_cover_chooser_title, playlist.name),
+        style = MaterialTheme.typography.titleMedium,
+      )
       Button(
         onClick = { showFromTracksSubsheet = true },
         modifier = Modifier
           .fillMaxWidth()
           .semantics { testTag = "cover_from_track" },
-      ) { Text("Pick from a track in this playlist") }
+      ) { Text(stringResource(R.string.playlist_cover_pick_from_track)) }
       OutlinedButton(
         onClick = {
           // D.27.6 — `OpenDocument` instead of `GetContent` so we can
@@ -340,13 +346,13 @@ internal fun PlaylistCoverChooserSheet(
         modifier = Modifier
           .fillMaxWidth()
           .semantics { testTag = "cover_from_device" },
-      ) { Text("Pick from device") }
+      ) { Text(stringResource(R.string.playlist_cover_pick_from_device)) }
       OutlinedButton(
         onClick = { onChoose(null) },
         modifier = Modifier
           .fillMaxWidth()
           .semantics { testTag = "cover_use_letter" },
-      ) { Text("Use letter") }
+      ) { Text(stringResource(R.string.playlist_cover_use_letter)) }
     }
   }
 
@@ -390,10 +396,10 @@ private fun PickFromTrackSheet(
         .padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      Text("Pick a track's album art", style = MaterialTheme.typography.titleMedium)
+      Text(stringResource(R.string.playlist_cover_pick_track_title), style = MaterialTheme.typography.titleMedium)
       if (candidates.isEmpty()) {
         Text(
-          text = "None of the tracks in this playlist have album art.",
+          text = stringResource(R.string.playlist_cover_no_art),
           style = MaterialTheme.typography.bodyMedium,
         )
       } else {
@@ -409,9 +415,10 @@ private fun PickFromTrackSheet(
                 .padding(vertical = 8.dp)
                 .semantics { testTag = "cover_track_row" },
             ) {
+              val unknown = stringResource(R.string.playlist_track_unknown_subtitle)
               Text(t.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
               Text(
-                text = listOfNotNull(t.artist, t.album).joinToString(" · ").ifEmpty { "Unknown" },
+                text = listOfNotNull(t.artist, t.album).joinToString(" · ").ifEmpty { unknown },
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
               )
