@@ -28,8 +28,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.mediastore.MediaStorePermissions
 
 /**
@@ -107,19 +109,21 @@ fun RequireAudioPermission(
         tint = MaterialTheme.colorScheme.primary,
       )
       Text(
-        "tonearmboy needs music access",
+        stringResource(R.string.permission_audio_title),
         style = MaterialTheme.typography.headlineSmall,
         textAlign = TextAlign.Center,
       )
       Text(
-        "Grant the audio-library permission so tonearmboy can index your songs. " +
-          "We don't read anything else, never network-upload, never call home.",
+        stringResource(R.string.permission_audio_body),
         style = MaterialTheme.typography.bodyMedium,
         textAlign = TextAlign.Center,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Button(onClick = { launcher.launch(permission) }) {
-        Text(if (asked) "Try again" else "Grant access")
+        Text(
+          if (asked) stringResource(R.string.permission_audio_retry_button)
+          else stringResource(R.string.permission_audio_grant_button),
+        )
       }
       if (asked) {
         // After a denial, the system may suppress further prompts
@@ -132,7 +136,7 @@ fun RequireAudioPermission(
           }
           runCatching { context.startActivity(intent) }
         }) {
-          Text("Open app settings")
+          Text(stringResource(R.string.permission_audio_open_settings_button))
         }
       }
     }

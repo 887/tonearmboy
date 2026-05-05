@@ -24,8 +24,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.eight87.tonearmboy.R
 import kotlinx.coroutines.launch
 
 /**
@@ -74,6 +76,8 @@ fun RequirePostNotifications(
   var showDeniedSnackbar by remember { mutableStateOf(false) }
   val snackbarHostState = remember { SnackbarHostState() }
   val scope = rememberCoroutineScope()
+  val deniedMessage = stringResource(R.string.permission_notifications_denied_snackbar)
+  val dismissLabel = stringResource(R.string.permission_notifications_denied_dismiss)
 
   val launcher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.RequestPermission(),
@@ -94,8 +98,8 @@ fun RequirePostNotifications(
     if (!showDeniedSnackbar) return@LaunchedEffect
     scope.launch {
       val res = snackbarHostState.showSnackbar(
-        message = DENIED_SNACKBAR_MESSAGE,
-        actionLabel = "Dismiss",
+        message = deniedMessage,
+        actionLabel = dismissLabel,
         duration = SnackbarDuration.Long,
       )
       if (res == SnackbarResult.ActionPerformed || res == SnackbarResult.Dismissed) {
@@ -116,6 +120,3 @@ fun RequirePostNotifications(
     }
   }
 }
-
-internal const val DENIED_SNACKBAR_MESSAGE =
-  "Notifications disabled — playback controls won't appear in your notification tray."

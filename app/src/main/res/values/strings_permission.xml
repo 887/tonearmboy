@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- T.A.5 — runtime permission rationale + watcher service notification + scanner snackbars + file-deletion dialogs. -->
+<resources>
+
+  <!-- ========================================================== -->
+  <!-- Audio permission rationale (RequireAudioPermission.kt) -->
+  <!-- ========================================================== -->
+  <string name="permission_audio_title">tonearmboy needs music access</string>
+  <string name="permission_audio_body">Grant the audio-library permission so tonearmboy can index your songs. We don\'t read anything else, never network-upload, never call home.</string>
+  <string name="permission_audio_grant_button">Grant access</string>
+  <string name="permission_audio_retry_button">Try again</string>
+  <string name="permission_audio_open_settings_button">Open app settings</string>
+
+  <!-- ========================================================== -->
+  <!-- POST_NOTIFICATIONS runtime gate (RequirePostNotifications.kt) -->
+  <!-- ========================================================== -->
+  <string name="permission_notifications_denied_snackbar">Notifications disabled — playback controls won\'t appear in your notification tray.</string>
+  <string name="permission_notifications_denied_dismiss">Dismiss</string>
+
+  <!-- ========================================================== -->
+  <!-- LibraryWatcherService — sticky foreground-service notification -->
+  <!-- (channel ID stays hard-coded as a constant; channel name is user-facing) -->
+  <!-- ========================================================== -->
+  <string name="watcher_notif_channel_name">Library watcher</string>
+  <string name="watcher_notif_channel_description">Sticky notification while automatic reloading is enabled.</string>
+  <string name="watcher_notif_text">Watching for library changes. Tap to disable.</string>
+  <string name="watcher_notif_action_open">Open tonearmboy</string>
+  <string name="watcher_notif_action_disable">Disable</string>
+
+  <!-- ========================================================== -->
+  <!-- File deletion flow (DeleteFlow.kt + TrackDeleter.kt) -->
+  <!-- ========================================================== -->
+  <!-- Confirmation dialog. -->
+  <string name="library_delete_dialog_title_single">Delete %1$s?</string>
+  <string name="library_delete_dialog_title_multi">Delete %1$d tracks?</string>
+  <string name="library_delete_dialog_body_single">This will permanently delete the file from your device.</string>
+  <string name="library_delete_dialog_body_multi">This will permanently delete %1$d files from your device.</string>
+  <string name="library_delete_dialog_confirm">Delete</string>
+  <string name="library_delete_dialog_cancel">Cancel</string>
+  <!-- Outcome snackbars. -->
+  <string name="library_delete_snackbar_cancelled">Deletion cancelled.</string>
+  <string name="library_delete_snackbar_done_single">Deleted %1$s</string>
+  <string name="library_delete_snackbar_done_multi">Deleted %1$d tracks</string>
+  <!-- Failure snackbars. The "%1$s" slot carries the underlying reason. -->
+  <string name="library_delete_snackbar_failure_with_reason">Couldn\'t delete: %1$s</string>
+  <string name="library_delete_failure_consent_dialog">unable to start consent dialog</string>
+  <string name="library_delete_failure_already_gone">File already gone.</string>
+  <string name="library_delete_failure_denied">Couldn\'t delete this file.</string>
+  <string name="library_delete_failure_create_request">createDeleteRequest failed</string>
+  <string name="library_delete_failure_generic">delete failed</string>
+
+</resources>
