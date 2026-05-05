@@ -1,6 +1,7 @@
 package com.eight87.tonearmboy.ui.playing
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -254,7 +257,22 @@ internal fun NowPlayingMergedSurface(
   DisposableEffect(Unit) {
     onDispose { isQueueDragging = false }
   }
-  androidx.compose.foundation.layout.BoxWithConstraints(modifier = modifier) {
+  // Tap-outside-to-dismiss-keyboard. The filter `OutlinedTextField`
+  // takes focus + pops the IME; without this, taps anywhere else on
+  // the merged surface were ignored and the keyboard stuck around
+  // (user feedback). `detectTapGestures` is a non-blocking gesture
+  // that doesn't consume scroll, so the LazyColumn's drag still
+  // works normally.
+  val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+  val keyboard = LocalSoftwareKeyboardController.current
+  androidx.compose.foundation.layout.BoxWithConstraints(
+    modifier = modifier.pointerInput(Unit) {
+      detectTapGestures(onTap = {
+        focusManager.clearFocus()
+        keyboard?.hide()
+      })
+    },
+  ) {
     val viewport = maxHeight
   LazyColumn(
     state = listState,
@@ -362,16 +380,15 @@ internal fun NowPlayingMergedSurface(
       )
     }
   }
-    // FastScrollbar dropped (was wired to `listState` here in R.A.Q).
-    // The merged surface is a 3-item LazyColumn where the queue section
-    // (item #2) is hundreds of times taller than items #0/#1, so the
-    // scrollbar's `avgItemSizePx × totalItemsCount` math oscillated
-    // wildly as items entered/left the viewport — produced a "huge
-    // hole" gap as the user scrolled back from deep in the queue.
-    // Flick-scroll already covers the affordance for a 3-section
-    // surface; if a queue-only fast-scroll is needed, it belongs on
-    // the inner queue list (uniform row sizes), not the outer mixed
-    // surface.
+    // R.A.Q — full-height fast-scroll thumb. User asked for the
+    // queue-page indicator back. (Earlier I dropped it because of the
+    // "huge hole" oscillation; the math is imperfect on a 3-item
+    // LazyColumn with one giant item, but having a position indicator
+    // for the queue is more useful than not.)
+    com.eight87.tonearmboy.ui.common.FastScrollbar(
+      state = listState,
+      modifier = Modifier.align(Alignment.CenterEnd),
+    )
   }
 }
 
