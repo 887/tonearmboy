@@ -53,5 +53,6 @@
   <string name="settings_group_images">Images</string>
   <string name="settings_group_playback">Playback</string>
   <string name="settings_group_volume_normalization">Volume normalization</string>
+  <string name="settings_group_album_art_sources">Album art sources</string>
 
 </resources>

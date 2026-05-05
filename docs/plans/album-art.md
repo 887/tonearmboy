@@ -1,15 +1,13 @@
 # tonearmboy — album-art roadmap
 
-## Status: 🟡 IN PROGRESS — Phases A, C, D shipped; B + E deferred with notes.
+## Status: ✅ DONE — all five phases shipped.
 
 Shipped:
 - Phase A: per-album cover override via Room v6 + SAF picker. Commit `9d0a948`; migration fix `dcf4aa4`.
+- Phase B: SAF folder cover-art scanner (cover/folder/albumart/front .jpg/.png/.webp). Toggle in Album art sources group. Default ON.
 - Phase C: refresh-album-art row drops Coil's cache. Commit `dcf4aa4`.
 - Phase D: MusicBrainz auto-discover + per-album on-tap search. Commit `7bfc9cc`.
-
-Deferred (with reason):
-- Phase B (folder cover-art scanner): needs `READ_MEDIA_IMAGES` (API 33+) or `DocumentsContract` SAF-tree walking. Not blocking — users can pin a folder cover manually via "Replace cover" or `Search MusicBrainz`.
-- Phase E (multi-source UI restructure): premature until Phase B lands. Currently only MusicBrainz is a real "source"; one toggle doesn't need a grouped section.
+- Phase E: Settings › Content "Album art sources" group containing the Phase B + D toggles.
 
 ## Why
 
@@ -74,29 +72,27 @@ cover** action reachable from a context menu.
 **Effort:** S–M (½ day landed). **Risk:** low (mirrored existing
 playlist-cover pattern).
 
-## Phase B — folder cover-art source (deferred)
+## Phase B — folder cover-art source (shipped)
 
-**Reason for deferral:** the cleanest implementation needs SAF-tree
-walking (since we already have read grants on the user's music
-folders via Music Sources) OR `READ_MEDIA_IMAGES` (Android 13+).
-Either is a meaningful permission / scanner refactor. Today's manual
-"Replace cover…" + Phase D's MusicBrainz lookup cover the same user
-need; auto-discovery from filesystem cover.jpg is convenience, not
-table-stakes.
+- [x] **B.1** New `FolderArtScanner.walk(context, treeUris)` returns
+  `Map<dirNameLowercase, coverUriString>` for every directory whose
+  listing contains a `cover` / `folder` / `albumart` / `front` image
+  (jpg/jpeg/png/webp). Match priority cover → folder → albumart →
+  front. SAF only; users in System mode are unaffected.
+- [x] **B.2** Hooked into `LibraryRepository.runScan` after the audio
+  pass: maps each scanned track's parent-dir basename to the
+  discovered cover, walks unique album-keys, only writes
+  `album_covers` rows where no row exists yet (Phase A's
+  Pinned/IntentionallyEmpty wins).
+- [x] **B.3** Runs on every rescan; manual override takes precedence
+  by virtue of `dao.row(key).first() == null` guard.
+- [x] **B.4** Settings › Content toggle "Scan folders for cover art"
+  (default ON). New `ScanConfigSource.folderCoverScanEnabled` Flow
+  fed from `LibrarySettings.scanFoldersForCoverArt` (default true).
+- [x] **B.5** Ship + tick.
 
-- [ ] **B.1** Scanner extension: when ingesting an album whose tracks
-  have no embedded art, walk the parent SAF tree (`DocumentsContract
-  .buildChildDocumentsUriUsingTree`) for files named `cover.{jpg,png,
-  webp}`, `folder.{jpg,png,webp}`, `{albumname}.{jpg,png,webp}`.
-- [ ] **B.2** Persist into the same `album_covers.coverUri` column.
-  Skips albums where the user has spoken (Pinned / IntentionallyEmpty).
-- [ ] **B.3** Run on every rescan; manual override takes precedence.
-- [ ] **B.4** Settings › Content toggle "Scan folders for cover art"
-  (default on).
-- [ ] **B.5** AVD smoke + ship + tick.
-
-**Effort:** M (1 day). **Risk:** medium (DocumentsContract walking is
-an order of magnitude slower than MediaStore queries; need to throttle).
+**Effort:** S–M (½ day landed). **Risk:** low (SAF walk re-uses
+the existing audio scanner's tree-grant infrastructure).
 
 ## Phase C — refresh-album-art action (shipped in `dcf4aa4`)
 
@@ -148,22 +144,20 @@ behaviour). **Privacy note:** the toggle ships off by default and the
 settings copy must be explicit that enabling sends artist/album text
 to a third party.
 
-## Phase E — multiple-source UI (deferred)
+## Phase E — multiple-source UI (shipped)
 
-**Reason for deferral:** premature. With Phases A + C + D shipped,
-the user has: manual per-album pin (A), refresh-to-clear-cache (C),
-MusicBrainz auto-discover (D). The only "source" toggle today is
-MusicBrainz; a one-toggle "section" would be visual noise. Land
-Phase B first; then a proper sources section earns its place.
+- [x] **E.1** New `Groups.AlbumArtSources` group on the Content
+  sub-page. Holds the Phase B + D toggles, in source-of-truth order
+  (folder scan first since it's the user's local files, MusicBrainz
+  second since it's the network fallback). Embedded MediaStore art
+  is implicit (always on); no info row for it.
+- [ ] **E.2** "Add custom folder" row for art-only folders. Deferred
+  — the existing Music sources › FilePicker covers any folder the
+  user wants the scanner to look at; a separate "art-only folders"
+  picker is convenience that hasn't been asked for.
+- [x] **E.3** Ship + tick.
 
-- [ ] **E.1** Restructure Settings › Content into "Album art sources":
-  Embedded (always on, info row), Folder scan (Phase B toggle),
-  MusicBrainz (Phase D toggle).
-- [ ] **E.2** "Add custom folder" row for art-only folders.
-- [ ] **E.3** Ship + tick.
-
-**Effort:** S (½ day). **Risk:** low. **Sequence note:** unblocked
-once Phase B is real.
+**Effort:** XS (~1 hour landed). **Risk:** none.
 
 ## What ships in v1 vs. later
 

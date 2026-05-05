@@ -44,6 +44,9 @@ internal object Groups {
   val Images = GroupRef(R.string.settings_group_images)
   val Playback = GroupRef(R.string.settings_group_playback)
   val VolumeNormalization = GroupRef(R.string.settings_group_volume_normalization)
+  /** album-art Phase E — gathers the Phase B + D toggles into one
+   *  "Album art sources" group on the Content sub-page. */
+  val AlbumArtSources = GroupRef(R.string.settings_group_album_art_sources)
 }
 
 /**
@@ -154,6 +157,7 @@ object SettingsCatalog {
   const val ID_HIDE_COLLABORATORS = "content.hide_collaborators"
   const val ID_ALBUM_COVERS = "content.album_covers"
   const val ID_AUTO_DISCOVER_ALBUM_ART = "content.auto_discover_album_art"
+  const val ID_SCAN_FOLDERS_FOR_COVER_ART = "content.scan_folders_for_cover_art"
   const val ID_FORCE_SQUARE_COVERS = "content.force_square_covers"
 
   const val ID_PAUSE_ON_REPEAT = "audio.pause_on_repeat"

@@ -529,6 +529,42 @@ class LibraryRepository(
       )
       Log.i(TAG, "scan(delta): added/updated=${upserted.size}, removed=${removed.size}")
     }
+
+    // album-art Phase B — folder cover-art scan. Walks the SAF
+    // trees the user already granted (Music sources › FilePicker)
+    // for adjacent `cover.jpg` / `folder.jpg` / `albumart.jpg` /
+    // `front.jpg` files, then maps each scanned album's parent dir
+    // basename to the discovered cover URI. Only writes
+    // `album_covers` rows for albums where the user has NOT
+    // already pinned / cleared a choice (Phase A tri-state
+    // `NoChoice` only).
+    if (scope.useFilePicker && scope.treeUris.isNotEmpty() &&
+      scanConfig.folderCoverScanEnabled.first()
+    ) {
+      val dirToCover = com.eight87.tonearmboy.data.albumart.FolderArtScanner.walk(
+        context,
+        scope.treeUris.map { Uri.parse(it) },
+      )
+      if (dirToCover.isNotEmpty()) {
+        val perAlbumCovers = HashMap<String, String>()
+        for (t in scanned) {
+          val parentDir = java.io.File(t.data).parentFile?.name?.lowercase()?.trim()
+          if (parentDir.isNullOrBlank()) continue
+          val cover = dirToCover[parentDir] ?: continue
+          val key = albumKey(t.album, t.albumArtist ?: t.artist)
+          perAlbumCovers.putIfAbsent(key, cover)
+        }
+        val dao = db.albumCoverDao()
+        for ((key, cover) in perAlbumCovers) {
+          val existing = dao.row(key).first()
+          if (existing == null) {
+            dao.upsert(
+              com.eight87.tonearmboy.data.db.AlbumCoverEntity(key, cover),
+            )
+          }
+        }
+      }
+    }
   }
 
   fun shutdown() {

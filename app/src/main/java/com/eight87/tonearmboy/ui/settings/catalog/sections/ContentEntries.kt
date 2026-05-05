@@ -3,6 +3,7 @@ package com.eight87.tonearmboy.ui.settings.catalog.sections
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CropSquare
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.Photo
@@ -77,6 +78,25 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     destination = SettingsContent,
     breadcrumb = listOf(SECTION_CONTENT, "Music", "Hide collaborators"),
   ),
+  // album-art Phase E — "Album art sources" group, between the
+  // Music group and the Images group. Each provider gets its own
+  // toggle; embedded MediaStore art is implicit (always on) so
+  // there's no row for it. Order: folder scan first (closest to
+  // the user's library), MusicBrainz second (network).
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_SCAN_FOLDERS_FOR_COVER_ART,
+    label = "Scan folders for cover art",
+    subtitle = "Pick up cover.jpg / folder.jpg / albumart.jpg files next to album folders during library scan. FilePicker mode only.",
+    labelRes = R.string.settings_content_scan_folders_for_cover_art_label,
+    subtitleRes = R.string.settings_content_scan_folders_for_cover_art_subtitle,
+    keywords = listOf("cover", "folder", "scan", "art", "embed", "local"),
+    icon = Icons.Outlined.FolderOpen,
+    section = Section.Content,
+    group = Groups.AlbumArtSources,
+    kind = RowKind.Toggle,
+    destination = SettingsContent,
+    breadcrumb = listOf(SECTION_CONTENT, "Album art sources", "Scan folders for cover art"),
+  ),
   // album-art Phase D — re-introduced as a real toggle. Now backed
   // by AlbumArtBulkWorker + MusicBrainzClient. Default OFF (privacy:
   // enabling sends artist + album text to a third-party service).
@@ -89,10 +109,10 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     keywords = listOf("cover", "art", "musicbrainz", "fetch", "download"),
     icon = Icons.Outlined.CloudDownload,
     section = Section.Content,
-    group = Groups.Images,
+    group = Groups.AlbumArtSources,
     kind = RowKind.Toggle,
     destination = SettingsContent,
-    breadcrumb = listOf(SECTION_CONTENT, "Images", "Auto-discover missing album art"),
+    breadcrumb = listOf(SECTION_CONTENT, "Album art sources", "Auto-discover missing album art"),
   ),
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_ALBUM_COVERS,

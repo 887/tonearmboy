@@ -56,6 +56,8 @@ interface LibrarySettings {
   val multiValueSeparators: Setting<Set<MultiValueSeparator>>
   /** album-art Phase D — toggle the MusicBrainz auto-fetch worker. */
   val autoDiscoverAlbumArt: Setting<Boolean>
+  /** album-art Phase B — toggle the SAF folder cover-art scanner. */
+  val scanFoldersForCoverArt: Setting<Boolean>
 }
 
 /**

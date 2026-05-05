@@ -466,6 +466,9 @@ fun SettingsContentScreen(
   val autoDiscoverAlbumArt by library.autoDiscoverAlbumArt.flow.collectAsState(
     initial = false,
   )
+  val scanFoldersForCoverArt by library.scanFoldersForCoverArt.flow.collectAsState(
+    initial = true,
+  )
   val scope = rememberCoroutineScope()
   // R.F.17 — picker state controllers (Settings-F5).
   val albumCoversPicker = rememberSettingPickerState()
@@ -498,6 +501,13 @@ fun SettingsContentScreen(
       id = SettingsCatalog.ID_HIDE_COLLABORATORS,
       checked = hideCollaborators,
       onCheckedChange = { scope.launch { library.hideCollaborators.set(it) } },
+    ),
+    // album-art Phase B — folder cover-art scanner. Pure DataStore
+    // toggle; the next library rescan honours the value.
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_SCAN_FOLDERS_FOR_COVER_ART,
+      checked = scanFoldersForCoverArt,
+      onCheckedChange = { scope.launch { library.scanFoldersForCoverArt.set(it) } },
     ),
     // album-art Phase D — toggle the MusicBrainz auto-fetch worker.
     // Enabling enqueues a one-shot bulk pass (rate-limited 1 req/sec

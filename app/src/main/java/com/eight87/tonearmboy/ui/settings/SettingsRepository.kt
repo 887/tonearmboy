@@ -388,6 +388,9 @@ class SettingsRepository(private val context: Context) :
       )
     }
 
+  override val folderCoverScanEnabled: kotlinx.coroutines.flow.Flow<Boolean>
+    get() = scanFoldersForCoverArt.flow
+
 
   private val store: DataStore<Preferences> = context.tonearmboyDataStore
 
@@ -427,6 +430,11 @@ class SettingsRepository(private val context: Context) :
   // text to a third-party service).
   override val autoDiscoverAlbumArt: Setting<Boolean> = booleanSetting(
     store, KEY_AUTO_DISCOVER_ALBUM_ART, false,
+  )
+  // album-art Phase B — folder cover-art scanner. Default ON since
+  // it only walks SAF trees the user already granted access to.
+  override val scanFoldersForCoverArt: Setting<Boolean> = booleanSetting(
+    store, KEY_SCAN_FOLDERS_FOR_COVER_ART, true,
   )
   override val customBarAction: Setting<CustomBarAction> = EnumSetting(
     store, KEY_CUSTOM_BAR_ACTION, CustomBarAction.Companion::fromStored,
@@ -631,6 +639,7 @@ class SettingsRepository(private val context: Context) :
     internal val KEY_CUSTOM_NOTIFICATION_ACTION = stringPreferencesKey("custom_notification_action")
     internal val KEY_PAUSE_ON_REPEAT = booleanPreferencesKey("pause_on_repeat")
     internal val KEY_AUTO_DISCOVER_ALBUM_ART = booleanPreferencesKey("auto_discover_album_art")
+    internal val KEY_SCAN_FOLDERS_FOR_COVER_ART = booleanPreferencesKey("scan_folders_for_cover_art")
     internal val KEY_PLAY_FROM_LIBRARY = stringPreferencesKey("play_from_library")
     internal val KEY_PLAY_FROM_ITEM_DETAILS = stringPreferencesKey("play_from_item_details")
     internal val KEY_HIDE_COLLABORATORS = booleanPreferencesKey("hide_collaborators")

@@ -53,5 +53,6 @@
   <string name="settings_group_images">Bilder</string>
   <string name="settings_group_playback">Wiedergabe</string>
   <string name="settings_group_volume_normalization">Lautstärke-Normalisierung</string>
+  <string name="settings_group_album_art_sources">Albumcover-Quellen</string>
 
 </resources>
