@@ -18,13 +18,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,8 +84,25 @@ fun FastScrollbar(
   }
   if (totalItems == 0 || !canScroll) return
 
+  // Cache per-index measured size. The avg-of-currently-visible math
+  // oscillates wildly on merged surfaces where one item dwarfs the
+  // others (the now-playing card + transport + queue case): when only
+  // the queue item is visible the average snaps up to the queue's
+  // height, then back down when the cover re-enters viewport. Caching
+  // each item's size on first measurement and using the cumulative
+  // offset keeps the thumb position stable.
+  val sizesByIndex = remember { mutableStateMapOf<Int, Int>() }
+  LaunchedEffect(state) {
+    snapshotFlow { state.layoutInfo.visibleItemsInfo }.collect { visible ->
+      visible.forEach { sizesByIndex[it.index] = it.size }
+    }
+  }
+
   val firstIndex by remember { derivedStateOf { state.firstVisibleItemIndex } }
   val firstOffset by remember { derivedStateOf { state.firstVisibleItemScrollOffset } }
+  val viewportPx by remember {
+    derivedStateOf { state.layoutInfo.viewportSize.height.toFloat() }
+  }
   val avgItemSizePx by remember {
     derivedStateOf {
       val items = state.layoutInfo.visibleItemsInfo
@@ -96,6 +116,8 @@ fun FastScrollbar(
     firstIndex = firstIndex,
     firstOffsetPx = firstOffset.toFloat(),
     avgItemSizePx = avgItemSizePx,
+    sizesByIndex = sizesByIndex,
+    explicitViewportPx = viewportPx,
     thumbWidth = thumbWidth,
     thumbMinHeight = thumbMinHeight,
     thumbColor = thumbColor,
@@ -169,6 +191,8 @@ private fun ScrollbarThumb(
   firstIndex: Int,
   firstOffsetPx: Float,
   avgItemSizePx: Float,
+  sizesByIndex: Map<Int, Int> = emptyMap(),
+  explicitViewportPx: Float? = null,
   thumbWidth: Dp,
   thumbMinHeight: Dp,
   thumbColor: Color,
@@ -193,15 +217,23 @@ private fun ScrollbarThumb(
   ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val trackHeightPx = with(density) { maxHeight.toPx() }
-    val totalContentPx = avgItemSizePx * totalItems
-    val viewportPx = trackHeightPx
+    // Stable cumulative-size math: items we've measured contribute
+    // their actual height; items we haven't yet seen estimate via the
+    // current avg. Both totalContentPx and currentScroll use the same
+    // table so they stay coherent as items enter/leave the viewport.
+    val itemSizeOf: (Int) -> Float = { idx ->
+      sizesByIndex[idx]?.toFloat() ?: avgItemSizePx
+    }
+    val totalContentPx = (0 until totalItems).sumOf { itemSizeOf(it).toDouble() }.toFloat()
+    val viewportPx = (explicitViewportPx ?: trackHeightPx).coerceAtLeast(1f)
     val maxScrollPx = (totalContentPx - viewportPx).coerceAtLeast(1f)
-    val thumbHeightPx = (viewportPx / totalContentPx * trackHeightPx)
+    val thumbHeightPx = (viewportPx / totalContentPx.coerceAtLeast(1f) * trackHeightPx)
       .coerceAtLeast(with(density) { thumbMinHeight.toPx() })
     val maxThumbTopPx = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
 
     val derivedTopPx = run {
-      val currentScroll = firstIndex * avgItemSizePx + firstOffsetPx
+      val priorPx = (0 until firstIndex).sumOf { itemSizeOf(it).toDouble() }.toFloat()
+      val currentScroll = priorPx + firstOffsetPx
       (currentScroll / maxScrollPx).coerceIn(0f, 1f) * maxThumbTopPx
     }
     val thumbTopPx = dragTopPxOverride ?: derivedTopPx

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -88,6 +89,12 @@ fun TonearmboyApp(
   val sheetProgress = remember { Animatable(0f) }
   val coroutineScope = rememberCoroutineScope()
 
+  // Hoisted so the sheet's NestedScrollConnection can pre-empt drag-
+  // down (close-sheet) only when the queue is already at its top.
+  // Otherwise the queue scrolls normally without the sheet stealing
+  // events.
+  val nowPlayingListState = rememberLazyListState()
+
   // R.E.6 — settings → playback mirrors.
   PlaybackSettingsBridge(playback, playback, graph.settingsRepository)
 
@@ -159,9 +166,18 @@ fun TonearmboyApp(
       val nowPlayingAlpha = (max(progress - 0.5f, 0f) * 2f).coerceIn(0f, 1f)
 
       // Drag-delta forwarder. delta < 0 = user dragged up = sheet rises.
+      // The drag-start progress is captured on the first delta of each
+      // gesture so [onSheetDragSettle] can snap based on movement
+      // *direction* (Auxio-style flick commit) rather than absolute
+      // position — a small upward drag from peek (e.g. progress=0.15)
+      // is decisively "wants to open" and should commit to 1.0, not
+      // snap back to 0.0 just because absolute progress < 0.5.
+      val dragStartProgress = remember { mutableStateOf<Float?>(null) }
       val onSheetDragDelta: (Float) -> Unit = { delta ->
         coroutineScope.launch {
-          // Travel = screenHeight - peek so progress=1 means sheet covers screen.
+          if (dragStartProgress.value == null) {
+            dragStartProgress.value = sheetProgress.value
+          }
           val travel = (screenHeightPx - effectivePeekPx).coerceAtLeast(1f)
           val next = (sheetProgress.value - delta / travel).coerceIn(0f, 1f)
           sheetProgress.snapTo(next)
@@ -169,7 +185,18 @@ fun TonearmboyApp(
       }
       val onSheetDragSettle: () -> Unit = {
         coroutineScope.launch {
-          sheetProgress.animateTo(if (sheetProgress.value >= 0.5f) 1f else 0f)
+          val start = dragStartProgress.value ?: 0f
+          val end = sheetProgress.value
+          val moved = end - start
+          val flickThreshold = 0.05f  // 5% of sheet travel = decisive flick
+          val target = when {
+            moved > flickThreshold -> 1f       // upward flick → open
+            moved < -flickThreshold -> 0f      // downward flick → close
+            // No meaningful movement (tap-like) — fall back to position.
+            else -> if (end >= 0.5f) 1f else 0f
+          }
+          sheetProgress.animateTo(target)
+          dragStartProgress.value = null
         }
       }
 
@@ -243,17 +270,43 @@ fun TonearmboyApp(
         val sheetHeightPx = effectivePeekPx + progress * (screenHeightPx - effectivePeekPx)
         val sheetHeightDp = with(density) { sheetHeightPx.toDp() }
 
-        // NestedScrollConnection: queue overscroll-down at the top
-        // drains into sheet progress (Auxio's "pull-down to collapse"
-        // when expanded).
+        // NestedScrollConnection: queue overscroll drains / refills
+        // sheet progress (Auxio "pull-down to collapse" / "pull-up to
+        // re-expand" when the sheet is partially closed). At fling,
+        // commit based on the *direction* of the last drag delta —
+        // any meaningful drag toward open commits to 1, any toward
+        // close commits to 0. Position-based fallback only when no
+        // drag happened during the gesture.
+        val nestedDragDirection = remember { mutableStateOf(0) }
         val sheetNestedScroll = remember(screenHeightPx, effectivePeekPx) {
           object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+              // Drag-up: if sheet partially open, finish opening first.
               if (available.y < 0f && sheetProgress.value < 1f) {
                 val travel = (screenHeightPx - effectivePeekPx).coerceAtLeast(1f)
                 val delta = -available.y / travel
+                nestedDragDirection.value = -1
                 coroutineScope.launch {
                   sheetProgress.snapTo((sheetProgress.value + delta).coerceAtMost(1f))
+                }
+                return Offset(0f, available.y)
+              }
+              // Drag-down: if the queue is already at its top
+              // (firstVisibleItemIndex/Offset both 0), pre-empt the
+              // drag here so it drains the sheet *before* the
+              // LazyColumn's overscroll effect eats it. Otherwise the
+              // LazyColumn consumes it for bounce-animation and onPost
+              // never sees the leftover, so the user can't close the
+              // sheet by dragging down on the cover/transport area.
+              if (available.y > 0f &&
+                nowPlayingListState.firstVisibleItemIndex == 0 &&
+                nowPlayingListState.firstVisibleItemScrollOffset == 0
+              ) {
+                val travel = (screenHeightPx - effectivePeekPx).coerceAtLeast(1f)
+                val delta = available.y / travel
+                nestedDragDirection.value = 1
+                coroutineScope.launch {
+                  sheetProgress.snapTo((sheetProgress.value - delta).coerceAtLeast(0f))
                 }
                 return Offset(0f, available.y)
               }
@@ -264,9 +317,10 @@ fun TonearmboyApp(
               available: Offset,
               source: NestedScrollSource,
             ): Offset {
-              if (available.y > 0f && source == NestedScrollSource.UserInput) {
+              if (available.y > 0f) {
                 val travel = (screenHeightPx - effectivePeekPx).coerceAtLeast(1f)
                 val delta = available.y / travel
+                nestedDragDirection.value = 1
                 coroutineScope.launch {
                   sheetProgress.snapTo((sheetProgress.value - delta).coerceAtLeast(0f))
                 }
@@ -275,7 +329,14 @@ fun TonearmboyApp(
               return Offset.Zero
             }
             override suspend fun onPreFling(available: Velocity): Velocity {
-              sheetProgress.animateTo(if (sheetProgress.value >= 0.5f) 1f else 0f)
+              val dir = nestedDragDirection.value
+              val target = when {
+                dir > 0 -> 0f                                          // was closing
+                dir < 0 -> 1f                                          // was opening
+                else -> if (sheetProgress.value >= 0.5f) 1f else 0f    // no drag this gesture
+              }
+              sheetProgress.animateTo(target)
+              nestedDragDirection.value = 0
               return Velocity.Zero
             }
           }
@@ -316,6 +377,7 @@ fun TonearmboyApp(
                   val trackIds = mediaIds.mapNotNull { it.toLongOrNull() }
                   scope.addToPlaylist.requestBulk(trackIds)
                 },
+                nowPlayingListState = nowPlayingListState,
               )
             }
 

@@ -115,10 +115,18 @@ fun NowPlayingScreen(
   onBack: () -> Unit,
   albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
   onSaveQueueAsPlaylist: ((mediaIds: List<String>) -> Unit)? = null,
+  /** G+ — caller-provided listState so the app-root sheet handler can
+   *  query whether the queue is at its top before deciding whether to
+   *  pre-empt drag-down for sheet collapse. */
+  nowPlayingListState: LazyListState? = null,
 ) {
   val state by nowPlayingState.state.collectAsStateWithLifecycle()
   val queueSnapshot by nowPlayingState.queue.collectAsStateWithLifecycle()
-  val listState = rememberLazyListState()
+  // Always call `rememberLazyListState()` so its slot table position
+  // stays stable across recompositions. Use the hoisted state when
+  // provided; otherwise fall back to the local one.
+  val fallbackListState = rememberLazyListState()
+  val listState = nowPlayingListState ?: fallbackListState
 
   Scaffold(
     topBar = {
