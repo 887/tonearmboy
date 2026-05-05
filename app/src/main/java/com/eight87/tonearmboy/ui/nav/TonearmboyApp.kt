@@ -5,6 +5,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -342,6 +345,16 @@ fun TonearmboyApp(
           }
         }
 
+        // Parent-level drag handler. Catches drags on areas NOT
+        // claimed by descendants (TopAppBar, cover/title gaps,
+        // transport-row spacing). Children with their own drag/scroll
+        // (LazyColumn, slider) consume their drags first; this fires
+        // only on the leftover. Combined with the NestedScroll on the
+        // same box, drags everywhere on the sheet end up driving
+        // sheetProgress one way or another.
+        val sheetDraggable = rememberDraggableState { delta ->
+          onSheetDragDelta(delta)
+        }
         Box(
           modifier = Modifier
             .align(Alignment.BottomCenter)
@@ -349,7 +362,12 @@ fun TonearmboyApp(
             .height(sheetHeightDp)
             .background(MaterialTheme.colorScheme.surface)
             .clipToBounds()
-            .nestedScroll(sheetNestedScroll),
+            .nestedScroll(sheetNestedScroll)
+            .draggable(
+              state = sheetDraggable,
+              orientation = Orientation.Vertical,
+              onDragStopped = { onSheetDragSettle() },
+            ),
         ) {
           // Inner stack: anchored to the TOP of the sheet, fixed at full
           // screen height so the layout doesn't reflow as the sheet grows.
