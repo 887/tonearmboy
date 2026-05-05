@@ -13,7 +13,7 @@
   <!-- Settings search overlay (ui/settings/catalog/SettingsSearchScreen.kt) -->
   <string name="settings_search_placeholder">Search settings</string>
   <string name="settings_search_empty_hint">Start typing to search every setting.</string>
-  <string name="settings_search_no_matches">No settings match \"%1$s\".</string>
+  <!-- settings_search_no_matches is owned by strings_settings.xml. -->
   <string name="settings_search_cd_search">Search settings</string>
   <string name="settings_search_cd_back">Back</string>
   <string name="settings_search_cd_clear">Clear</string>

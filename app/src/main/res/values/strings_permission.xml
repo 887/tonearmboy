@@ -35,8 +35,8 @@
   <string name="library_delete_dialog_title_multi">Delete %1$d tracks?</string>
   <string name="library_delete_dialog_body_single">This will permanently delete the file from your device.</string>
   <string name="library_delete_dialog_body_multi">This will permanently delete %1$d files from your device.</string>
-  <string name="library_delete_dialog_confirm">Delete</string>
-  <string name="library_delete_dialog_cancel">Cancel</string>
+  <!-- library_delete_dialog_confirm / library_delete_dialog_cancel
+       are owned by strings_library.xml (DeleteFlow.kt's surface). -->
   <!-- Outcome snackbars. -->
   <string name="library_delete_snackbar_cancelled">Deletion cancelled.</string>
   <string name="library_delete_snackbar_done_single">Deleted %1$s</string>
