@@ -6,6 +6,14 @@
   <string name="playing_top_bar_title">Now Playing</string>
   <string name="playing_cd_back">Back</string>
   <string name="playing_cd_save_queue_as_playlist">Save queue as playlist</string>
+  <string name="playing_cd_delete_current">Delete current track</string>
+
+  <!-- Typed-confirm delete dialog (G+). -->
+  <string name="playing_delete_confirm_title">Delete this track?</string>
+  <string name="playing_delete_confirm_message">"%1$s" will be deleted from your device. This can\'t be undone.</string>
+  <string name="playing_delete_confirm_hint">Type "y" or "yes" to confirm. Anything else cancels.</string>
+  <string name="playing_delete_confirm_button">Delete</string>
+  <string name="playing_delete_confirm_cancel">Cancel</string>
 
   <!-- NowPlaying card body. -->
   <string name="playing_no_track">No track</string>

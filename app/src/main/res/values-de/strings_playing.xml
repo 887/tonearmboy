@@ -6,6 +6,14 @@
   <string name="playing_top_bar_title">Wird wiedergegeben</string>
   <string name="playing_cd_back">Zurück</string>
   <string name="playing_cd_save_queue_as_playlist">Warteschlange als Playlist speichern</string>
+  <string name="playing_cd_delete_current">Aktuellen Titel löschen</string>
+
+  <!-- Typed-confirm delete dialog (G+). -->
+  <string name="playing_delete_confirm_title">Diesen Titel löschen?</string>
+  <string name="playing_delete_confirm_message">„%1$s“ wird vom Gerät gelöscht. Das lässt sich nicht rückgängig machen.</string>
+  <string name="playing_delete_confirm_hint">Tippe „y“ oder „yes“ zur Bestätigung. Alles andere bricht ab.</string>
+  <string name="playing_delete_confirm_button">Löschen</string>
+  <string name="playing_delete_confirm_cancel">Abbrechen</string>
 
   <!-- NowPlaying card body. -->
   <string name="playing_no_track">Kein Titel</string>

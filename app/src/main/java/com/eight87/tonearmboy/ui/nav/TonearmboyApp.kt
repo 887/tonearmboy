@@ -397,6 +397,24 @@ fun TonearmboyApp(
                   val trackIds = mediaIds.mapNotNull { it.toLongOrNull() }
                   scope.addToPlaylist.requestBulk(trackIds)
                 },
+                onDeleteCurrentTrack = {
+                  // G+ — pocket-tap-proof typed-confirm delete. The
+                  // dialog gates the actual filesystem delete; we only
+                  // hit this lambda after the user has typed "y/yes"
+                  // and tapped the confirm button. Resolve the active
+                  // queue mediaId to a Track and reuse the existing
+                  // library delete flow (SAF consent + cache invalidation).
+                  val q = playback.queue.value
+                  val activeMediaId = q.items
+                    .getOrNull(q.currentIndex)
+                    ?.mediaId
+                    ?.toLongOrNull()
+                    ?: return@NowPlayingScreen
+                  scope.applicationScope.launch {
+                    val track = graph.tracks.trackById(activeMediaId) ?: return@launch
+                    scope.onDeleteTracks(listOf(track))
+                  }
+                },
                 nowPlayingListState = nowPlayingListState,
               )
             }

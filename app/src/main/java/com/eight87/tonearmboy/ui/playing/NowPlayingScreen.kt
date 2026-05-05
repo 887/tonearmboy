@@ -5,12 +5,15 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.lazy.LazyColumn
@@ -115,6 +118,15 @@ fun NowPlayingScreen(
   onBack: () -> Unit,
   albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
   onSaveQueueAsPlaylist: ((mediaIds: List<String>) -> Unit)? = null,
+  /**
+   * G+ — typed-confirm delete. Fires when the user taps the trash
+   * icon AND types "y" / "yes" in the confirm dialog. Caller is
+   * responsible for translating the active mediaId into the Track
+   * row + dispatching through the existing `onDeleteTracks` flow
+   * (which handles the SAF consent + cache invalidation). Null
+   * disables the button entirely.
+   */
+  onDeleteCurrentTrack: (() -> Unit)? = null,
   /** G+ — caller-provided listState so the app-root sheet handler can
    *  query whether the queue is at its top before deciding whether to
    *  pre-empt drag-down for sheet collapse. */
@@ -127,6 +139,8 @@ fun NowPlayingScreen(
   // provided; otherwise fall back to the local one.
   val fallbackListState = rememberLazyListState()
   val listState = nowPlayingListState ?: fallbackListState
+  // G+ — typed-confirm delete dialog state.
+  var showDeleteConfirm by remember { mutableStateOf(false) }
 
   Scaffold(
     topBar = {
@@ -141,6 +155,22 @@ fun NowPlayingScreen(
           }
         },
         actions = {
+          // G+ — Delete current track. To the LEFT of the save-queue
+          // button. Opens a typed-confirm dialog ("y/yes" or "n/no")
+          // so a pocket-tap can't trigger a delete. The actual SAF
+          // consent + filesystem delete happens via the same
+          // `onDeleteTracks` flow the library uses.
+          if (onDeleteCurrentTrack != null && state.hasMedia) {
+            IconButton(
+              onClick = { showDeleteConfirm = true },
+              modifier = Modifier.semantics { testTag = "now_playing_delete" },
+            ) {
+              Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.playing_cd_delete_current),
+              )
+            }
+          }
           // D.29.1 — replaces D.24.2's scroll-to-queue affordance.
           // The queue lives inline (D.24.2) so a "scroll to queue"
           // button is redundant — a swipe gets the user there. Repurpose
@@ -207,6 +237,77 @@ fun NowPlayingScreen(
       }
     }
   }
+
+  // G+ — typed-confirm delete dialog. The user has to type "y" / "yes"
+  // (case-insensitive) into the field before the Delete button enables;
+  // typing "n" / "no" or anything else keeps it disabled and the user
+  // can dismiss with Cancel or back. Pocket-tap-proof: a single tap on
+  // the trash icon opens this dialog, but no accidental sequence of
+  // taps can complete the delete.
+  if (showDeleteConfirm) {
+    TypedConfirmDialog(
+      title = stringResource(R.string.playing_delete_confirm_title),
+      message = stringResource(R.string.playing_delete_confirm_message, state.title.ifEmpty { "" }),
+      onConfirm = {
+        showDeleteConfirm = false
+        onDeleteCurrentTrack?.invoke()
+      },
+      onDismiss = { showDeleteConfirm = false },
+    )
+  }
+}
+
+/**
+ * G+ — pocket-tap-proof confirm. Dialog with a TextField where the
+ * user has to type one of `y / yes` (case-insensitive) to enable the
+ * Confirm button. `n / no` (or anything else) leaves it disabled.
+ */
+@Composable
+private fun TypedConfirmDialog(
+  title: String,
+  message: String,
+  onConfirm: () -> Unit,
+  onDismiss: () -> Unit,
+) {
+  var typed by remember { mutableStateOf("") }
+  val confirmable = typed.trim().lowercase() in setOf("y", "yes")
+  androidx.compose.material3.AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(title) },
+    text = {
+      Column {
+        Text(message)
+        Spacer(Modifier.height(12.dp))
+        Text(
+          text = stringResource(R.string.playing_delete_confirm_hint),
+          style = MaterialTheme.typography.bodySmall,
+        )
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.material3.OutlinedTextField(
+          value = typed,
+          onValueChange = { typed = it },
+          singleLine = true,
+          modifier = Modifier
+            .fillMaxWidth()
+            .semantics { testTag = "delete_confirm_input" },
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = onConfirm,
+        enabled = confirmable,
+        modifier = Modifier.semantics { testTag = "delete_confirm_yes" },
+      ) {
+        Text(stringResource(R.string.playing_delete_confirm_button))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.playing_delete_confirm_cancel))
+      }
+    },
+  )
 }
 
 /**
