@@ -44,7 +44,6 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES,
       SettingsCatalog.ID_LIBRARY_REFRESH,
       SettingsCatalog.ID_LIBRARY_RESCAN,
-      SettingsCatalog.ID_LIBRARY_REFRESH_ALBUM_ART,
       // D.16.4 — About sub-page entry.
       SettingsCatalog.ID_ABOUT,
       // Look and Feel.
@@ -66,6 +65,8 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_HIDE_COLLABORATORS,
       SettingsCatalog.ID_SCAN_FOLDERS_FOR_COVER_ART,
       SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
+      SettingsCatalog.ID_FILL_MISSING_COVERS,
+      SettingsCatalog.ID_REFRESH_ALBUM_ART,
       SettingsCatalog.ID_ALBUM_COVERS,
       SettingsCatalog.ID_FORCE_SQUARE_COVERS,
       // Audio.

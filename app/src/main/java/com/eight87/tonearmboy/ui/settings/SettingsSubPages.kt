@@ -442,6 +442,8 @@ fun SettingsContentScreen(
   onBack: () -> Unit,
   onComingSoon: (String) -> Unit,
   snackbarHostState: SnackbarHostState,
+  // album-art — drop Coil's caches; bound to the Refresh album art row.
+  onRefreshAlbumArt: () -> Unit = {},
   // R.E.7 — injectable side-effect launchers (Settings-F6).
   autoReload: AutoReloadController = DefaultAutoReloadController,
 ) {
@@ -539,6 +541,32 @@ fun SettingsContentScreen(
           )
         }
       },
+    ),
+    // album-art — explicit one-shot fill action (separate from the
+    // toggle so the user can re-run the worker without round-tripping
+    // through "off → on" on the toggle).
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_FILL_MISSING_COVERS,
+      onClick = {
+        val req = androidx.work.OneTimeWorkRequestBuilder<
+          com.eight87.tonearmboy.data.albumart.AlbumArtBulkWorker
+        >()
+          .setConstraints(
+            androidx.work.Constraints.Builder()
+              .setRequiredNetworkType(androidx.work.NetworkType.UNMETERED)
+              .build(),
+          )
+          .build()
+        androidx.work.WorkManager.getInstance(context).enqueueUniqueWork(
+          com.eight87.tonearmboy.data.albumart.AlbumArtBulkWorker.UNIQUE_WORK_NAME,
+          androidx.work.ExistingWorkPolicy.REPLACE,
+          req,
+        )
+      },
+    ),
+    SettingsRowBinding.Action(
+      id = SettingsCatalog.ID_REFRESH_ALBUM_ART,
+      onClick = onRefreshAlbumArt,
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_ALBUM_COVERS,

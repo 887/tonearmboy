@@ -47,7 +47,6 @@ fun SettingsRootDest.Register(scope: RouteScope) {
       onMusicSources = onShowMusicSourcesDialog,
       onRefreshMusic = onRefreshMusic,
       onRescanMusic = onRescanMusic,
-      onRefreshAlbumArt = onRefreshAlbumArt,
       onExportPlaylists = playlistBackup.onExport,
       onImportPlaylists = playlistBackup.onImport,
       onAbout = { backStack.push(SettingsAbout) },
@@ -142,6 +141,7 @@ fun SettingsContent.Register(scope: RouteScope) {
       onBack = { backStack.pop() },
       onComingSoon = onComingSoon,
       snackbarHostState = snackbar,
+      onRefreshAlbumArt = onRefreshAlbumArt,
     )
   }
 }

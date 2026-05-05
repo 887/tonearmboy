@@ -3,7 +3,9 @@ package com.eight87.tonearmboy.ui.settings.catalog.sections
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CropSquare
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.Photo
@@ -113,6 +115,40 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     kind = RowKind.Toggle,
     destination = SettingsContent,
     breadcrumb = listOf(SECTION_CONTENT, "Album art sources", "Auto-discover missing album art"),
+  ),
+  // album-art — one-shot "fill missing covers now" action. The
+  // Auto-discover toggle persists a preference; this action is
+  // explicit "do it once" — same backend worker, but enqueued
+  // regardless of the toggle's state. Useful when the user adds
+  // new music after a previous bulk pass already finished.
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_FILL_MISSING_COVERS,
+    label = "Fill in missing covers now",
+    subtitle = "Run a one-shot MusicBrainz lookup for every album currently missing art.",
+    labelRes = R.string.settings_content_fill_missing_covers_label,
+    subtitleRes = R.string.settings_content_fill_missing_covers_subtitle,
+    keywords = listOf("cover", "fill", "now", "fetch", "musicbrainz"),
+    icon = Icons.Outlined.Download,
+    section = Section.Content,
+    group = Groups.AlbumArtSources,
+    kind = RowKind.Action,
+    destination = SettingsContent,
+    breadcrumb = listOf(SECTION_CONTENT, "Album art sources", "Fill in missing covers now"),
+  ),
+  // album-art — Refresh album art moved here from Settings root.
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_REFRESH_ALBUM_ART,
+    label = "Refresh album art",
+    subtitle = "Reload covers from disk. Use this after replacing cover files.",
+    labelRes = R.string.settings_root_refresh_album_art_label,
+    subtitleRes = R.string.settings_root_refresh_album_art_subtitle,
+    keywords = listOf("cover", "art", "reload", "refresh", "album"),
+    icon = Icons.Outlined.Refresh,
+    section = Section.Content,
+    group = Groups.AlbumArtSources,
+    kind = RowKind.Action,
+    destination = SettingsContent,
+    breadcrumb = listOf(SECTION_CONTENT, "Album art sources", "Refresh album art"),
   ),
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_ALBUM_COVERS,

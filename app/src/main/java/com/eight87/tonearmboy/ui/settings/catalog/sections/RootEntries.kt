@@ -132,25 +132,8 @@ internal val RootEntries: List<SettingsCatalogEntry> = listOf(
     destination = SettingsRootDest,
     breadcrumb = listOf(SECTION_SETTINGS, "Library", "Rescan music"),
   ),
-  // album-art Phase C — refresh album art only. Drops Coil's caches
-  // so the next CoverArt render re-reads from MediaStore (or the
-  // user's pinned override URI). Useful when the user has dropped
-  // new `cover.jpg` files or replaced embedded art and wants the
-  // change to land without a full library rescan.
-  SettingsCatalogEntry(
-    id = SettingsCatalog.ID_LIBRARY_REFRESH_ALBUM_ART,
-    label = "Refresh album art",
-    subtitle = "Reload covers from disk. Use this after replacing cover files.",
-    labelRes = R.string.settings_root_refresh_album_art_label,
-    subtitleRes = R.string.settings_root_refresh_album_art_subtitle,
-    keywords = listOf("cover", "art", "reload", "refresh", "album"),
-    icon = Icons.Outlined.Image,
-    section = Section.Root,
-    group = Groups.Library,
-    kind = RowKind.Action,
-    destination = SettingsRootDest,
-    breadcrumb = listOf(SECTION_SETTINGS, "Library", "Refresh album art"),
-  ),
+  // album-art — Refresh album art moved to Settings › Content ›
+  // Album art sources (with the toggles + the new fill-now action).
   // Phase H.5 — playlist backup actions. JSON envelope written via SAF;
   // tracks identified by (title, artist, album) so the file round-trips
   // across devices and re-scans.

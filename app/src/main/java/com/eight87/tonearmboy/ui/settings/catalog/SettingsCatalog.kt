@@ -138,7 +138,6 @@ object SettingsCatalog {
   const val ID_LIBRARY_MUSIC_SOURCES = "library.music_sources"
   const val ID_LIBRARY_REFRESH = "library.refresh"
   const val ID_LIBRARY_RESCAN = "library.rescan"
-  const val ID_LIBRARY_REFRESH_ALBUM_ART = "library.refresh_album_art"
   const val ID_ABOUT = "about"
 
   const val ID_THEME = "look_and_feel.theme"
@@ -158,6 +157,8 @@ object SettingsCatalog {
   const val ID_ALBUM_COVERS = "content.album_covers"
   const val ID_AUTO_DISCOVER_ALBUM_ART = "content.auto_discover_album_art"
   const val ID_SCAN_FOLDERS_FOR_COVER_ART = "content.scan_folders_for_cover_art"
+  const val ID_FILL_MISSING_COVERS = "content.fill_missing_covers"
+  const val ID_REFRESH_ALBUM_ART = "content.refresh_album_art"
   const val ID_FORCE_SQUARE_COVERS = "content.force_square_covers"
 
   const val ID_PAUSE_ON_REPEAT = "audio.pause_on_repeat"
