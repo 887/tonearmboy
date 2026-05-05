@@ -167,21 +167,11 @@ fun NowPlayingScreen(
           .padding(24.dp),
       )
       NowPlayingSubState.ConnectedWithMedia -> {
-        // G.2 (rubber-band polish) — over-scroll-down at the top of the
-        // merged surface translates the surface 1:1 with the finger
-        // (Auxio-style sheet-pull). Release past the 64-dp threshold
-        // dispatches [onBack]; below threshold animates back to rest.
-        val swipeThresholdPx = with(LocalDensity.current) { 64.dp.toPx() }
-        val overscrollPx = remember { Animatable(0f) }
-        val scrollScope = rememberCoroutineScope()
-        val pullDownConnection = remember(onBack, swipeThresholdPx) {
-          pullDownToDismissNestedScroll(
-            onDismiss = onBack,
-            thresholdPx = swipeThresholdPx,
-            offset = overscrollPx,
-            scope = scrollScope,
-          )
-        }
+        // G+ — pull-down-from-top is now handled by the app-root sheet
+        // wrapper's [NestedScrollConnection] (see TonearmboyApp), which
+        // drains queue overscroll into the same shared sheet progress
+        // that the mini-player drag drives. NowPlayingScreen no longer
+        // owns a parallel pull-down accumulator.
         NowPlayingMergedSurface(
           state = state,
           queueSnapshot = queueSnapshot,
@@ -201,8 +191,6 @@ fun NowPlayingScreen(
           modifier = Modifier
             .fillMaxSize()
             .padding(innerPadding)
-            .offset { IntOffset(0, overscrollPx.value.roundToInt()) }
-            .nestedScroll(pullDownConnection)
             .semantics { testTag = "now_playing_screen" },
         )
       }
@@ -519,48 +507,7 @@ private fun formatMillis(ms: Long): String {
  * mid-content, it consumes downward drags itself, so `available.y` in
  * `onPostScroll` is 0 and the accumulator stays at 0.
  */
-private fun pullDownToDismissNestedScroll(
-  onDismiss: () -> Unit,
-  thresholdPx: Float,
-  offset: Animatable<Float, *>,
-  scope: CoroutineScope,
-): NestedScrollConnection = object : NestedScrollConnection {
-  // Pull-resistance factor — the surface moves at half-finger-speed,
-  // matching the rubber-band feel pull-to-refresh / sheet-pull use.
-  private val resistance = 0.5f
-
-  override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-    // Drain the offset accumulator before the LazyColumn sees an
-    // upward drag — keeps the dismissal feel symmetric.
-    if (available.y < 0f && offset.value > 0f) {
-      val consumedFinger = minOf(-available.y, offset.value / resistance)
-      val consumedOffset = consumedFinger * resistance
-      scope.launch { offset.snapTo((offset.value - consumedOffset).coerceAtLeast(0f)) }
-      return Offset(0f, -consumedFinger)
-    }
-    return Offset.Zero
-  }
-
-  override fun onPostScroll(
-    consumed: Offset,
-    available: Offset,
-    source: NestedScrollSource,
-  ): Offset {
-    if (available.y > 0f && source == NestedScrollSource.UserInput) {
-      scope.launch { offset.snapTo(offset.value + available.y * resistance) }
-      return Offset(0f, available.y)
-    }
-    return Offset.Zero
-  }
-
-  override suspend fun onPreFling(available: Velocity): Velocity {
-    val pulled = offset.value
-    if (pulled > thresholdPx) {
-      onDismiss()
-      offset.snapTo(0f)
-    } else {
-      offset.animateTo(0f)
-    }
-    return Velocity.Zero
-  }
-}
+// G+ — `pullDownToDismissNestedScroll` removed. Pull-down-from-top is
+// now handled by the app-root sheet wrapper in TonearmboyApp; the
+// queue's overscroll-down feeds into the shared sheet progress so the
+// gesture is one continuous animation, not two parallel ones.

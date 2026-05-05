@@ -33,6 +33,7 @@ fun rememberRouteScope(
   backStack: TonearmboyBackStack,
   snackbar: SnackbarHostState,
   showMusicSourcesDialog: () -> Unit,
+  openNowPlayingSheet: () -> Unit,
 ): RouteScope {
   val playback = graph.playbackUiController
   val playFromLibrary by graph.settingsRepository.playFromLibrary.flow
@@ -113,6 +114,7 @@ fun rememberRouteScope(
       override val onShowMusicSourcesDialog = showMusicSourcesDialog
       override val onRefreshMusic = onRefreshMusic
       override val onRescanMusic = onRescanMusic
+      override val onOpenNowPlayingSheet = openNowPlayingSheet
     }
   }
 }

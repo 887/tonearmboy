@@ -1,19 +1,12 @@
 package com.eight87.tonearmboy.ui.playing
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.offset
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -97,6 +90,19 @@ fun MiniPlayer(
   onCycleRepeat: () -> Unit = {},
   onSeekTo: (Long) -> Unit = {},
   albumCoversMode: AlbumCoversMode = AlbumCoversMode.Balanced,
+  /**
+   * G+ — sheet-drag forwarder. Each vertical drag delta on the info
+   * row arrives here as a Y-pixel offset (negative = swipe up).
+   * Default no-op keeps tests / standalone callers working without
+   * the app-level sheet plumbing.
+   */
+  onSheetDragDelta: (Float) -> Unit = {},
+  /**
+   * G+ — fired when the drag gesture ends (release or cancel). Host
+   * uses this to settle the sheet's [Animatable] to its nearest snap
+   * (0 or 1) via animateTo.
+   */
+  onSheetDragSettle: () -> Unit = {},
 ) {
   if (!state.hasMedia) return
   Column(
@@ -110,46 +116,21 @@ fun MiniPlayer(
     // handler. Tapping the play / prev / next buttons or close-X lands
     // on those inner clickables instead.
     //
-    // G.2 (rubber-band polish) — the info row translates 1:1 with the
-    // finger via [Animatable], so the surface visibly tracks the drag
-    // (Auxio-style sheet-pull). Threshold ≥ 64 dp commits — swipe up
-    // dispatches [onExpand], swipe down dispatches [onClose]; in both
-    // cases the offset snaps back to 0 after dispatch so the next
-    // re-entry starts clean. Below threshold animates back to rest.
-    // Tap-to-expand still works because detectVerticalDragGestures only
-    // fires on actual drag motion.
-    val swipeThresholdPx = with(LocalDensity.current) { 64.dp.toPx() }
-    val dragOffsetY = remember { Animatable(0f) }
-    val dragScope = rememberCoroutineScope()
+    // G+ (sheet-drag) — vertical drag deltas are forwarded directly
+    // to the host via [onSheetDragDelta] so the host's NowPlaying
+    // sheet translates / fades 1:1 with the finger. The mini-player
+    // itself stays put (Auxio-style: library + mini-player are the
+    // base layer; the sheet rises over them). Tap → onExpand still
+    // animates the sheet open programmatically.
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .offset { IntOffset(0, dragOffsetY.value.roundToInt()) }
         .clickable(onClick = onExpand)
-        .pointerInput(swipeThresholdPx) {
+        .pointerInput(Unit) {
           detectVerticalDragGestures(
-            onDragEnd = {
-              val pulled = dragOffsetY.value
-              dragScope.launch {
-                when {
-                  pulled <= -swipeThresholdPx -> {
-                    onExpand()
-                    dragOffsetY.snapTo(0f)
-                  }
-                  pulled >= swipeThresholdPx -> {
-                    onClose()
-                    dragOffsetY.snapTo(0f)
-                  }
-                  else -> dragOffsetY.animateTo(0f)
-                }
-              }
-            },
-            onDragCancel = {
-              dragScope.launch { dragOffsetY.animateTo(0f) }
-            },
-          ) { _, delta ->
-            dragScope.launch { dragOffsetY.snapTo(dragOffsetY.value + delta) }
-          }
+            onDragEnd = onSheetDragSettle,
+            onDragCancel = onSheetDragSettle,
+          ) { _, delta -> onSheetDragDelta(delta) }
         }
         .padding(horizontal = 12.dp, vertical = 6.dp)
         .semantics { testTag = "mini_player" },

@@ -71,19 +71,19 @@ fun LibraryRoot.Register(scope: RouteScope) {
           tappedIndex = index,
           strategy = playFromLibrary,
         )
-        backStack.push(NowPlaying)
+        onOpenNowPlayingSheet()
       },
       onPlaylistClick = { id -> backStack.push(PlaylistDetail(id)) },
       onOpenSearch = { backStack.push(Search) },
       // D.16.3 — top-right wheel goes straight to the Settings root.
       onOpenSettings = { backStack.push(SettingsRootDest) },
       // D.16.2 — the rail's bottom-left gear is the "tab
-      // customization" shortcut: it pushes the Personalize sub-page
-      // (which holds Library tabs) directly. We push the Settings
-      // root underneath so the user's back-stack reflects the
-      // canonical Settings → Personalize hierarchy.
+      // customization" shortcut: pushes the Personalize sub-page
+      // (which holds Library tabs) directly. Back from Personalize
+      // returns straight to the library — the user came from the
+      // library, not from Settings, so seeding Settings underneath
+      // would be a surprise on the way out (G+ user feedback).
       onOpenLibraryTabsConfig = {
-        backStack.push(SettingsRootDest)
         backStack.push(SettingsPersonalize)
       },
       onComingSoon = onComingSoon,
@@ -153,7 +153,7 @@ fun AlbumDetail.Register(scope: RouteScope) {
           tappedIndex = index,
           strategy = playFromItemDetails,
         )
-        backStack.push(NowPlaying)
+        onOpenNowPlayingSheet()
       },
       onTrackAction = { track, action ->
         handleDetailTrackAction(
@@ -186,7 +186,7 @@ fun ArtistDetail.Register(scope: RouteScope) {
           tappedIndex = index,
           strategy = playFromItemDetails,
         )
-        backStack.push(NowPlaying)
+        onOpenNowPlayingSheet()
       },
       onTrackAction = { track, action ->
         handleDetailTrackAction(
@@ -218,7 +218,7 @@ fun GenreDetail.Register(scope: RouteScope) {
           tappedIndex = index,
           strategy = playFromItemDetails,
         )
-        backStack.push(NowPlaying)
+        onOpenNowPlayingSheet()
       },
       onTrackAction = { track, action ->
         handleDetailTrackAction(
@@ -249,7 +249,7 @@ fun PlaylistDetail.Register(scope: RouteScope) {
           tappedIndex = index,
           strategy = playFromItemDetails,
         )
-        backStack.push(NowPlaying)
+        onOpenNowPlayingSheet()
       },
       onBack = { backStack.pop() },
       onAddTracks = { id -> backStack.push(PlaylistTrackPicker(id)) },

@@ -56,4 +56,11 @@ interface RouteScope {
   val onShowMusicSourcesDialog: () -> Unit
   val onRefreshMusic: () -> Unit
   val onRescanMusic: () -> Unit
+
+  /**
+   * Open the NowPlaying sheet (animate sheet progress 0 → 1). Replaces
+   * the pre-G+ pattern of `backStack.push(NowPlaying)` — NowPlaying is
+   * no longer a nav route, it's an overlay rendered above the library.
+   */
+  val onOpenNowPlayingSheet: () -> Unit
 }
