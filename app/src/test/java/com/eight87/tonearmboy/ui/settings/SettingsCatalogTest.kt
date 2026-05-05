@@ -59,7 +59,6 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_CUSTOM_NOTIFICATION_ACTION,
       SettingsCatalog.ID_PLAY_FROM_LIBRARY,
       SettingsCatalog.ID_PLAY_FROM_ITEM_DETAILS,
-      SettingsCatalog.ID_REMEMBER_SHUFFLE,
       // Content.
       SettingsCatalog.ID_AUTOMATIC_RELOADING,
       SettingsCatalog.ID_MULTI_VALUE_SEPARATORS,
@@ -153,11 +152,9 @@ class SettingsCatalogTest {
 
   @Test
   fun search_matches_by_keyword_for_picker_options() {
-    // "shuffle" is a keyword on Custom playback bar action and on
-    // Remember shuffle — both should appear.
+    // "shuffle" is a keyword on Custom playback bar action.
     val results = SettingsCatalog.search("shuffle").map { it.id }.toSet()
     assertTrue(results.contains(SettingsCatalog.ID_CUSTOM_PLAYBACK_BAR_ACTION))
-    assertTrue(results.contains(SettingsCatalog.ID_REMEMBER_SHUFFLE))
   }
 
   @Test

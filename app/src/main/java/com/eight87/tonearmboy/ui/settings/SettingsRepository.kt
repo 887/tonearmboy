@@ -16,19 +16,11 @@ import com.eight87.tonearmboy.data.settings.booleanSetting
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** A single colour-scheme choice. */
-enum class ColorScheme {
-  Dynamic,
-  Brand,
-  ;
-
-  companion object {
-    val Default: ColorScheme = Dynamic
-
-    fun fromStored(raw: String?): ColorScheme =
-      entries.firstOrNull { it.name == raw } ?: Default
-  }
-}
+// G+ — `enum class ColorScheme` removed. Subsumed by `BaseTheme`
+// (D.20.4 / D.25.1): `BaseTheme.PureBlack` covers the old "Black"
+// switch, `BaseTheme.Custom(seed)` covers the brand picker. The
+// `colorScheme` Setting<T> + `setColorScheme` / `KEY_COLOR_SCHEME`
+// were dead since that migration; nothing read them.
 
 /**
  * D.20.4 / D.25.1 — base theme picker. Originally a three-way enum
@@ -417,12 +409,6 @@ class SettingsRepository(private val context: Context) :
   override val theme: Setting<ThemePreference> = EnumSetting(
     store, ThemePreferenceStore.KEY_THEME_MODE, ThemePreference.Companion::fromStored,
   )
-  override val colorScheme: Setting<ColorScheme> = EnumSetting(
-    store, KEY_COLOR_SCHEME, ColorScheme.Companion::fromStored,
-  )
-  override val blackTheme: Setting<Boolean> = booleanSetting(
-    store, KEY_BLACK_THEME, false,
-  )
   override val baseTheme: Setting<BaseTheme> = PreferencesSetting(
     store, KEY_BASE_THEME,
     read = { BaseTheme.fromStored(it) },
@@ -433,9 +419,6 @@ class SettingsRepository(private val context: Context) :
   )
 
   // --- PlaybackSettings ---
-  override val rememberShuffle: Setting<Boolean> = booleanSetting(
-    store, KEY_REMEMBER_SHUFFLE, false,
-  )
   override val pauseOnRepeat: Setting<Boolean> = booleanSetting(
     store, KEY_PAUSE_ON_REPEAT, false,
   )
@@ -549,9 +532,6 @@ class SettingsRepository(private val context: Context) :
   // boilerplate now lives once inside PreferencesSetting / EnumSetting.
 
   suspend fun setTheme(value: ThemePreference) = theme.set(value)
-  suspend fun setColorScheme(value: ColorScheme) = colorScheme.set(value)
-  suspend fun setBlackTheme(value: Boolean) = blackTheme.set(value)
-  suspend fun setRememberShuffle(value: Boolean) = rememberShuffle.set(value)
   suspend fun setLibraryTabs(value: List<LibraryTab>) = libraryTabs.set(value)
   suspend fun setIntelligentSorting(value: Boolean) = intelligentSorting.set(value)
   suspend fun setForceSquareCovers(value: Boolean) = forceSquareCovers.set(value)
@@ -638,9 +618,6 @@ class SettingsRepository(private val context: Context) :
   }
 
   companion object {
-    internal val KEY_COLOR_SCHEME = stringPreferencesKey("color_scheme")
-    internal val KEY_BLACK_THEME = booleanPreferencesKey("black_theme")
-    internal val KEY_REMEMBER_SHUFFLE = booleanPreferencesKey("remember_shuffle")
     internal val KEY_LIBRARY_TABS = stringPreferencesKey("library_tabs")
     internal val KEY_INTELLIGENT_SORTING = booleanPreferencesKey("intelligent_sorting")
     internal val KEY_FORCE_SQUARE_COVERS = booleanPreferencesKey("force_square_covers")

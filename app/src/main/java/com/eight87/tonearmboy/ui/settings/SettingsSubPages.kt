@@ -257,9 +257,6 @@ fun SettingsPersonalizeScreen(
   val playFromItemDetails by playback.playFromItemDetails.flow.collectAsState(
     initial = PlayFromItemDetails.Default,
   )
-  val rememberShuffle by playback.rememberShuffle.flow.collectAsState(
-    initial = false,
-  )
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
   // R.F.17 — picker state controllers (Settings-F5).
@@ -294,11 +291,6 @@ fun SettingsPersonalizeScreen(
       id = SettingsCatalog.ID_PLAY_FROM_ITEM_DETAILS,
       currentLabel = playFromItemDetailsLabel(context, playFromItemDetails),
       onClick = playFromDetailPicker::show,
-    ),
-    SettingsRowBinding.Toggle(
-      id = SettingsCatalog.ID_REMEMBER_SHUFFLE,
-      checked = rememberShuffle,
-      onCheckedChange = { scope.launch { playback.rememberShuffle.set(it) } },
     ),
   )
 

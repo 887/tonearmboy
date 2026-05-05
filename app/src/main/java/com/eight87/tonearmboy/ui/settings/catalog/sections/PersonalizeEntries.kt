@@ -5,7 +5,6 @@ import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.TouchApp
 import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.ui.nav.SettingsPersonalize
@@ -87,18 +86,9 @@ internal val PersonalizeEntries: List<SettingsCatalogEntry> = listOf(
     destination = SettingsPersonalize,
     breadcrumb = listOf(SECTION_PERSONALIZE, "Behaviour", "When playing from item details"),
   ),
-  SettingsCatalogEntry(
-    id = SettingsCatalog.ID_REMEMBER_SHUFFLE,
-    label = "Remember shuffle",
-    subtitle = "Restore the previous shuffle state on relaunch.",
-    labelRes = R.string.settings_personalize_remember_shuffle_label,
-    subtitleRes = R.string.settings_personalize_remember_shuffle_subtitle,
-    keywords = listOf("shuffle", "random"),
-    icon = Icons.Outlined.Shuffle,
-    section = Section.Personalize,
-    group = Groups.PersonalizeBehaviour,
-    kind = RowKind.Toggle,
-    destination = SettingsPersonalize,
-    breadcrumb = listOf(SECTION_PERSONALIZE, "Behaviour", "Remember shuffle"),
-  ),
+  // G+ — `ID_REMEMBER_SHUFFLE` removed. Same dishonest pattern as the
+  // dead Audio toggles: persisted DataStore boolean with no consumer.
+  // The playback layer's QueuePersistence restores `Player.shuffleMode
+  // Enabled` unconditionally on rebind; this toggle saved a value that
+  // nothing ever read.
 )

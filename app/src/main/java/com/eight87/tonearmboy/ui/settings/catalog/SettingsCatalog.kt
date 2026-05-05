@@ -139,8 +139,6 @@ object SettingsCatalog {
   const val ID_ABOUT = "about"
 
   const val ID_THEME = "look_and_feel.theme"
-  const val ID_COLOR_SCHEME = "look_and_feel.color_scheme"
-  const val ID_BLACK_THEME = "look_and_feel.black_theme"
   const val ID_BASE_THEME = "look_and_feel.base_theme"
   const val ID_ALBUM_ART_TINT = "look_and_feel.album_art_tint"
 
@@ -149,7 +147,6 @@ object SettingsCatalog {
   const val ID_CUSTOM_NOTIFICATION_ACTION = "personalize.custom_notification_action"
   const val ID_PLAY_FROM_LIBRARY = "personalize.play_from_library"
   const val ID_PLAY_FROM_ITEM_DETAILS = "personalize.play_from_item_details"
-  const val ID_REMEMBER_SHUFFLE = "personalize.remember_shuffle"
 
   const val ID_AUTOMATIC_RELOADING = "content.automatic_reloading"
   const val ID_MULTI_VALUE_SEPARATORS = "content.multi_value_separators"

@@ -245,7 +245,7 @@ English is canonical (`app/src/main/res/values/strings*.xml`); locale variants l
 
 | Language | Coverage | Status |
 | --- | --- | --- |
-| [German](app/src/main/res/values-de/) | 478/485 (98%) | complete |
+| [German](app/src/main/res/values-de/) | 481/488 (98%) | complete |
 
 <!-- TRANSLATIONS-END -->
 

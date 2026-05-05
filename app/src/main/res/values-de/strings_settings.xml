@@ -82,8 +82,6 @@
   <string name="settings_personalize_custom_notification_action_label">Eigene Aktion in der Benachrichtigung</string>
   <string name="settings_personalize_play_from_library_label">Beim Abspielen aus der Bibliothek</string>
   <string name="settings_personalize_play_from_item_details_label">Beim Abspielen aus den Detailansichten</string>
-  <string name="settings_personalize_remember_shuffle_label">Zufallswiedergabe merken</string>
-  <string name="settings_personalize_remember_shuffle_subtitle">Den vorherigen Zufallswiedergabe-Status beim Neustart wiederherstellen.</string>
 
   <!-- Custom bar action picker labels. -->
   <string name="settings_personalize_bar_action_skip_next">Nächster Titel</string>
@@ -253,19 +251,11 @@
   <string name="settings_color_picker_title">Grundfarbe wählen</string>
 
   <!-- ===== Playlist import collision dialog ===== -->
-  <string name="settings_playlist_import_collision_title">Playlist-Namen existieren bereits</string>
-  <string name="settings_playlist_import_collision_intro">Diese Playlists existieren bereits in deiner Bibliothek:</string>
-  <string name="settings_playlist_import_collision_explainer">Überschreiben ersetzt vorhandene Titel. Zusammenführen hängt neue Titel an die vorhandenen Playlists an. Abbrechen überspringt nur die kollidierenden Playlists; die übrigen werden trotzdem importiert.</string>
   <string name="settings_playlist_import_overwrite">Überschreiben</string>
   <string name="settings_playlist_import_merge">Zusammenführen</string>
   <string name="settings_playlist_import_cancel_collisions">Kollisionen abbrechen</string>
 
   <!-- ===== Settings search overlay ===== -->
-  <string name="settings_search_bar_label">Einstellungen durchsuchen</string>
-  <string name="settings_search_field_placeholder">Einstellungen durchsuchen</string>
-  <string name="settings_cd_search_settings">Einstellungen durchsuchen</string>
-  <string name="settings_cd_clear">Löschen</string>
-  <string name="settings_search_empty_initial">Tippen, um alle Einstellungen zu durchsuchen.</string>
   <!-- %1$s = the search query -->
   <string name="settings_search_no_matches">Keine Einstellungen passen zu \"%1$s\".</string>
 </resources>

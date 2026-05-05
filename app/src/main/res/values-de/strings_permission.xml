@@ -31,19 +31,10 @@
   <!-- File deletion flow (DeleteFlow.kt + TrackDeleter.kt) -->
   <!-- ========================================================== -->
   <!-- Confirmation dialog. -->
-  <string name="library_delete_dialog_title_single">%1$s löschen?</string>
-  <string name="library_delete_dialog_title_multi">%1$d Titel löschen?</string>
-  <string name="library_delete_dialog_body_single">Die Datei wird dauerhaft von deinem Gerät gelöscht.</string>
-  <string name="library_delete_dialog_body_multi">%1$d Dateien werden dauerhaft von deinem Gerät gelöscht.</string>
   <!-- library_delete_dialog_confirm / library_delete_dialog_cancel
        are owned by strings_library.xml (DeleteFlow.kt's surface). -->
   <!-- Outcome snackbars. -->
-  <string name="library_delete_snackbar_cancelled">Löschen abgebrochen.</string>
-  <string name="library_delete_snackbar_done_single">%1$s gelöscht</string>
-  <string name="library_delete_snackbar_done_multi">%1$d Titel gelöscht</string>
   <!-- Failure snackbars. The "%1$s" slot carries the underlying reason. -->
-  <string name="library_delete_snackbar_failure_with_reason">Löschen fehlgeschlagen: %1$s</string>
-  <string name="library_delete_failure_consent_dialog">Zustimmungsdialog konnte nicht gestartet werden</string>
   <string name="library_delete_failure_already_gone">Datei bereits entfernt.</string>
   <string name="library_delete_failure_denied">Diese Datei konnte nicht gelöscht werden.</string>
   <string name="library_delete_failure_create_request">createDeleteRequest fehlgeschlagen</string>

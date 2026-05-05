@@ -23,8 +23,6 @@ import kotlinx.coroutines.flow.Flow
 /** R.B.3 — Look-and-feel sub-page surface. */
 interface ThemeSettings {
   val theme: Setting<ThemePreference>
-  val colorScheme: Setting<ColorScheme>
-  val blackTheme: Setting<Boolean>
   val baseTheme: Setting<BaseTheme>
   val albumArtTintEnabled: Setting<Boolean>
 }
@@ -36,7 +34,6 @@ interface ThemeSettings {
  * the playback session or its UI affordances.
  */
 interface PlaybackSettings {
-  val rememberShuffle: Setting<Boolean>
   val pauseOnRepeat: Setting<Boolean>
   val customBarAction: Setting<CustomBarAction>
   val customNotificationAction: Setting<CustomNotificationAction>

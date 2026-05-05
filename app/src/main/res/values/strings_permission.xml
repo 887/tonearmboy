@@ -31,19 +31,10 @@
   <!-- File deletion flow (DeleteFlow.kt + TrackDeleter.kt) -->
   <!-- ========================================================== -->
   <!-- Confirmation dialog. -->
-  <string name="library_delete_dialog_title_single">Delete %1$s?</string>
-  <string name="library_delete_dialog_title_multi">Delete %1$d tracks?</string>
-  <string name="library_delete_dialog_body_single">This will permanently delete the file from your device.</string>
-  <string name="library_delete_dialog_body_multi">This will permanently delete %1$d files from your device.</string>
   <!-- library_delete_dialog_confirm / library_delete_dialog_cancel
        are owned by strings_library.xml (DeleteFlow.kt's surface). -->
   <!-- Outcome snackbars. -->
-  <string name="library_delete_snackbar_cancelled">Deletion cancelled.</string>
-  <string name="library_delete_snackbar_done_single">Deleted %1$s</string>
-  <string name="library_delete_snackbar_done_multi">Deleted %1$d tracks</string>
   <!-- Failure snackbars. The "%1$s" slot carries the underlying reason. -->
-  <string name="library_delete_snackbar_failure_with_reason">Couldn\'t delete: %1$s</string>
-  <string name="library_delete_failure_consent_dialog">unable to start consent dialog</string>
   <string name="library_delete_failure_already_gone">File already gone.</string>
   <string name="library_delete_failure_denied">Couldn\'t delete this file.</string>
   <string name="library_delete_failure_create_request">createDeleteRequest failed</string>

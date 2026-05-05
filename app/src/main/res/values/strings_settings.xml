@@ -82,8 +82,6 @@
   <string name="settings_personalize_custom_notification_action_label">Custom notification action</string>
   <string name="settings_personalize_play_from_library_label">When playing from the library</string>
   <string name="settings_personalize_play_from_item_details_label">When playing from item details</string>
-  <string name="settings_personalize_remember_shuffle_label">Remember shuffle</string>
-  <string name="settings_personalize_remember_shuffle_subtitle">Restore the previous shuffle state on relaunch.</string>
 
   <!-- Custom bar action picker labels. -->
   <string name="settings_personalize_bar_action_skip_next">Skip to next</string>
@@ -183,7 +181,6 @@
   <string name="settings_about_licenses_subtitle">Every dependency that ships in the APK, with its license.</string>
   <!-- Licenses sub-screen. -->
   <string name="licenses_screen_title">Open-source licenses</string>
-  <string name="licenses_row_supporting">%1$s • %2$s</string>
   <string name="licenses_unknown_spdx">Unknown license — see project URL.</string>
   <string name="licenses_empty">No license inventory found. Rebuild to regenerate.</string>
   <string name="licenses_dialog_close">Close</string>
@@ -261,19 +258,11 @@
   <string name="settings_color_picker_title">Pick a seed color</string>
 
   <!-- ===== Playlist import collision dialog ===== -->
-  <string name="settings_playlist_import_collision_title">Playlist names already exist</string>
-  <string name="settings_playlist_import_collision_intro">These playlists already exist in your library:</string>
-  <string name="settings_playlist_import_collision_explainer">Overwrite replaces existing tracks. Merge appends new tracks to the existing playlists. Cancel skips just the colliding playlists; non-colliding ones still import.</string>
   <string name="settings_playlist_import_overwrite">Overwrite</string>
   <string name="settings_playlist_import_merge">Merge</string>
   <string name="settings_playlist_import_cancel_collisions">Cancel collisions</string>
 
   <!-- ===== Settings search overlay ===== -->
-  <string name="settings_search_bar_label">Search settings</string>
-  <string name="settings_search_field_placeholder">Search settings</string>
-  <string name="settings_cd_search_settings">Search settings</string>
-  <string name="settings_cd_clear">Clear</string>
-  <string name="settings_search_empty_initial">Start typing to search every setting.</string>
   <!-- %1$s = the search query -->
   <string name="settings_search_no_matches">No settings match \"%1$s\".</string>
 </resources>

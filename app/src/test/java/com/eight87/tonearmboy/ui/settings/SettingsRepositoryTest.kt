@@ -32,8 +32,6 @@ class SettingsRepositoryTest {
     // every key the suite touches before each test runs. This keeps
     // tests independent of declaration order and JUnit's per-JVM
     // method-ordering quirks.
-    repo.setBlackTheme(false)
-    repo.setRememberShuffle(false)
     repo.setIntelligentSorting(true)
     repo.setForceSquareCovers(false)
     repo.setCustomBarAction(CustomBarAction.Default)
@@ -45,7 +43,6 @@ class SettingsRepositoryTest {
     repo.setLibraryTabs(LibraryTab.DefaultOrder)
     LibraryTab.entries.forEach { repo.setTabSort(it, TabSort.Default) }
     repo.setTheme(ThemePreference.System)
-    repo.setColorScheme(ColorScheme.Default)
     repo.setMultiValueSeparators(MultiValueSeparator.Default)
     repo.setMusicSourceUris(emptySet())
     repo.setMusicSourceMode(MusicSourceMode.Default)
@@ -64,9 +61,6 @@ class SettingsRepositoryTest {
     // R.B.5 — SettingsSnapshot is gone; assert each Setting<T> emits
     // its documented default when no key has been written.
     assertEquals(ThemePreference.Default, repo.theme.flow.first())
-    assertEquals(ColorScheme.Default, repo.colorScheme.flow.first())
-    assertEquals(false, repo.blackTheme.flow.first())
-    assertEquals(false, repo.rememberShuffle.flow.first())
     assertEquals(LibraryTab.DefaultOrder, repo.libraryTabs.flow.first())
     assertEquals(true, repo.intelligentSorting.flow.first())
     assertEquals(false, repo.forceSquareCovers.flow.first())
@@ -91,10 +85,8 @@ class SettingsRepositoryTest {
   fun toggles_round_trip() = runTest {
     repo.setIntelligentSorting(false)
     repo.setForceSquareCovers(true)
-    repo.setBlackTheme(true)
     assertEquals(false, repo.intelligentSorting.flow.first())
     assertEquals(true, repo.forceSquareCovers.flow.first())
-    assertEquals(true, repo.blackTheme.flow.first())
   }
 
   @Test
@@ -190,21 +182,10 @@ class SettingsRepositoryTest {
   // storage with the legacy mutators (writes either way are visible
   // from the other side) and survives the round trip.
 
-  @Test
-  fun zz_blackThemeSetting_round_trips_and_shares_storage_with_legacy() = runTest {
-    assertEquals(false, repo.blackTheme.flow.first())
-    repo.blackTheme.set(true)
-    assertEquals(true, repo.blackTheme.flow.first())
-    repo.setBlackTheme(false)
-    assertEquals(false, repo.blackTheme.flow.first())
-  }
-
-  @Test
-  fun zz_colorSchemeSetting_round_trips_and_shares_storage_with_legacy() = runTest {
-    assertEquals(ColorScheme.Default, repo.colorScheme.flow.first())
-    repo.colorScheme.set(ColorScheme.Brand)
-    assertEquals(ColorScheme.Brand, repo.colorScheme.flow.first())
-    repo.setColorScheme(ColorScheme.Dynamic)
-    assertEquals(ColorScheme.Dynamic, repo.colorScheme.flow.first())
-  }
+  // G+ — `colorScheme` and `blackTheme` round-trip tests removed.
+  // Both settings were subsumed by `BaseTheme.PureBlack` /
+  // `BaseTheme.Custom(seed)` in D.20.4 / D.25.1; the corresponding
+  // Setting<T> fields had no consumers anywhere, just kept the
+  // legacy DataStore keys around. The round-trip tests were
+  // testing dead code.
 }
