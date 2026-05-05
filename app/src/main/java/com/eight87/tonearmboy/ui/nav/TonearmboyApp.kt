@@ -122,6 +122,7 @@ fun TonearmboyApp(
           entry<CustomTabEditor> { it.Register(scope) }
           entry<SettingsRootDest> { it.Register(scope) }
           entry<SettingsAbout> { it.Register(scope) }
+          entry<SettingsLicenses> { it.Register(scope) }
           entry<SettingsSearch> { it.Register(scope) }
           entry<SettingsLookAndFeel> { it.Register(scope) }
           entry<SettingsPersonalize> { it.Register(scope) }

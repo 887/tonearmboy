@@ -9,12 +9,14 @@ import com.eight87.tonearmboy.ui.nav.RouteScope
 import com.eight87.tonearmboy.ui.nav.SettingsAbout
 import com.eight87.tonearmboy.ui.nav.SettingsAudio
 import com.eight87.tonearmboy.ui.nav.SettingsContent
+import com.eight87.tonearmboy.ui.nav.SettingsLicenses
 import com.eight87.tonearmboy.ui.nav.SettingsLookAndFeel
 import com.eight87.tonearmboy.ui.nav.SettingsMusicSources
 import com.eight87.tonearmboy.ui.nav.SettingsPersonalize
 import com.eight87.tonearmboy.ui.nav.SettingsRootDest
 import com.eight87.tonearmboy.ui.nav.SettingsSearch
 import com.eight87.tonearmboy.ui.settings.AboutScreen
+import com.eight87.tonearmboy.ui.settings.LicensesScreen
 import com.eight87.tonearmboy.ui.settings.SettingsAudioScreen
 import com.eight87.tonearmboy.ui.settings.SettingsContentScreen
 import com.eight87.tonearmboy.ui.settings.SettingsLookAndFeelScreen
@@ -61,8 +63,18 @@ fun SettingsAbout.Register(scope: RouteScope) {
   with(scope) {
     AboutScreen(
       onBack = { backStack.pop() },
+      onLicenses = { backStack.push(SettingsLicenses) },
       snackbarHostState = snackbar,
     )
+  }
+}
+
+@Composable
+fun SettingsLicenses.Register(scope: RouteScope) {
+  val sectionTitle = LocalSectionTitle.current
+  LaunchedEffect(Unit) { sectionTitle.value = "Open-source licenses" }
+  with(scope) {
+    LicensesScreen(onBack = { backStack.pop() })
   }
 }
 

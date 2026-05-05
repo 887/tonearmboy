@@ -75,6 +75,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AboutScreen(
   onBack: () -> Unit,
+  onLicenses: () -> Unit,
   snackbarHostState: SnackbarHostState,
 ) {
   val context = LocalContext.current
@@ -178,6 +179,14 @@ fun AboutScreen(
           onClick = {
             openExternalBrowser(context, GITHUB_URL)
           },
+        )
+        SettingsRowDivider()
+        SettingsRow(
+          id = "about.licenses",
+          icon = Icons.Outlined.Article,
+          label = stringResource(R.string.settings_about_licenses_label),
+          subtitle = stringResource(R.string.settings_about_licenses_subtitle),
+          onClick = onLicenses,
         )
         SettingsRowDivider()
         SettingsRow(

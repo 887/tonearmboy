@@ -187,6 +187,14 @@
   <string name="settings_about_github_subtitle">github.com/887/tonearmboy</string>
   <string name="settings_about_license_label">License</string>
   <string name="settings_about_license_subtitle">MIT — see LICENSE. All direct deps (AndroidX, Media3, Kotlin, Coil, Robolectric) are Apache-2.0 / MIT — no GPL contamination.</string>
+  <string name="settings_about_licenses_label">Open-source licenses</string>
+  <string name="settings_about_licenses_subtitle">Every dependency that ships in the APK, with its license.</string>
+  <!-- Licenses sub-screen. -->
+  <string name="licenses_screen_title">Open-source licenses</string>
+  <string name="licenses_row_supporting">%1$s • %2$s</string>
+  <string name="licenses_unknown_spdx">Unknown license — see project URL.</string>
+  <string name="licenses_empty">No license inventory found. Rebuild to regenerate.</string>
+  <string name="licenses_dialog_close">Close</string>
   <string name="settings_about_credits_cleanroom_label">Visual references only</string>
   <string name="settings_about_credits_cleanroom_subtitle">No code copied from the projects below. Clean-room implementation, MIT-licensed throughout.</string>
   <string name="settings_about_credits_auxio_label">Auxio (GPL-3.0)</string>

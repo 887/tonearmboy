@@ -8,6 +8,7 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
+  alias(libs.plugins.licensee)
 }
 
 // D.16.4 — capture build-time metadata that the About screen renders.
@@ -76,6 +77,43 @@ android {
 
 room {
     schemaDirectory("$projectDir/schemas")
+}
+
+// OSS Phase A.3 — declare allowed licenses for shipped deps. v1 ships
+// reporting-only (no failOnDisallowed); we'll flip enforcement once the
+// inventory has been reviewed once. EPL-1.0 (junit) is test-scope only,
+// so it never enters the resolved release classpath Licensee inspects.
+licensee {
+    allow("Apache-2.0")
+    allow("MIT")
+    allow("BSD-2-Clause")
+    allow("BSD-3-Clause")
+}
+
+// OSS Phase A.4 — copy the per-variant Licensee `artifacts.json` into
+// `src/main/assets/licenses/` so `LicensesScreen` can read it via
+// AssetManager at runtime. Wired as a dependency of the variant's
+// mergeAssets task so the asset is always self-consistent with the
+// build's resolved classpath.
+val licenseeReportDir = layout.buildDirectory.dir("reports/licensee")
+val licensesAssetDir = layout.projectDirectory.dir("src/main/assets/licenses")
+
+androidComponents {
+    onVariants { variant ->
+        val variantName = variant.name.replaceFirstChar { it.uppercase() }
+        val copyTask = tasks.register<Copy>("copyLicensesAssetFor$variantName") {
+            dependsOn("licenseeAndroid$variantName")
+            from(licenseeReportDir.map { it.dir("android$variantName") }) {
+                include("artifacts.json")
+            }
+            into(licensesAssetDir)
+        }
+        afterEvaluate {
+            tasks.named("merge${variantName}Assets").configure {
+                dependsOn(copyTask)
+            }
+        }
+    }
 }
 
 kotlin {

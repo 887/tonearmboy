@@ -1,6 +1,6 @@
 # tonearmboy — open-source licenses plan
 
-## Status: 🟡 PLANNED
+## Status: ✅ DONE
 
 ## Why
 
@@ -50,36 +50,36 @@ Conclusion: **MIT app license is correct. No GPL anywhere. No dep prevents MIT.*
 
 **Why:** every later phase reads the JSON this phase generates.
 
-- [ ] **A.1** Add Licensee version to `gradle/libs.versions.toml` and a `[plugins]` entry: `licensee = { id = "app.cash.licensee", version.ref = "licensee" }`. Pin to the latest stable.
-- [ ] **A.2** Apply `alias(libs.plugins.licensee)` in `app/build.gradle.kts`.
-- [ ] **A.3** Configure the plugin block: `licensee { allow("Apache-2.0"); allow("MIT"); allow("BSD-2-Clause"); allow("BSD-3-Clause"); allowDependency("junit", "junit", "4.13.2") { because("EPL-1.0; test-scope only, not shipped") } }`. Reporting only in v1; do not set `failOnDisallowed`.
-- [ ] **A.4** Wire a Gradle task to copy `app/build/reports/licensee/release/artifacts.json` to `app/src/main/assets/licenses/artifacts.json` so the runtime can read it via `AssetManager`. Wire as a dependency of `mergeReleaseAssets` (and `mergeDebugAssets`) so a fresh build is always self-consistent.
-- [ ] **A.5** Add `app/src/main/assets/licenses/Apache-2.0.txt`, `MIT.txt`, `EPL-1.0.txt`. Source from SPDX official text. Top-of-file comment notes the SPDX id and the source URL.
-- [ ] **A.6** Run `:app:assembleDebug` once. Verify `app/src/main/assets/licenses/artifacts.json` exists, parses, and contains a non-empty array. Spot-check three entries against the inventory snapshot.
-- [ ] **A.7** Ship + tick.
+- [x] **A.1** Added Licensee `1.13.0` to `gradle/libs.versions.toml` (versions + plugins block).
+- [x] **A.2** Applied `alias(libs.plugins.licensee)` in `app/build.gradle.kts`.
+- [x] **A.3** Configured `licensee { allow("Apache-2.0"); allow("MIT"); allow("BSD-2-Clause"); allow("BSD-3-Clause") }`. EPL-1.0 (junit) is test-scope only and never enters the resolved release classpath Licensee inspects, so no `allowDependency` exemption needed. Reporting-only; `failOnDisallowed` left default.
+- [x] **A.4** `androidComponents.onVariants` wires a per-variant `Copy` task (`copyLicensesAssetForDebug` / `copyLicensesAssetForRelease`) that depends on `licenseeAndroid<Variant>` and feeds `merge<Variant>Assets`. Copies `build/reports/licensee/android<Variant>/artifacts.json` into `src/main/assets/licenses/`.
+- [x] **A.5** Sourced `Apache-2.0.txt`, `MIT.txt`, `BSD-3-Clause.txt` from `https://spdx.org/licenses/<id>.txt` (canonical SPDX). The plan's hypothesised `EPL-1.0.txt` not needed — confirmed by Licensee that all 213 shipping deps resolve to one of {Apache-2.0, MIT, BSD-3-Clause}.
+- [x] **A.6** `:app:assembleDebug` clean. `assets/licenses/artifacts.json` parses (213 entries) with valid SPDX coordinates. Spot-checked: `androidx.media3:media3-exoplayer:1.10.0` → Apache-2.0, `io.coil-kt.coil3:coil-compose:3.1.0` → Apache-2.0, `androidx.room:room-runtime:2.8.4` → Apache-2.0. APK contains all 4 license assets.
+- [x] **A.7** Ship + tick.
 
 ## Phase B — `LicensesScreen` Compose UI
 
 **Why:** the user-facing surface that fulfils the Apache 2.0 NOTICE requirement.
 
-- [ ] **B.1** Add `app/src/main/java/com/eight87/tonearmboy/ui/settings/LicensesScreen.kt`. Reuse the M3-Expressive grouped-card chrome (`SettingsCard` / `SettingsRow` / `SettingsRowDivider` / `SettingsDimens`) for visual consistency with `AboutScreen`.
-- [ ] **B.2** Add `LicensesViewModel`. Reads `assets/licenses/artifacts.json` once at init via `AssetManager.open(...)` + `kotlinx.serialization.json`. Exposes `StateFlow<List<LicenseEntry>>` (entries pre-sorted by `groupId:artifactId`). One-shot read; not a `Flow`.
-- [ ] **B.3** Define `LicenseEntry { groupId, artifactId, version, spdxId, licenseText: String? }` — `licenseText` resolved at construction by reading `assets/licenses/<spdx>.txt`. Unknown SPDX → `licenseText = null` and the row renders an "Unknown SPDX" warning (catches missing-text-asset cases at runtime in addition to the test).
-- [ ] **B.4** UI: `LazyColumn` of `SettingsRow`s. Row title: `<artifactId> <version>`. Row supporting text: `<groupId> • <spdxId>`. Tap → expand inline (or open a Material3 `Dialog` showing the license body in monospaced text, scrollable). Match whichever pattern `AboutScreen`'s "view license" interaction already uses; fall back to dialog if there is none.
-- [ ] **B.5** Add the navigation route. Wire from the existing `AboutScreen` "Source" card — a new `SettingsRow` "Open-source licenses" with an `Icons.Outlined.Article` icon, between the GitHub repo row and the MIT license row.
-- [ ] **B.6** Strings: every label resource-backed in `values/strings.xml` per the i18n discipline locked in `docs/plans/translations.md` Phase T.A. Keys: `licenses_screen_title`, `licenses_row_label`, `licenses_row_supporting`, `cd_licenses_back`, `licenses_unknown_spdx`.
-- [ ] **B.7** Verify on AVD: tap About → tap "Open-source licenses" → list renders → tap a row → license body appears.
-- [ ] **B.8** Ship + tick.
+- [x] **B.1** Added `app/src/main/java/com/eight87/tonearmboy/ui/settings/LicensesScreen.kt`. Reuses `SettingsCard` / `SettingsRow` / `SettingsDimens` chrome.
+- [x] **B.2** Read happens directly in `loadLicensesFromAssets(context)` cached via `remember(context)` — single one-shot read. Skipped the dedicated ViewModel since the data is immutable per build; a ViewModel + `StateFlow` would be over-architecture for a static asset read.
+- [x] **B.3** `LicenseEntry { groupId, artifactId, version, spdxId, licenseText: String? }` — `licenseText` resolved by `assets/licenses/<spdx>.txt` lookup at construction; unknown SPDX → `licenseText = null` + row renders the `licenses_unknown_spdx` string.
+- [x] **B.4** `LazyColumn` of single-row `SettingsCard`s. Card title: `<artifactId> <version>`. Row label: `<groupId>`. Row subtitle: SPDX id. Tap → `AlertDialog` with monospaced license body, scrollable, "Close" button. Verified on AVD.
+- [x] **B.5** Navigation route `SettingsLicenses` added to `Destinations.kt`, registered in `TonearmboyApp.kt` + `SettingsRoutes.kt`. AboutScreen gained an `onLicenses` parameter and a new `SettingsRow` "Open-source licenses" between GitHub-repo and License rows.
+- [x] **B.6** Strings: `settings_about_licenses_label`, `settings_about_licenses_subtitle`, `licenses_screen_title`, `licenses_row_supporting`, `licenses_unknown_spdx`, `licenses_empty`, `licenses_dialog_close`. All in `values/strings_settings.xml`. German translations need a follow-up sub-agent pass for the new keys.
+- [x] **B.7** AVD smoke: Settings root → About → tap "Open-source licenses" → screen lists 213 deps → tap `activity 1.13.0` → dialog shows full Apache-2.0 text in monospaced, scrollable. Confirmed.
+- [x] **B.8** Ship + tick.
 
 ## Phase C — Tests + audit discipline
 
 **Why:** keep the inventory honest as deps churn.
 
-- [ ] **C.1** `LicensesCatalogTest` (Robolectric, JVM-only): parses `assets/licenses/artifacts.json`; asserts non-empty; asserts every entry has a recognized SPDX from the allowlist and a backing license-text asset; asserts the catalog contains a known shipping sample (`androidx.media3:media3-exoplayer`, `io.coil-kt.coil3:coil-compose`, `androidx.room:room-runtime`).
-- [ ] **C.2** `LicensesScreenTest` (Compose UI test under Robolectric, `ui-test-junit4`): renders, scrolls, expanding a row reveals license text.
-- [ ] **C.3** AVD smoke (per CLAUDE.md UI-verification rule).
-- [ ] **C.4** Add a one-paragraph "Licenses" subhead to `CLAUDE.md`: when adding a new `implementation` dep, run `:app:licenseeReport` and confirm the SPDX is in the allowlist; if not, either add it to `licensee.allow(...)` (preferred) or document the exemption with a `because("...")`. Include a pointer to this plan.
-- [ ] **C.5** Ship + tick.
+- [x] **C.1** `LicensesCatalogTest` (Robolectric, JVM-only): parses `assets/licenses/artifacts.json`; asserts non-empty; asserts every entry has a SPDX from the allowlist and a backing license-text asset; asserts the catalog contains the known shipping samples.
+- [x] **C.2** `LicensesScreenTest` (Compose UI test under Robolectric): renders the screen, taps the first Apache-2.0 row, asserts the dialog body shows the SPDX text.
+- [x] **C.3** AVD smoke: Settings → About → Open-source licenses → list renders → tap row → Apache-2.0 dialog text appears in monospace.
+- [x] **C.4** Added an "Open-source licenses" sub-section to `CLAUDE.md` describing the Licensee allowlist, the new-dep workflow (`./gradlew :app:licenseeAndroidDebug`), and the new-SPDX requirement (asset file under `licenses/`).
+- [x] **C.5** Ship + tick.
 
 ## Out of scope (revisit if pain emerges)
 
