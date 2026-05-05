@@ -1,11 +1,13 @@
 package com.eight87.tonearmboy.ui.playing
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -51,10 +53,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import com.eight87.tonearmboy.ui.common.FastScrollbar
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -161,11 +167,20 @@ fun NowPlayingScreen(
           .padding(24.dp),
       )
       NowPlayingSubState.ConnectedWithMedia -> {
-        // G.2 — over-scroll-down at top of the merged surface accumulates
-        // toward dismissal; if the user releases past the threshold, pop.
+        // G.2 (rubber-band polish) — over-scroll-down at the top of the
+        // merged surface translates the surface 1:1 with the finger
+        // (Auxio-style sheet-pull). Release past the 64-dp threshold
+        // dispatches [onBack]; below threshold animates back to rest.
         val swipeThresholdPx = with(LocalDensity.current) { 64.dp.toPx() }
+        val overscrollPx = remember { Animatable(0f) }
+        val scrollScope = rememberCoroutineScope()
         val pullDownConnection = remember(onBack, swipeThresholdPx) {
-          pullDownToDismissNestedScroll(onDismiss = onBack, thresholdPx = swipeThresholdPx)
+          pullDownToDismissNestedScroll(
+            onDismiss = onBack,
+            thresholdPx = swipeThresholdPx,
+            offset = overscrollPx,
+            scope = scrollScope,
+          )
         }
         NowPlayingMergedSurface(
           state = state,
@@ -186,6 +201,7 @@ fun NowPlayingScreen(
           modifier = Modifier
             .fillMaxSize()
             .padding(innerPadding)
+            .offset { IntOffset(0, overscrollPx.value.roundToInt()) }
             .nestedScroll(pullDownConnection)
             .semantics { testTag = "now_playing_screen" },
         )
@@ -358,13 +374,16 @@ internal fun NowPlayingMergedSurface(
       )
     }
   }
-    // R.A.Q — full-height fast-scroll thumb. Spans the entire merged
-    // surface (cover/transport at the top through the queue at the
-    // bottom) since they share one LazyColumn.
-    FastScrollbar(
-      state = listState,
-      modifier = Modifier.align(Alignment.CenterEnd),
-    )
+    // FastScrollbar dropped (was wired to `listState` here in R.A.Q).
+    // The merged surface is a 3-item LazyColumn where the queue section
+    // (item #2) is hundreds of times taller than items #0/#1, so the
+    // scrollbar's `avgItemSizePx × totalItemsCount` math oscillated
+    // wildly as items entered/left the viewport — produced a "huge
+    // hole" gap as the user scrolled back from deep in the queue.
+    // Flick-scroll already covers the affordance for a 3-section
+    // surface; if a queue-only fast-scroll is needed, it belongs on
+    // the inner queue list (uniform row sizes), not the outer mixed
+    // surface.
   }
 }
 
@@ -503,16 +522,21 @@ private fun formatMillis(ms: Long): String {
 private fun pullDownToDismissNestedScroll(
   onDismiss: () -> Unit,
   thresholdPx: Float,
+  offset: Animatable<Float, *>,
+  scope: CoroutineScope,
 ): NestedScrollConnection = object : NestedScrollConnection {
-  private var overscroll = 0f
+  // Pull-resistance factor — the surface moves at half-finger-speed,
+  // matching the rubber-band feel pull-to-refresh / sheet-pull use.
+  private val resistance = 0.5f
 
   override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-    // Drain the over-scroll accumulator before the LazyColumn sees an
+    // Drain the offset accumulator before the LazyColumn sees an
     // upward drag — keeps the dismissal feel symmetric.
-    if (available.y < 0f && overscroll > 0f) {
-      val consumed = minOf(-available.y, overscroll)
-      overscroll -= consumed
-      return Offset(0f, -consumed)
+    if (available.y < 0f && offset.value > 0f) {
+      val consumedFinger = minOf(-available.y, offset.value / resistance)
+      val consumedOffset = consumedFinger * resistance
+      scope.launch { offset.snapTo((offset.value - consumedOffset).coerceAtLeast(0f)) }
+      return Offset(0f, -consumedFinger)
     }
     return Offset.Zero
   }
@@ -523,16 +547,20 @@ private fun pullDownToDismissNestedScroll(
     source: NestedScrollSource,
   ): Offset {
     if (available.y > 0f && source == NestedScrollSource.UserInput) {
-      overscroll += available.y
+      scope.launch { offset.snapTo(offset.value + available.y * resistance) }
       return Offset(0f, available.y)
     }
     return Offset.Zero
   }
 
   override suspend fun onPreFling(available: Velocity): Velocity {
-    val pulled = overscroll
-    overscroll = 0f
-    if (pulled > thresholdPx) onDismiss()
+    val pulled = offset.value
+    if (pulled > thresholdPx) {
+      onDismiss()
+      offset.snapTo(0f)
+    } else {
+      offset.animateTo(0f)
+    }
     return Velocity.Zero
   }
 }

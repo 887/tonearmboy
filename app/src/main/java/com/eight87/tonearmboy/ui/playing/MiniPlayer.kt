@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.playing
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -8,6 +9,11 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -104,28 +110,46 @@ fun MiniPlayer(
     // handler. Tapping the play / prev / next buttons or close-X lands
     // on those inner clickables instead.
     //
-    // G.1 — Auxio-style vertical-drag gestures on the info row:
-    // swipe up >= 64 dp triggers onExpand (same effect as the tap),
-    // swipe down >= 64 dp triggers onClose (same effect as the close X).
+    // G.2 (rubber-band polish) — the info row translates 1:1 with the
+    // finger via [Animatable], so the surface visibly tracks the drag
+    // (Auxio-style sheet-pull). Threshold ≥ 64 dp commits — swipe up
+    // dispatches [onExpand], swipe down dispatches [onClose]; in both
+    // cases the offset snaps back to 0 after dispatch so the next
+    // re-entry starts clean. Below threshold animates back to rest.
     // Tap-to-expand still works because detectVerticalDragGestures only
     // fires on actual drag motion.
     val swipeThresholdPx = with(LocalDensity.current) { 64.dp.toPx() }
-    var dragOffsetY by remember { mutableStateOf(0f) }
+    val dragOffsetY = remember { Animatable(0f) }
+    val dragScope = rememberCoroutineScope()
     Row(
       modifier = Modifier
         .fillMaxWidth()
+        .offset { IntOffset(0, dragOffsetY.value.roundToInt()) }
         .clickable(onClick = onExpand)
         .pointerInput(swipeThresholdPx) {
           detectVerticalDragGestures(
             onDragEnd = {
-              when {
-                dragOffsetY <= -swipeThresholdPx -> onExpand()
-                dragOffsetY >= swipeThresholdPx -> onClose()
+              val pulled = dragOffsetY.value
+              dragScope.launch {
+                when {
+                  pulled <= -swipeThresholdPx -> {
+                    onExpand()
+                    dragOffsetY.snapTo(0f)
+                  }
+                  pulled >= swipeThresholdPx -> {
+                    onClose()
+                    dragOffsetY.snapTo(0f)
+                  }
+                  else -> dragOffsetY.animateTo(0f)
+                }
               }
-              dragOffsetY = 0f
             },
-            onDragCancel = { dragOffsetY = 0f },
-          ) { _, delta -> dragOffsetY += delta }
+            onDragCancel = {
+              dragScope.launch { dragOffsetY.animateTo(0f) }
+            },
+          ) { _, delta ->
+            dragScope.launch { dragOffsetY.snapTo(dragOffsetY.value + delta) }
+          }
         }
         .padding(horizontal = 12.dp, vertical = 6.dp)
         .semantics { testTag = "mini_player" },
