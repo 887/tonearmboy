@@ -17,8 +17,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     PlaylistEntity::class,
     PlaylistTrackEntity::class,
     CustomTabEntity::class,
+    AlbumCoverEntity::class,
   ],
-  version = 4,
+  version = 5,
   exportSchema = true,
 )
 abstract class LibraryDatabase : RoomDatabase() {
@@ -29,6 +30,7 @@ abstract class LibraryDatabase : RoomDatabase() {
   abstract fun playlistDao(): PlaylistDao
   abstract fun libraryDao(): LibraryDao
   abstract fun customTabDao(): CustomTabDao
+  abstract fun albumCoverDao(): AlbumCoverDao
 
   companion object {
     private const val DB_NAME = "tonearmboy-library.db"
@@ -91,6 +93,24 @@ abstract class LibraryDatabase : RoomDatabase() {
       }
     }
 
+    /**
+     * v4 -> v5: add the `album_covers` table introduced in
+     * `docs/plans/album-art.md` Phase A. Stores per-album cover
+     * overrides keyed by a `(albumName, albumArtist)` hash; existing
+     * albums get no row, so the UI continues falling back to
+     * MediaStore's `albumart` URI until the user explicitly picks an
+     * override.
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+          "CREATE TABLE IF NOT EXISTS `album_covers` (" +
+            "`albumKey` TEXT NOT NULL PRIMARY KEY, " +
+            "`coverUri` TEXT NOT NULL)"
+        )
+      }
+    }
+
     @Volatile private var instance: LibraryDatabase? = null
 
     /**
@@ -111,7 +131,7 @@ abstract class LibraryDatabase : RoomDatabase() {
         )
           // No fallbackToDestructiveMigration: schema is exported, so
           // we'll write proper migrations as the schema evolves.
-          .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+          .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
           .build()
         instance = created
         return created

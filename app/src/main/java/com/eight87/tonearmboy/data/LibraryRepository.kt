@@ -319,6 +319,31 @@ class LibraryRepository(
     }
   }
 
+  override fun albumCoverChoice(albumKey: String): Flow<AlbumCoverChoice> =
+    db.albumCoverDao().row(albumKey).map { row ->
+      when {
+        row == null -> AlbumCoverChoice.NoChoice
+        row.coverUri.isNullOrBlank() -> AlbumCoverChoice.IntentionallyEmpty
+        else -> AlbumCoverChoice.Pinned(row.coverUri)
+      }
+    }
+
+  override suspend fun setAlbumCoverUri(albumKey: String, uri: String) {
+    db.albumCoverDao().upsert(
+      com.eight87.tonearmboy.data.db.AlbumCoverEntity(albumKey, uri),
+    )
+  }
+
+  override suspend fun clearAlbumCoverIntentional(albumKey: String) {
+    db.albumCoverDao().upsert(
+      com.eight87.tonearmboy.data.db.AlbumCoverEntity(albumKey, null),
+    )
+  }
+
+  override suspend fun resetAlbumCover(albumKey: String) {
+    db.albumCoverDao().delete(albumKey)
+  }
+
   override fun artistsMatching(criteria: FilterCriteria): Flow<List<Artist>> {
     if (criteria.isEmpty()) return observeArtists()
     val tracks = observeTracks()

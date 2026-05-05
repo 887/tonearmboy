@@ -56,20 +56,31 @@ fun CoverArt(
   mode: AlbumCoversMode,
   modifier: Modifier = Modifier,
   contentDescription: String? = null,
+  /**
+   * Phase A — per-album cover override URI. When non-null, Coil
+   * loads this directly (skipping the legacy MediaStore `albumart`
+   * path). Pass null to keep the existing fallback chain. Pulled
+   * from `LibraryRepository.albumCoverUri` upstream.
+   */
+  coverUriOverride: String? = null,
 ) {
   Box(
     modifier = modifier
       .background(MaterialTheme.colorScheme.surfaceVariant),
     contentAlignment = Alignment.Center,
   ) {
-    val showPlaceholder = mode == AlbumCoversMode.Off || albumId == null
+    val showPlaceholder = mode == AlbumCoversMode.Off ||
+      (albumId == null && coverUriOverride.isNullOrBlank())
     if (showPlaceholder) {
       Placeholder(size)
       return@Box
     }
 
     val context = LocalContext.current
-    val uri = remember(albumId) { albumArtUri(albumId) }
+    val uri: Any = remember(albumId, coverUriOverride) {
+      coverUriOverride?.takeIf { it.isNotBlank() }
+        ?: albumArtUri(albumId ?: 0L)
+    }
     var failed by remember(uri) { mutableStateOf(false) }
 
     if (failed) {

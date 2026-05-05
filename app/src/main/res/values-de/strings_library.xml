@@ -36,6 +36,12 @@
   <string name="library_cd_back">Zurück</string>
   <string name="library_cd_more_options">Weitere Optionen</string>
 
+  <!-- Album cover override menu (album-art Phase A). -->
+  <string name="library_album_cover_menu_cd">Albumcover-Optionen</string>
+  <string name="library_album_cover_replace">Cover ersetzen…</string>
+  <string name="library_album_cover_clear">Auf „kein Cover“ setzen</string>
+  <string name="library_album_cover_reset">Auf Standard-Cover zurücksetzen</string>
+
   <!-- Track context menu (TrackContextAction.kt). -->
   <string name="library_track_action_play">Abspielen</string>
   <string name="library_track_action_add_to_queue">Zur Warteschlange hinzufügen</string>

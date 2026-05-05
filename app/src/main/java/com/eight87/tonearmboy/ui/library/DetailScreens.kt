@@ -34,16 +34,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -51,8 +55,11 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eight87.tonearmboy.R
+import com.eight87.tonearmboy.data.AlbumCoverChoice
 import com.eight87.tonearmboy.data.AlbumSource
 import com.eight87.tonearmboy.data.TrackSource
+import com.eight87.tonearmboy.data.albumKey
+import kotlinx.coroutines.launch
 import com.eight87.tonearmboy.data.model.Album
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.ui.nav.LocalSectionTitle
@@ -107,6 +114,34 @@ fun AlbumDetailScreen(
   val sectionTitle = LocalSectionTitle.current
   LaunchedEffect(albumName) { sectionTitle.value = albumName }
 
+  // Phase A — per-album cover override. The TopAppBar overflow menu
+  // gains Replace cover / Remove cover / Reset cover; the cover row
+  // pulls from `AlbumCoverChoice` and falls back to MediaStore when
+  // there's no user choice.
+  val coverChoiceKey = remember(albumName, albumArtist) { albumKey(albumName, albumArtist) }
+  val coverChoice by albumSource.albumCoverChoice(coverChoiceKey)
+    .collectAsState(initial = AlbumCoverChoice.NoChoice)
+  val context = LocalContext.current
+  val coverScope = rememberCoroutineScope()
+  var coverMenuOpen by remember { mutableStateOf(false) }
+  val pickCoverLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.OpenDocument(),
+  ) { uri ->
+    if (uri != null) {
+      // Take a persistable read grant so the URI keeps resolving
+      // after process death / app relaunch.
+      runCatching {
+        context.contentResolver.takePersistableUriPermission(
+          uri,
+          android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+        )
+      }
+      coverScope.launch {
+        albumSource.setAlbumCoverUri(coverChoiceKey, uri.toString())
+      }
+    }
+  }
+
   Scaffold(
     topBar = {
       TopAppBar(
@@ -114,6 +149,46 @@ fun AlbumDetailScreen(
         navigationIcon = {
           IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.library_cd_back))
+          }
+        },
+        actions = {
+          IconButton(
+            onClick = { coverMenuOpen = true },
+            modifier = Modifier.semantics { testTag = "album_detail_overflow" },
+          ) {
+            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.library_album_cover_menu_cd))
+          }
+          DropdownMenu(
+            expanded = coverMenuOpen,
+            onDismissRequest = { coverMenuOpen = false },
+          ) {
+            DropdownMenuItem(
+              text = { Text(stringResource(R.string.library_album_cover_replace)) },
+              onClick = {
+                coverMenuOpen = false
+                pickCoverLauncher.launch(arrayOf("image/*"))
+              },
+            )
+            DropdownMenuItem(
+              text = { Text(stringResource(R.string.library_album_cover_clear)) },
+              onClick = {
+                coverMenuOpen = false
+                coverScope.launch {
+                  albumSource.clearAlbumCoverIntentional(coverChoiceKey)
+                }
+              },
+            )
+            if (coverChoice !is AlbumCoverChoice.NoChoice) {
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.library_album_cover_reset)) },
+                onClick = {
+                  coverMenuOpen = false
+                  coverScope.launch {
+                    albumSource.resetAlbumCover(coverChoiceKey)
+                  }
+                },
+              )
+            }
           }
         },
       )
@@ -138,11 +213,26 @@ fun AlbumDetailScreen(
             .padding(16.dp),
           horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+          // Phase A — translate the tri-state user choice into the
+          // (albumId, coverUriOverride) pair CoverArt understands:
+          //   - Pinned(uri)         → override = uri, albumId untouched
+          //   - IntentionallyEmpty  → null both, CoverArt renders the
+          //                           music-note placeholder.
+          //   - NoChoice            → override = null, albumId = the
+          //                           usual MediaStore id (default chain).
+          val isIntentionallyEmpty = coverChoice is AlbumCoverChoice.IntentionallyEmpty
+          val resolvedAlbumId = if (isIntentionallyEmpty) {
+            null
+          } else {
+            album?.mediaStoreAlbumId ?: tracks.firstOrNull()?.mediaStoreAlbumId
+          }
+          val resolvedOverride = (coverChoice as? AlbumCoverChoice.Pinned)?.uri
           CoverArt(
-            albumId = album?.mediaStoreAlbumId ?: tracks.firstOrNull()?.mediaStoreAlbumId,
+            albumId = resolvedAlbumId,
             size = 192.dp,
             mode = albumCoversMode,
             contentDescription = albumName,
+            coverUriOverride = resolvedOverride,
             modifier = Modifier
               .fillMaxWidth(0.7f)
               .aspectRatio(1f)
