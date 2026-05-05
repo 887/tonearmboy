@@ -280,8 +280,12 @@ fun TonearmboyApp(
         ) {
           // Inner stack: anchored to the TOP of the sheet, fixed at full
           // screen height so the layout doesn't reflow as the sheet grows.
-          // Bottom of NowPlaying sits at screenHeight; top fades in at
-          // progress > 0.5 with the staggered ratio.
+          // BOTH children are ALWAYS composed — gating with `if (alpha
+          // > 0f)` would drop the MiniPlayer composable mid-drag (its
+          // pointerInput is the gesture's owner), which canceled the
+          // drag without firing onDragEnd → sheet stuck mid-progress.
+          // Alpha-only gating keeps the gesture alive across the full
+          // 0..1 range; alpha=0 already skips draw work.
           Box(
             modifier = Modifier
               .align(Alignment.TopCenter)
@@ -289,50 +293,45 @@ fun TonearmboyApp(
               .height(screenHeightDp),
           ) {
             // NowPlaying full surface (back of stack). Visible at expanded.
-            if (nowPlayingAlpha > 0f) {
-              Box(modifier = Modifier.fillMaxSize().alpha(nowPlayingAlpha)) {
-                NowPlayingScreen(
-                  nowPlayingState = playback,
-                  transport = playback,
-                  queueCommands = playback,
-                  onBack = closeSheet,
-                  albumCoversMode = albumCoversMode,
-                  onSaveQueueAsPlaylist = { mediaIds ->
-                    val trackIds = mediaIds.mapNotNull { it.toLongOrNull() }
-                    scope.addToPlaylist.requestBulk(trackIds)
-                  },
-                )
-              }
+            Box(modifier = Modifier.fillMaxSize().alpha(nowPlayingAlpha)) {
+              NowPlayingScreen(
+                nowPlayingState = playback,
+                transport = playback,
+                queueCommands = playback,
+                onBack = closeSheet,
+                albumCoversMode = albumCoversMode,
+                onSaveQueueAsPlaylist = { mediaIds ->
+                  val trackIds = mediaIds.mapNotNull { it.toLongOrNull() }
+                  scope.addToPlaylist.requestBulk(trackIds)
+                },
+              )
             }
 
             // Mini-player (front of stack). Sized to peek, anchored at
             // top of inner area — visible at peek state, fades out by
-            // progress=0.5. isInvisible-style hit-test gating: when
-            // alpha=0 we drop the composable so taps go through.
-            if (miniAlpha > 0f) {
-              Box(
-                modifier = Modifier
-                  .align(Alignment.TopCenter)
-                  .fillMaxWidth()
-                  .height(peekDp)
-                  .alpha(miniAlpha),
-              ) {
-                MiniPlayer(
-                  state = playbackState,
-                  onTogglePlayPause = playback::togglePlayPause,
-                  onClose = playback::stop,
-                  onExpand = openNowPlayingSheet,
-                  onSkipNext = playback::seekToNext,
-                  onSkipPrevious = playback::seekToPrevious,
-                  onPlayButtonLongPress = { playback.performCustomBarAction(customBarAction) },
-                  onToggleShuffle = playback::toggleShuffle,
-                  onCycleRepeat = playback::cycleRepeatMode,
-                  onSeekTo = playback::seekTo,
-                  albumCoversMode = albumCoversMode,
-                  onSheetDragDelta = onSheetDragDelta,
-                  onSheetDragSettle = onSheetDragSettle,
-                )
-              }
+            // progress=0.5. ALWAYS composed — see comment above.
+            Box(
+              modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(peekDp)
+                .alpha(miniAlpha),
+            ) {
+              MiniPlayer(
+                state = playbackState,
+                onTogglePlayPause = playback::togglePlayPause,
+                onClose = playback::stop,
+                onExpand = openNowPlayingSheet,
+                onSkipNext = playback::seekToNext,
+                onSkipPrevious = playback::seekToPrevious,
+                onPlayButtonLongPress = { playback.performCustomBarAction(customBarAction) },
+                onToggleShuffle = playback::toggleShuffle,
+                onCycleRepeat = playback::cycleRepeatMode,
+                onSeekTo = playback::seekTo,
+                albumCoversMode = albumCoversMode,
+                onSheetDragDelta = onSheetDragDelta,
+                onSheetDragSettle = onSheetDragSettle,
+              )
             }
           }
         }
