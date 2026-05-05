@@ -76,12 +76,18 @@ fun RequireAudioPermission(
     if (result) onGranted()
   }
 
-  // First composition: if not granted, fire the system dialog immediately.
+  // First composition: if not granted, fire the system dialog
+  // immediately. If already granted at app start, do NOT call
+  // onGranted() — `LibraryRepository.ensureInitialScan()` already
+  // kicks the scan on first observe(). Calling onGranted() here on
+  // cold-launch-with-existing-grant produced a double-scan where the
+  // user saw the progress bar run through twice. The launcher's
+  // `if (result) onGranted()` still covers the actual grant
+  // *transition* on first install (denied → granted), which is the
+  // case onGranted() exists to handle.
   LaunchedEffect(Unit) {
     if (!granted && !asked) {
       launcher.launch(permission)
-    } else if (granted) {
-      onGranted()
     }
   }
 
