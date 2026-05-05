@@ -36,9 +36,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 
 /**
  * D.25.1 — hand-rolled HSV colour picker. A saturation/value square
@@ -75,7 +77,7 @@ fun ColorPickerDialog(
 
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("Pick a seed color") },
+    title = { Text(stringResource(R.string.settings_color_picker_title)) },
     text = {
       Column(
         modifier = Modifier
@@ -131,13 +133,13 @@ fun ColorPickerDialog(
       TextButton(
         onClick = { onConfirm(previewRgb) },
         modifier = Modifier.semantics { testTag = "color_picker_confirm" },
-      ) { Text("Confirm") }
+      ) { Text(stringResource(R.string.settings_dialog_confirm)) }
     },
     dismissButton = {
       TextButton(
         onClick = onDismiss,
         modifier = Modifier.semantics { testTag = "color_picker_cancel" },
-      ) { Text("Cancel") }
+      ) { Text(stringResource(R.string.settings_dialog_cancel)) }
     },
   )
 }

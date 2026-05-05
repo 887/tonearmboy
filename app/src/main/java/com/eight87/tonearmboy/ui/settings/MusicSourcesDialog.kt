@@ -43,11 +43,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.LibraryScanner
 import kotlinx.coroutines.launch
 
@@ -163,12 +165,15 @@ fun MusicSourcesDialog(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           Text(
-            text = "Music sources",
+            text = stringResource(R.string.settings_music_sources_dialog_title),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.weight(1f),
           )
           IconButton(onClick = onDismiss) {
-            Icon(Icons.Filled.Close, contentDescription = "Close")
+            Icon(
+              Icons.Filled.Close,
+              contentDescription = stringResource(R.string.settings_cd_close),
+            )
           }
         }
         HorizontalDivider()
@@ -215,7 +220,7 @@ fun MusicSourcesDialog(
           TextButton(
             onClick = onDismiss,
             modifier = Modifier.semantics { testTag = "music_sources_cancel" },
-          ) { Text("Cancel") }
+          ) { Text(stringResource(R.string.settings_dialog_cancel)) }
           TextButton(
             onClick = {
               // D.17.3.5 — persist + rescan on Save. We release SAF
@@ -238,7 +243,7 @@ fun MusicSourcesDialog(
               onDismiss()
             },
             modifier = Modifier.semantics { testTag = "music_sources_save" },
-          ) { Text("Save") }
+          ) { Text(stringResource(R.string.settings_dialog_save)) }
         }
       }
     }
@@ -252,7 +257,7 @@ private fun LoadFromSection(
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(
-      text = "Load From",
+      text = stringResource(R.string.settings_music_sources_load_from_title),
       style = MaterialTheme.typography.titleMedium,
     )
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -261,21 +266,20 @@ private fun LoadFromSection(
         onClick = { onModeChange(MusicSourceMode.FilePicker) },
         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
         modifier = Modifier.semantics { testTag = "music_sources_segment_filepicker" },
-      ) { Text("File picker") }
+      ) { Text(stringResource(R.string.settings_music_sources_segment_filepicker)) }
       SegmentedButton(
         selected = mode == MusicSourceMode.System,
         onClick = { onModeChange(MusicSourceMode.System) },
         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
         modifier = Modifier.semantics { testTag = "music_sources_segment_system" },
-      ) { Text("System") }
+      ) { Text(stringResource(R.string.settings_music_sources_segment_system)) }
     }
     Text(
       text = when (mode) {
         MusicSourceMode.FilePicker ->
-          "Load music from the folders that you select. Slower, but more reliable. " +
-            "Requires the vanilla file manager app to be installed."
+          stringResource(R.string.settings_music_sources_filepicker_subtitle)
         MusicSourceMode.System ->
-          "Scan the system MediaStore index. Faster, automatic."
+          stringResource(R.string.settings_music_sources_system_subtitle)
       },
       style = MaterialTheme.typography.bodyMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -295,7 +299,7 @@ private fun FoldersSection(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Text(
-        text = "Folders to Load",
+        text = stringResource(R.string.settings_music_sources_folders_title),
         style = MaterialTheme.typography.titleMedium,
         modifier = Modifier.weight(1f),
       )
@@ -303,7 +307,10 @@ private fun FoldersSection(
         onClick = onAddClick,
         modifier = Modifier.semantics { testTag = "music_sources_add" },
       ) {
-        Icon(Icons.Filled.Add, contentDescription = "Add folder")
+        Icon(
+          Icons.Filled.Add,
+          contentDescription = stringResource(R.string.settings_cd_add_folder),
+        )
       }
     }
     if (folders.isEmpty()) {
@@ -314,7 +321,7 @@ private fun FoldersSection(
           .semantics { testTag = "music_sources_empty" },
       ) {
         Text(
-          text = "No folders configured. Tap + to add one.",
+          text = stringResource(R.string.settings_music_sources_no_folders),
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -348,7 +355,10 @@ private fun FolderRow(uri: String, onRemove: () -> Unit) {
       modifier = Modifier.weight(1f),
     )
     IconButton(onClick = onRemove) {
-      Icon(Icons.Filled.Delete, contentDescription = "Remove folder")
+      Icon(
+        Icons.Filled.Delete,
+        contentDescription = stringResource(R.string.settings_cd_remove_folder),
+      )
     }
   }
 }
@@ -369,7 +379,7 @@ private fun ImplicitSystemSection() {
       tint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
-      text = "Internal shared storage",
+      text = stringResource(R.string.settings_music_sources_internal_storage),
       style = MaterialTheme.typography.bodyLarge,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
       modifier = Modifier.weight(1f),
@@ -411,14 +421,17 @@ private fun MoreSettingsSection(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Text(
-        text = "More settings",
+        text = stringResource(R.string.settings_music_sources_more_settings_title),
         style = MaterialTheme.typography.titleMedium,
         modifier = Modifier.weight(1f),
       )
       IconButton(onClick = onToggle) {
         Icon(
           Icons.Filled.ExpandMore,
-          contentDescription = if (expanded) "Collapse" else "Expand",
+          contentDescription = stringResource(
+            if (expanded) R.string.settings_cd_more_settings_collapse
+            else R.string.settings_cd_more_settings_expand,
+          ),
           modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 180f else 0f },
         )
       }
@@ -429,8 +442,7 @@ private fun MoreSettingsSection(
         verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         Text(
-          text = "Multi-value separators are configured in " +
-            "Settings › Personalize › Multi-value separators.",
+          text = stringResource(R.string.settings_music_sources_more_settings_body),
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
