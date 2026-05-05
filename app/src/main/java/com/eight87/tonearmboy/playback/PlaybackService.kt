@@ -92,6 +92,7 @@ class PlaybackService : MediaSessionService() {
     queuePersistenceController.startPositionTicker { mediaSession?.player }
 
     notificationLayoutController = NotificationLayoutController(
+      context = applicationContext,
       settings = SettingsRepository(applicationContext),
       scope = serviceScope,
     )

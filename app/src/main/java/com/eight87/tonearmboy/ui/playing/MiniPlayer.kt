@@ -41,11 +41,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.playback.PlaybackUiState
 import com.eight87.tonearmboy.ui.library.CoverArt
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
@@ -119,9 +121,11 @@ fun MiniPlayer(
           .clip(RoundedCornerShape(6.dp))
           .semantics { testTag = "mini_player_cover" },
       )
+      val unknownTitle = stringResource(R.string.playing_unknown)
+      val unknownArtist = stringResource(R.string.playing_mini_player_unknown_artist)
       Column(modifier = Modifier.weight(1f)) {
         Text(
-          text = state.title.ifEmpty { "Unknown" },
+          text = state.title.ifEmpty { unknownTitle },
           style = MaterialTheme.typography.bodyLarge,
           maxLines = 1,
           modifier = Modifier.semantics { testTag = "mini_player_title" },
@@ -129,7 +133,7 @@ fun MiniPlayer(
         val subtitle = listOfNotNull(
           state.artist.takeIf { it.isNotBlank() },
           state.album.takeIf { it.isNotBlank() },
-        ).joinToString(" · ").ifEmpty { "Unknown artist" }
+        ).joinToString(" · ").ifEmpty { unknownArtist }
         Text(
           text = subtitle,
           style = MaterialTheme.typography.bodySmall,
@@ -142,7 +146,7 @@ fun MiniPlayer(
         onClick = onClose,
         modifier = Modifier.semantics { testTag = "mini_player_close" },
       ) {
-        Icon(imageVector = Icons.Filled.Close, contentDescription = "Stop")
+        Icon(imageVector = Icons.Filled.Close, contentDescription = stringResource(R.string.playing_cd_stop))
       }
     }
 

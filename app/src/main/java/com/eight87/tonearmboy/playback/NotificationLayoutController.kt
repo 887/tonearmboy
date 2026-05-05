@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.playback
 
+import android.content.Context
 import android.os.Bundle
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CommandButton
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
  */
 @UnstableApi
 internal class NotificationLayoutController(
+  private val context: Context,
   private val settings: SettingsRepository,
   private val scope: CoroutineScope,
 ) {
@@ -53,14 +55,14 @@ internal class NotificationLayoutController(
     val buttons = when (action) {
       CustomNotificationAction.RepeatMode -> listOf(
         CommandButton.Builder()
-          .setDisplayName("Repeat")
+          .setDisplayName(context.getString(R.string.playing_notif_command_repeat))
           .setSessionCommand(SessionCommand(PlaybackService.COMMAND_REPEAT_TOGGLE, Bundle.EMPTY))
           .setIconResId(R.drawable.ic_notif_repeat)
           .build(),
       )
       CustomNotificationAction.Shuffle -> listOf(
         CommandButton.Builder()
-          .setDisplayName("Shuffle")
+          .setDisplayName(context.getString(R.string.playing_notif_command_shuffle))
           .setSessionCommand(SessionCommand(PlaybackService.COMMAND_SHUFFLE_TOGGLE, Bundle.EMPTY))
           .setIconResId(R.drawable.ic_notif_shuffle)
           .build(),
