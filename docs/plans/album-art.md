@@ -1,6 +1,15 @@
 # tonearmboy — album-art roadmap
 
-## Status: 🟡 IN PROGRESS — Phase A shipped (commit `9d0a948`, migration fix `dcf4aa4`); Phase C shipped (commit `dcf4aa4`); B/D/E pending.
+## Status: 🟡 IN PROGRESS — Phases A, C, D shipped; B + E deferred with notes.
+
+Shipped:
+- Phase A: per-album cover override via Room v6 + SAF picker. Commit `9d0a948`; migration fix `dcf4aa4`.
+- Phase C: refresh-album-art row drops Coil's cache. Commit `dcf4aa4`.
+- Phase D: MusicBrainz auto-discover + per-album on-tap search. Commit `7bfc9cc`.
+
+Deferred (with reason):
+- Phase B (folder cover-art scanner): needs `READ_MEDIA_IMAGES` (API 33+) or `DocumentsContract` SAF-tree walking. Not blocking — users can pin a folder cover manually via "Replace cover" or `Search MusicBrainz`.
+- Phase E (multi-source UI restructure): premature until Phase B lands. Currently only MusicBrainz is a real "source"; one toggle doesn't need a grouped section.
 
 ## Why
 
@@ -65,25 +74,29 @@ cover** action reachable from a context menu.
 **Effort:** S–M (½ day landed). **Risk:** low (mirrored existing
 playlist-cover pattern).
 
-## Phase B — folder cover-art source
+## Phase B — folder cover-art source (deferred)
+
+**Reason for deferral:** the cleanest implementation needs SAF-tree
+walking (since we already have read grants on the user's music
+folders via Music Sources) OR `READ_MEDIA_IMAGES` (Android 13+).
+Either is a meaningful permission / scanner refactor. Today's manual
+"Replace cover…" + Phase D's MusicBrainz lookup cover the same user
+need; auto-discovery from filesystem cover.jpg is convenience, not
+table-stakes.
 
 - [ ] **B.1** Scanner extension: when ingesting an album whose tracks
-  have no embedded art, look in the album's folder for files named
-  `cover.{jpg,png,webp}`, `folder.{jpg,png,webp}`,
-  `{albumname}.{jpg,png,webp}`. First match wins.
-- [ ] **B.2** Persist the discovered URI in the same
-  `album_covers.coverUri` column as Phase A so the override mechanism
-  doesn't need two paths.
-- [ ] **B.3** Run on every rescan; manual override (Phase A) takes
-  precedence over folder discovery.
-- [ ] **B.4** Add a Settings › Content toggle "Scan folders for cover
-  art" (default on). Persisted; consumed by the scanner.
-- [ ] **B.5** AVD smoke: drop a `cover.jpg` next to an album's tracks,
-  rescan — album picks it up; user override still wins.
-- [ ] **B.6** Ship + tick.
+  have no embedded art, walk the parent SAF tree (`DocumentsContract
+  .buildChildDocumentsUriUsingTree`) for files named `cover.{jpg,png,
+  webp}`, `folder.{jpg,png,webp}`, `{albumname}.{jpg,png,webp}`.
+- [ ] **B.2** Persist into the same `album_covers.coverUri` column.
+  Skips albums where the user has spoken (Pinned / IntentionallyEmpty).
+- [ ] **B.3** Run on every rescan; manual override takes precedence.
+- [ ] **B.4** Settings › Content toggle "Scan folders for cover art"
+  (default on).
+- [ ] **B.5** AVD smoke + ship + tick.
 
-**Effort:** M (1 day). **Risk:** low–medium (filesystem walking adds
-to scan time on large libraries).
+**Effort:** M (1 day). **Risk:** medium (DocumentsContract walking is
+an order of magnitude slower than MediaStore queries; need to throttle).
 
 ## Phase C — refresh-album-art action (shipped in `dcf4aa4`)
 
@@ -99,29 +112,35 @@ to scan time on large libraries).
 
 **Effort:** XS (~1 hour landed). **Risk:** none.
 
-## Phase D — MusicBrainz Cover Art Archive (deferred)
+## Phase D — MusicBrainz Cover Art Archive (shipped in `7bfc9cc`)
 
-- [ ] **D.1** Build an HTTP client around the okhttp instance Coil 3
-  already pulls in. Rate limit to 1 req / sec per MB's TOS.
-- [ ] **D.2** Lookup strategy: prefer the track's MBID
-  (`musicbrainz_releaseid` tag); fall back to a fuzzy MB query by
-  `artist + album`.
-- [ ] **D.3** Background worker (existing WorkManager) walks albums
-  missing local art (after Phase B), enqueues HTTP fetches, persists
-  results into the `album_covers` table. **Skips albums with a row
-  already present** — Phase A's `IntentionallyEmpty` is a "user
-  said nothing here" signal that auto-fetch must respect.
-- [ ] **D.4** Settings › Content toggle "Auto-discover missing album
-  art (MusicBrainz)". Default OFF (privacy: any HTTP fetch leaks
-  metadata).
-- [ ] **D.5** **Per-track / per-album on-tap fetch action** —
-  context menu row "Search for album art" on song / album rows AND
-  the NowPlaying overflow. Same backend as the bulk pass but
-  user-initiated. Surfaces a chooser of returned candidates instead
-  of auto-pinning the first hit.
-- [ ] **D.6** Robolectric test for the MB fuzzy lookup parser. AVD
-  smoke against a small known-album set.
-- [ ] **D.7** Ship + tick.
+- [x] **D.1** `MusicBrainzClient` (okhttp). Mutex + delay(1100) so
+  serialised calls stay ≤ 1 req/sec per MB TOS. User-Agent
+  identifies the app + a contact URL per their requirements.
+- [x] **D.2** Lookup: Lucene-quoted fuzzy `release:"<album>" AND
+  artist:"<artist>"` query on the JSON API. Picks the top score
+  ≥ 95. MBID-from-tag prefer-path **deferred** — none of the
+  scanned tracks carry `MUSICBRAINZ_RELEASE_ID` today, so adding
+  the tag-read path adds no value until tag plumbing is there.
+- [x] **D.3** `AlbumArtBulkWorker` walks `albums.observeAlbums()
+  .first()`, skips albums with embedded MediaStore art, skips rows
+  with `Pinned` / `IntentionallyEmpty`. `NoChoice` only — Phase A's
+  sentinel is honoured, the user's "no cover here" choice survives
+  the bulk pass.
+- [x] **D.4** Settings › Content › "Auto-discover missing album art"
+  toggle. Default OFF (privacy: enabling sends artist + album text
+  to a third-party service). On = enqueue one-shot worker
+  (`UNMETERED` constraint), off = cancel pending work.
+- [x] **D.5** Per-album on-tap "Search MusicBrainz for cover" row in
+  the Album Detail overflow menu. Calls the fetcher with
+  `overwriteUserChoice = true` so the user can intentionally
+  override even a previously-pinned cover via this path.
+  **Candidate chooser** (instead of auto-pinning the top hit)
+  deferred — current behaviour pins the score≥95 top hit
+  immediately, which is acceptable for v1.
+- [ ] **D.6** Robolectric test for the MB fuzzy lookup parser.
+  Deferred — covered by AVD smoke for now.
+- [x] **D.7** Ship + tick.
 
 **Effort:** L (2–3 days, mostly testing the rate-limit and offline
 fallback paths). **Risk:** medium (third-party service + network
@@ -129,22 +148,22 @@ behaviour). **Privacy note:** the toggle ships off by default and the
 settings copy must be explicit that enabling sends artist/album text
 to a third party.
 
-## Phase E — multiple-source UI
+## Phase E — multiple-source UI (deferred)
 
-- [ ] **E.1** Restructure Settings › Content's album-art rows into a
-  grouped "Album art sources" section. Each provider (Embedded,
-  MediaStore, Folder scan, MusicBrainz, Per-album override) gets its
-  own toggle row. Order is fixed; toggles control whether the scanner
-  + CoverArt composable consult that source.
-- [ ] **E.2** "Add custom folder" row reuses the SAF tree-picker
-  pattern from Music Sources. Folders here don't contain audio; they
-  contain loose art files keyed by some convention (`<artist> -
-  <album>.jpg`).
+**Reason for deferral:** premature. With Phases A + C + D shipped,
+the user has: manual per-album pin (A), refresh-to-clear-cache (C),
+MusicBrainz auto-discover (D). The only "source" toggle today is
+MusicBrainz; a one-toggle "section" would be visual noise. Land
+Phase B first; then a proper sources section earns its place.
+
+- [ ] **E.1** Restructure Settings › Content into "Album art sources":
+  Embedded (always on, info row), Folder scan (Phase B toggle),
+  MusicBrainz (Phase D toggle).
+- [ ] **E.2** "Add custom folder" row for art-only folders.
 - [ ] **E.3** Ship + tick.
 
-**Effort:** S (½ day). **Risk:** low (UI restructure, not new
-plumbing). **Sequence note:** lands AFTER Phase D so there's actually
-something to toggle.
+**Effort:** S (½ day). **Risk:** low. **Sequence note:** unblocked
+once Phase B is real.
 
 ## What ships in v1 vs. later
 
