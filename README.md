@@ -237,6 +237,18 @@ See [`CLAUDE.md`](CLAUDE.md) for the full Claude-driven test loop.
 - **Unit / data layer** — Robolectric, JVM-only, zero device.
 - **UI / integration** — [`mobile-mcp`](https://github.com/mobile-next/mobile-mcp) over ADB driving the headless AVD (or a real phone via wifi-adb).
 
+## Translations
+
+English is canonical (`app/src/main/res/values/strings*.xml`); locale variants live at `app/src/main/res/values-<locale>/strings*.xml` and are partial overrides — missing keys fall back to English at runtime. Translations are produced by the maintainer + Claude, per-language, in dedicated sessions; the table below is regenerated locally on every release by `scripts/translation-progress.sh` (no CI minutes, no third-party service).
+
+<!-- TRANSLATIONS-START -->
+
+| Language | Coverage | Status |
+| --- | --- | --- |
+| [German](app/src/main/res/values-de/) | 481/481 (100%) | complete |
+
+<!-- TRANSLATIONS-END -->
+
 ## License
 
 MIT. See [`LICENSE`](LICENSE).

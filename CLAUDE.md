@@ -166,6 +166,10 @@ When working on a phase:
 
 The user follows Paul Graham's *Keep Your Identity Small*. App copy (settings descriptions, error messages, About text) should be plain, factual, useful. No "vibes" copy, no personal opinions, no humor that pins identity.
 
+## Translations workflow
+
+Translations are produced by **the user + Claude, per-language, in dedicated sessions** — not by outside contributors. English (`app/src/main/res/values/strings*.xml`) is canonical; locale variants live at `app/src/main/res/values-<locale>/strings*.xml` and are partial overrides. Missing keys fall back to English at runtime (Android's default behaviour) — that is correct, not a placeholder. Editorial register matches the rest of the app: plain, factual, useful — no vibes, no humour, no register shifts. Per-locale workflow: read the canonical XML files + this brief, draft translations preserving key order and `%1$s`/`%2$d` placeholders, leave anything ambiguous missing rather than guess, run `scripts/translation-progress.sh` to refresh the README table, AVD-smoke the locale switch (`adb shell setprop persist.sys.locale <locale> && adb shell stop && adb shell start`) and watch for layout overflow on long compound words. See [`docs/plans/translations.md`](docs/plans/translations.md) for the full plan.
+
 ## Release workflow
 
 The user's intended pattern: **vibing from their phone with the Claude app**,

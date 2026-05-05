@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  T.A.1 — naming scheme.
+
+  Format: `<surface>_<role>` lowercase snake.
+  Surfaces:
+    library_     — library tabs / detail screens / sort sheet / multi-select bar / custom tabs
+    playing_     — NowPlaying / MiniPlayer / queue
+    settings_    — settings root + sub-pages + dialogs
+    playlist_    — playlist crud / picker / collision dialog
+    search_      — search overlay
+    permission_  — runtime permission rationale + first-launch surfaces
+    dialog_      — generic dialog buttons (OK / Cancel) when no surface fits
+    error_       — error / failure messages (snackbars, toasts)
+    cd_          — content-descriptions for icons + non-text controls
+
+  testTags, log tags, internal sentinels, and code constants stay
+  hard-coded — they are not user-facing.
+-->
+<resources>
+
+  <!-- App identity (Phase E.1). -->
+  <string name="app_name">tonearmboy</string>
+  <string name="playback_notification_channel_name">Wiedergabe</string>
+
+  <!-- T.A.3 — library tab names (rail + custom-tab content type labels). -->
+  <string name="library_tab_songs">Titel</string>
+  <string name="library_tab_albums">Alben</string>
+  <string name="library_tab_artists">Interpreten</string>
+  <string name="library_tab_genres">Genres</string>
+  <string name="library_tab_playlists">Playlists</string>
+
+  <!-- T.A.3 — empty-state messages, one per library tab. -->
+  <string name="library_empty_songs">Noch keine Titel.</string>
+  <string name="library_empty_albums">Noch keine Alben. Lege Audiodateien auf deinem Gerät ab und tippe dann auf Musik neu einlesen.</string>
+  <string name="library_empty_artists">Noch keine Interpreten.</string>
+  <string name="library_empty_genres">Noch keine Genres.</string>
+  <string name="library_empty_playlists">Noch keine Playlists. Tippe auf +, um eine zu erstellen.</string>
+
+  <!-- T.A.2 — settings root section + group labels. -->
+  <string name="settings_section_settings">Einstellungen</string>
+  <string name="settings_section_look_and_feel">Erscheinungsbild</string>
+  <string name="settings_section_personalize">Personalisieren</string>
+  <string name="settings_section_content">Inhalte</string>
+  <string name="settings_section_audio">Audio</string>
+  <string name="settings_group_appearance">Darstellung</string>
+  <string name="settings_group_behaviour">Verhalten</string>
+  <string name="settings_group_library">Bibliothek</string>
+  <string name="settings_group_about">Über</string>
+  <string name="settings_group_theme">Design</string>
+  <string name="settings_group_display">Anzeige</string>
+  <string name="settings_group_music">Musik</string>
+  <string name="settings_group_images">Bilder</string>
+  <string name="settings_group_playback">Wiedergabe</string>
+  <string name="settings_group_volume_normalization">Lautstärke-Normalisierung</string>
+
+</resources>

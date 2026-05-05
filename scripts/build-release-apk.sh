@@ -93,6 +93,17 @@ echo "[build-release-apk] sha256: ${APK_SHA256}"
 echo "[build-release-apk] symlink: ${OUT_DIR}/latest.apk"
 BUILD_OK=true
 
+# T.C.3 — refresh the README Translations table before tagging the release.
+# The script rewrites between <!-- TRANSLATIONS-START --> / <!-- TRANSLATIONS-END -->
+# markers and is byte-stable when nothing changed; the diff check below catches
+# unintended drift but doesn't block the build.
+if [ -x "${ROOT}/scripts/translation-progress.sh" ]; then
+    "${ROOT}/scripts/translation-progress.sh" --update
+    if ! git -C "${ROOT}" diff --quiet README.md 2>/dev/null; then
+        echo "[build-release-apk] README.md Translations table refreshed"
+    fi
+fi
+
 # --gh-release: create or amend a tag-versioned GitHub release
 if "${PUSH_TO_GH}"; then
     if ! command -v gh >/dev/null; then

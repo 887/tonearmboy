@@ -3,6 +3,7 @@ package com.eight87.tonearmboy.ui.settings.catalog
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.ui.settings.catalog.sections.AudioEntries
 import com.eight87.tonearmboy.ui.settings.catalog.sections.ContentEntries
 import com.eight87.tonearmboy.ui.settings.catalog.sections.LookAndFeelEntries
@@ -28,21 +29,21 @@ enum class Section { Root, LookAndFeel, Personalize, Content, Audio }
  * `Behaviour`. With `GroupRef` carrying its own label inline, two
  * sections can both have a "Behaviour" group without enum-name games.
  */
-data class GroupRef(val label: String)
+data class GroupRef(@StringRes val labelRes: Int)
 
 /** R.F.15 — pre-built group refs reused by the catalog entries. */
 internal object Groups {
-  val Appearance = GroupRef("Appearance")
-  val Behaviour = GroupRef("Behaviour")
-  val Library = GroupRef("Library")
-  val About = GroupRef("About")
-  val Theme = GroupRef("Theme")
-  val Display = GroupRef("Display")
-  val PersonalizeBehaviour = GroupRef("Behaviour")
-  val Music = GroupRef("Music")
-  val Images = GroupRef("Images")
-  val Playback = GroupRef("Playback")
-  val VolumeNormalization = GroupRef("Volume normalization")
+  val Appearance = GroupRef(R.string.settings_group_appearance)
+  val Behaviour = GroupRef(R.string.settings_group_behaviour)
+  val Library = GroupRef(R.string.settings_group_library)
+  val About = GroupRef(R.string.settings_group_about)
+  val Theme = GroupRef(R.string.settings_group_theme)
+  val Display = GroupRef(R.string.settings_group_display)
+  val PersonalizeBehaviour = GroupRef(R.string.settings_group_behaviour)
+  val Music = GroupRef(R.string.settings_group_music)
+  val Images = GroupRef(R.string.settings_group_images)
+  val Playback = GroupRef(R.string.settings_group_playback)
+  val VolumeNormalization = GroupRef(R.string.settings_group_volume_normalization)
 }
 
 /**

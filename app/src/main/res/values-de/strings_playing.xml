@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- T.A.4 — NowPlaying / MiniPlayer / queue / sleep timer / transport row. -->
+<resources>
+
+  <!-- Top app bar / screen titles. -->
+  <string name="playing_top_bar_title">Wird wiedergegeben</string>
+  <string name="playing_cd_back">Zurück</string>
+  <string name="playing_cd_save_queue_as_playlist">Warteschlange als Playlist speichern</string>
+
+  <!-- NowPlaying card body. -->
+  <string name="playing_no_track">Kein Titel</string>
+  <string name="playing_unknown">Unbekannt</string>
+  <string name="playing_mini_player_unknown_artist">Unbekannter Interpret</string>
+
+  <!-- Sub-state placeholders. -->
+  <string name="playing_connecting">Verbindung zur Wiedergabe wird hergestellt…</string>
+  <string name="playing_empty_title">Nichts wird wiedergegeben</string>
+  <string name="playing_empty_message">Wähle einen Titel in der Bibliothek, um die Wiedergabe zu starten.</string>
+  <string name="playing_empty_back_button">Zurück zur Bibliothek</string>
+
+  <!-- MiniPlayer transport content-descriptions. -->
+  <string name="playing_cd_stop">Stopp</string>
+
+  <!-- Shared transport row content-descriptions. -->
+  <string name="playing_cd_shuffle_on">Zufallswiedergabe an</string>
+  <string name="playing_cd_shuffle_off">Zufallswiedergabe aus</string>
+  <string name="playing_cd_skip_previous">Vorheriger Titel</string>
+  <string name="playing_cd_skip_next">Nächster Titel</string>
+  <string name="playing_cd_play">Wiedergabe</string>
+  <string name="playing_cd_pause">Pause</string>
+  <string name="playing_cd_custom_action">Benutzerdefinierte Aktion</string>
+  <string name="playing_cd_seek_back_10">10 Sekunden zurück</string>
+  <string name="playing_cd_seek_forward_10">10 Sekunden vor</string>
+  <string name="playing_cd_repeat_off">Wiederholung aus</string>
+  <string name="playing_cd_repeat_one">Titel wiederholen</string>
+  <string name="playing_cd_repeat_all">Alle wiederholen</string>
+
+  <!-- Queue section. -->
+  <string name="playing_queue_header">Warteschlange</string>
+  <string name="playing_queue_filter_placeholder">Warteschlange filtern</string>
+  <string name="playing_cd_queue_filter_clear">Filter löschen</string>
+  <string name="playing_queue_empty">Warteschlange ist leer</string>
+  <string name="playing_queue_no_match">Keine Titel entsprechen dem Filter</string>
+
+  <!-- Queue row content-descriptions. -->
+  <string name="playing_cd_queue_remove">Aus Warteschlange entfernen</string>
+  <string name="playing_cd_queue_now_playing">Wird wiedergegeben</string>
+  <string name="playing_cd_queue_reorder">Neu anordnen</string>
+
+  <!-- Queue remove-confirm dialog. -->
+  <string name="playing_queue_remove_dialog_title">Aus Warteschlange entfernen?</string>
+  <string name="playing_queue_remove_dialog_text">\'%1$s\' aus der Warteschlange entfernen?</string>
+  <string name="playing_queue_remove_confirm">Entfernen</string>
+  <string name="playing_queue_remove_cancel">Abbrechen</string>
+
+  <!-- MediaStyle notification CommandButton displayNames (TalkBack readouts). -->
+  <string name="playing_notif_command_repeat">Wiederholen</string>
+  <string name="playing_notif_command_shuffle">Zufallswiedergabe</string>
+
+</resources>

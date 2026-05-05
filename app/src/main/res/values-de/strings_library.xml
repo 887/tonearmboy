@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  T.A.3 — library tabs + detail screens + custom-tab editor + sort sheet + multi-select bar.
+
+  Naming: <surface>_<role>, lowercase snake. Surface for everything in
+  this file is `library_`. Sub-surfaces grouped by leading XML comment.
+  Content-descriptions live under `library_cd_*`. Plurals live under
+  `library_*` plurals at the bottom.
+
+  Already-shipped (in strings.xml under T.A.3):
+    library_tab_{songs,albums,artists,genres,playlists}
+    library_empty_{songs,albums,artists,genres,playlists}
+-->
+<resources>
+
+  <!-- T.A.7 — library scan snackbars + nav-routes residual snackbars. -->
+  <string name="library_scan_refreshed">Musikbibliothek aktualisiert</string>
+  <string name="library_scan_rescanned">Musikbibliothek neu eingelesen</string>
+  <string name="library_coming_soon">%1$s — kommt in v1.1</string>
+  <string name="library_added_to_queue">Zur Warteschlange hinzugefügt: %1$s</string>
+  <string name="library_playlist_renamed">Umbenannt in \"%1$s\"</string>
+  <string name="library_playlist_deleted">Playlist gelöscht</string>
+  <string name="library_playlist_updated">Playlist aktualisiert (%1$d hinzugefügt, %2$d entfernt)</string>
+  <string name="library_playlist_cover_cleared">Playlist-Cover entfernt</string>
+  <string name="library_playlist_cover_updated">Playlist-Cover aktualisiert</string>
+
+
+  <!-- Library top-bar content-descriptions. -->
+  <string name="library_cd_search">Suchen</string>
+  <string name="library_cd_sort">Sortieren</string>
+  <string name="library_cd_view_mode_to_list">Zur Listenansicht wechseln</string>
+  <string name="library_cd_view_mode_to_tile">Zur Kachelansicht wechseln</string>
+  <string name="library_cd_filter">Filter</string>
+  <string name="library_cd_filter_active">Filter (aktiv)</string>
+  <string name="library_cd_settings">Einstellungen</string>
+  <string name="library_cd_back">Zurück</string>
+  <string name="library_cd_more_options">Weitere Optionen</string>
+
+  <!-- Track context menu (TrackContextAction.kt). -->
+  <string name="library_track_action_play">Abspielen</string>
+  <string name="library_track_action_add_to_queue">Zur Warteschlange hinzufügen</string>
+  <string name="library_track_action_add_to_playlist">Zu Playlist hinzufügen…</string>
+  <string name="library_track_action_go_to_album">Zum Album</string>
+  <string name="library_track_action_go_to_artist">Zum Künstler</string>
+  <string name="library_track_action_delete">Datei löschen…</string>
+  <!-- Snackbar surfaced when the host hasn't wired delete yet. -->
+  <string name="library_track_action_delete_coming_soon">Datei löschen</string>
+
+  <!-- Generic fallbacks shown in two-line track / album rows. -->
+  <string name="library_unknown">Unbekannt</string>
+  <string name="library_unknown_artist">Unbekannter Künstler</string>
+
+  <!-- Album / Artist / Genre detail screens (DetailScreens.kt). -->
+  <string name="library_detail_artist_albums_section">Alben</string>
+  <string name="library_detail_artist_tracks_section">Titel</string>
+
+  <!-- Sort sheet (SortSheet.kt). -->
+  <string name="library_sort_title">Sortieren nach</string>
+  <string name="library_sort_by_name">Name</string>
+  <string name="library_sort_by_artist">Künstler</string>
+  <string name="library_sort_by_album">Album</string>
+  <string name="library_sort_by_date">Datum</string>
+  <string name="library_sort_by_duration">Dauer</string>
+  <string name="library_sort_by_date_added">Hinzugefügt am</string>
+  <string name="library_sort_direction_ascending">Aufsteigend</string>
+  <string name="library_sort_direction_descending">Absteigend</string>
+  <string name="library_sort_cancel">Abbrechen</string>
+  <string name="library_sort_ok">OK</string>
+
+  <!-- Filter sheet (LibraryFilterSheet.kt). -->
+  <string name="library_filter_sheet_title">Bibliothek filtern</string>
+  <string name="library_filter_sheet_name_label">Name (Titel / Künstler / Album)</string>
+  <string name="library_filter_sheet_year_label">Jahr: %1$d–%2$d</string>
+  <string name="library_filter_sheet_date_added_label">Hinzugefügt am</string>
+  <string name="library_filter_sheet_date_from">Von: %1$s</string>
+  <string name="library_filter_sheet_date_from_any">Von: beliebig</string>
+  <string name="library_filter_sheet_date_to">Bis: %1$s</string>
+  <string name="library_filter_sheet_date_to_any">Bis: beliebig</string>
+  <string name="library_filter_sheet_reset">Zurücksetzen</string>
+  <string name="library_filter_sheet_apply">Anwenden</string>
+  <string name="library_filter_sheet_ok">OK</string>
+  <string name="library_filter_sheet_clear">Leeren</string>
+
+  <!-- Custom-tab editor (CustomTabEditorScreen.kt). -->
+  <string name="library_custom_tab_editor_new_title">Neuer eigener Tab</string>
+  <string name="library_custom_tab_editor_edit_title">Eigenen Tab bearbeiten</string>
+  <string name="library_custom_tab_editor_create">Erstellen</string>
+  <string name="library_custom_tab_editor_save">Speichern</string>
+  <string name="library_custom_tab_editor_name_label">Name</string>
+  <string name="library_custom_tab_editor_content_section">Inhalt</string>
+  <string name="library_custom_tab_editor_filters_section">Filter</string>
+  <string name="library_custom_tab_editor_no_filters">Keine Filter — jeder Titel passt. Tippe auf „Filter hinzufügen“, um einzugrenzen.</string>
+  <string name="library_custom_tab_editor_add_filter">Filter hinzufügen</string>
+  <string name="library_custom_tab_editor_remove_filter_cd">Filter entfernen</string>
+  <string name="library_custom_tab_editor_collapse_cd">Einklappen</string>
+  <string name="library_custom_tab_editor_expand_cd">Ausklappen</string>
+  <string name="library_custom_tab_editor_chooser_title">Filter hinzufügen</string>
+  <!-- Content-type segmented row labels. Kept distinct from
+       library_tab_* so a future translator can pick a different form
+       for the editor segmented row vs the rail tab. -->
+  <string name="library_custom_tab_content_type_songs">Titel</string>
+  <string name="library_custom_tab_content_type_albums">Alben</string>
+  <string name="library_custom_tab_content_type_artists">Künstler</string>
+  <string name="library_custom_tab_content_type_genres">Genres</string>
+
+  <!-- Filter conditions (ConditionUi.kt). One label + one add-subtitle
+       per ConditionUi variant. summary() formats are below. -->
+  <string name="library_filter_genre_label">Genre</string>
+  <string name="library_filter_genre_add_subtitle">Ausgewählte Genres treffen</string>
+  <string name="library_filter_artist_label">Künstler</string>
+  <string name="library_filter_artist_add_subtitle">Ausgewählte Künstler treffen</string>
+  <string name="library_filter_album_label">Album</string>
+  <string name="library_filter_album_add_subtitle">Ausgewählte Alben treffen</string>
+  <string name="library_filter_year_label">Jahresbereich</string>
+  <string name="library_filter_year_add_subtitle">Nach Erscheinungsjahr eingrenzen</string>
+  <string name="library_filter_date_added_label">Hinzugefügt am</string>
+  <string name="library_filter_date_added_add_subtitle">Nach Aufnahmedatum in die Bibliothek eingrenzen</string>
+  <string name="library_filter_album_art_label">Albumcover</string>
+  <string name="library_filter_album_art_add_subtitle">Nur Titel mit / ohne Cover</string>
+  <string name="library_filter_path_label">Dateipfad enthält</string>
+  <string name="library_filter_path_add_subtitle">Teilstring-Treffer im Dateipfad</string>
+  <string name="library_filter_title_label">Titel enthält</string>
+  <string name="library_filter_title_add_subtitle">Teilstring-Treffer in Titel / Künstler / Album</string>
+
+  <!-- Filter-condition summaries (ConditionUi.kt). -->
+  <string name="library_filter_summary_any">Beliebig</string>
+  <string name="library_filter_summary_year_range">%1$d – %2$d</string>
+  <string name="library_filter_summary_year_from">ab %1$d</string>
+  <string name="library_filter_summary_year_up_to">bis %1$d</string>
+  <string name="library_filter_summary_date_range">%1$s – %2$s</string>
+  <string name="library_filter_summary_date_since">seit %1$s</string>
+  <string name="library_filter_summary_date_until">bis %1$s</string>
+  <string name="library_filter_summary_album_art_with">Nur mit Albumcover</string>
+  <string name="library_filter_summary_album_art_without">Nur ohne Albumcover</string>
+  <string name="library_filter_summary_quoted">\"%1$s\"</string>
+
+  <!-- Filter-condition editor labels. -->
+  <string name="library_filter_path_field_label">Pfad enthält</string>
+  <string name="library_filter_title_field_label">Titel enthält</string>
+  <string name="library_filter_album_art_only_with">Nur mit Albumcover</string>
+  <string name="library_filter_album_art_only_without">Nur ohne Albumcover</string>
+  <string name="library_filter_date_from">Von: %1$s</string>
+  <string name="library_filter_date_from_any">Von: beliebig</string>
+  <string name="library_filter_date_to">Bis: %1$s</string>
+  <string name="library_filter_date_to_any">Bis: beliebig</string>
+  <string name="library_filter_date_picker_ok">OK</string>
+  <string name="library_filter_date_picker_clear">Leeren</string>
+  <string name="library_filter_multicheck_empty">Noch keine Werte — lies zuerst deine Bibliothek ein.</string>
+  <string name="library_filter_multicheck_show_all">Alle anzeigen (%1$d)</string>
+
+  <!-- Multi-select bar (tabs/MultiSelectBar.kt). -->
+  <string name="library_cd_multiselect_close">Auswahlmodus verlassen</string>
+
+  <!-- Scan progress bar (ScanProgressBar.kt). -->
+  <string name="library_scan_progress_with_total">%1$d von %2$d wird eingelesen</string>
+  <string name="library_scan_progress_indeterminate">Wird eingelesen…</string>
+  <string name="library_scan_progress_percent">%1$d%%</string>
+
+  <!-- Delete-file flow (DeleteFlow.kt). -->
+  <string name="library_delete_dialog_title_one">%1$s löschen?</string>
+  <string name="library_delete_dialog_title_many">%1$d Titel löschen?</string>
+  <string name="library_delete_dialog_body_one">Die Datei wird dauerhaft von deinem Gerät gelöscht.</string>
+  <string name="library_delete_dialog_body_many">%1$d Dateien werden dauerhaft von deinem Gerät gelöscht.</string>
+  <string name="library_delete_dialog_confirm">Löschen</string>
+  <string name="library_delete_dialog_cancel">Abbrechen</string>
+  <string name="library_delete_done_one">%1$s gelöscht</string>
+  <string name="library_delete_done_many">%1$d Titel gelöscht</string>
+  <string name="library_delete_cancelled">Löschen abgebrochen.</string>
+  <string name="library_delete_failed_consent_default">Bestätigungsdialog konnte nicht gestartet werden</string>
+  <string name="library_delete_failed">Löschen fehlgeschlagen: %1$s</string>
+
+  <!-- Playlist detail screen (PlaylistDetailScreen.kt). -->
+  <string name="library_playlist_detail_default_title">Playlist</string>
+  <string name="library_playlist_detail_add_tracks_cd">Titel hinzufügen</string>
+  <string name="library_playlist_detail_empty_title">Noch keine Titel</string>
+  <string name="library_playlist_detail_empty_button">Titel hinzufügen</string>
+  <string name="library_playlist_detail_empty_hint">Oder halte einen Titel in deiner Bibliothek gedrückt und wähle „Zu Playlist hinzufügen“.</string>
+
+  <!-- Track-picker screen (TrackPickerScreen.kt). -->
+  <string name="library_track_picker_title_default">Titel hinzufügen</string>
+  <string name="library_track_picker_title_added">+%1$d</string>
+  <string name="library_track_picker_title_removed">-%1$d</string>
+  <string name="library_track_picker_title_added_removed">+%1$d / -%2$d</string>
+  <string name="library_cd_track_picker_confirm">Auswahl bestätigen</string>
+
+  <!-- Plurals: count-bearing copy. -->
+  <plurals name="library_multiselect_count">
+    <item quantity="one">%1$d ausgewählt</item>
+    <item quantity="other">%1$d ausgewählt</item>
+  </plurals>
+  <plurals name="library_multiselect_add_to_playlist_cd">
+    <item quantity="one">%1$d Titel zur Playlist hinzufügen</item>
+    <item quantity="other">%1$d Titel zur Playlist hinzufügen</item>
+  </plurals>
+  <plurals name="library_multiselect_delete_cd">
+    <item quantity="one">%1$d Titel löschen</item>
+    <item quantity="other">%1$d Titel löschen</item>
+  </plurals>
+  <plurals name="library_album_detail_meta_tracks">
+    <item quantity="one">%1$d Titel</item>
+    <item quantity="other">%1$d Titel</item>
+  </plurals>
+  <plurals name="library_artist_detail_albums_count">
+    <item quantity="one">%1$d Album</item>
+    <item quantity="other">%1$d Alben</item>
+  </plurals>
+  <plurals name="library_artist_detail_tracks_count">
+    <item quantity="one">%1$d Titel</item>
+    <item quantity="other">%1$d Titel</item>
+  </plurals>
+  <plurals name="library_genre_detail_tracks_count">
+    <item quantity="one">%1$d Titel</item>
+    <item quantity="other">%1$d Titel</item>
+  </plurals>
+  <plurals name="library_genre_subtitle_tracks">
+    <item quantity="one">%1$d Titel</item>
+    <item quantity="other">%1$d Titel</item>
+  </plurals>
+  <plurals name="library_playlist_subtitle_tracks">
+    <item quantity="one">%1$d Titel</item>
+    <item quantity="other">%1$d Titel</item>
+  </plurals>
+
+</resources>

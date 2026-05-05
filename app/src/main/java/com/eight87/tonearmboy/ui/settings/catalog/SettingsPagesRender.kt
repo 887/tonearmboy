@@ -172,5 +172,6 @@ fun SettingsCatalogPage(
 // R.F.13 — RowFromBinding collapsed: `binding.Render(entry)` at the
 // call site. Each variant owns its own composable; no when, no null arm.
 
-/** R.F.15 — group titles now ride the GroupRef inline. */
-fun groupTitleFor(group: GroupRef): String = group.label
+/** R.F.15 — group titles now ride the GroupRef inline. T.E.1 — resolved via stringResource for translation. */
+@Composable
+fun groupTitleFor(group: GroupRef): String = stringResource(group.labelRes)

@@ -1,6 +1,6 @@
 # tonearmboy — translations plan
 
-## Status: 🟡 IN PROGRESS — Phase T.A done; T.B/T.C/T.D/T.E pending.
+## Status: 🟡 IN PROGRESS — Phases T.A through T.D done; T.E.1 (German) drafted at 100% coverage, awaiting per-entry editorial review. Phase stays open for future locales (T.E.2, T.E.3, …).
 
 ## The model
 
@@ -54,11 +54,11 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 
 **Why:** Set the file-layout contract before any locale lands.
 
-- [ ] **T.B.1** Confirm `<application>` doesn't pin a locale (default behaviour follows system locale). Already the case; no-op verification.
-- [ ] **T.B.2** Add `<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">` to `values/strings.xml` so Android Studio / lint treats English as canonical.
-- [ ] **T.B.3** Add a short paragraph to CLAUDE.md (NOT a separate CONTRIBUTING file) covering: how the user + Claude generate a locale, the `values-<locale>/strings.xml` convention, the editorial register (plain / factual / useful), and that missing keys fall back to English. Total: maybe 8 lines. Not a contributor doc — a session-instructions doc for the user's own future Claude sessions.
-- [ ] **T.B.4** Verify: `:app:assembleDebug` clean; AVD locale switch (`adb shell setprop persist.sys.locale de-DE && adb shell stop && adb shell start`) shows English fallback when no `values-de/` exists yet.
-- [ ] **T.B.5** Ship + tick.
+- [x] **T.B.1** Confirm `<application>` doesn't pin a locale (default behaviour follows system locale). Already the case; no-op verification.
+- [x] **T.B.2** Add `<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">` to `values/strings.xml` so Android Studio / lint treats English as canonical.
+- [x] **T.B.3** Add a short paragraph to CLAUDE.md (NOT a separate CONTRIBUTING file) covering: how the user + Claude generate a locale, the `values-<locale>/strings.xml` convention, the editorial register (plain / factual / useful), and that missing keys fall back to English. Total: maybe 8 lines. Not a contributor doc — a session-instructions doc for the user's own future Claude sessions.
+- [x] **T.B.4** Verify: `:app:assembleDebug` clean; AVD locale switch (`adb shell cmd locale set-app-locales com.eight87.tonearmboy --locales de-DE`) shows English fallback when no `values-de/` exists yet. (`persist.sys.locale` rejected on the AVD without root; per-app locale via `cmd locale` is the documented modern path and works without root.)
+- [x] **T.B.5** Ship + tick.
 
 **Effort:** XS (1–2 hours). **Risk:** low.
 
@@ -68,12 +68,12 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 
 **Why:** The user wants a visible "X% done in language Y" signal in README without Crowdin/Weblate/server.
 
-- [ ] **T.C.1** Write `scripts/translation-progress.sh`: parses `values/strings.xml` → set of canonical keys (excluding `translatable="false"` rows); for each `values-<locale>/strings.xml` parses translated keys; computes `done / total` and the locale's display name; prints a markdown table.
-- [ ] **T.C.2** Add `<!-- TRANSLATIONS-START -->` / `<!-- TRANSLATIONS-END -->` markers in `README.md` (new "Translations" section). Script overwrites between markers using a `sed` block-replace — idempotent.
-- [ ] **T.C.3** Wire the script into `scripts/build-release-apk.sh` immediately before the `git tag` step: regenerate the README block; `git diff --quiet README.md` to confirm intentional change vs noise; release commit picks up the updated table.
-- [ ] **T.C.4** Sanity tests for the script: a few golden files in `scripts/tests/translation-progress/` exercising 0%, 100%, partial, and missing-locale cases. Run via `bash scripts/translation-progress.sh --test`.
-- [ ] **T.C.5** Verify: README section renders correctly on github.com; auto-update is byte-for-byte stable.
-- [ ] **T.C.6** Ship + tick.
+- [x] **T.C.1** Write `scripts/translation-progress.sh`: parses every `values/strings*.xml` → set of canonical keys (excluding `translatable="false"` rows); for each `values-<locale>/strings*.xml` parses translated keys; computes `done / total` and the locale's display name; prints a markdown table. Surface XML files (`strings_settings.xml`, `strings_library.xml`, etc.) are globbed so the script handles the per-surface split.
+- [x] **T.C.2** Added `<!-- TRANSLATIONS-START -->` / `<!-- TRANSLATIONS-END -->` markers in `README.md` (new "Translations" section). Script's `--update` mode rewrites between markers via `awk` block-replace — idempotent.
+- [x] **T.C.3** Wired the script into `scripts/build-release-apk.sh` immediately before the GH-release step: regenerates the README block; release commit picks up the updated table when locales change.
+- [x] **T.C.4** Golden tests at `scripts/tests/translation-progress/{empty,partial-de,full-de,no-locale}/`. Run via `scripts/translation-progress.sh --test`. All 4 cases pass.
+- [x] **T.C.5** Verified: `--update` is byte-stable on a no-op second run (`diff /tmp/readme-before.md README.md` clean).
+- [x] **T.C.6** Ship + tick.
 
 **Effort:** S–M (½–1 day). **Risk:** low (POSIX shell + sed + grep).
 
@@ -83,9 +83,9 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 
 **Why:** The auto-table is the data; this is the surrounding prose.
 
-- [ ] **T.D.1** Above the auto-generated table: a 2-sentence paragraph explaining the model (translations are user + Claude per-language, English is canonical, missing keys fall back to English). NOT a "we welcome contributions" pitch.
-- [ ] **T.D.2** Linkify each language row to its `values-<locale>/strings.xml` on github so the user can jump straight to "edit this file".
-- [ ] **T.D.3** Ship + tick.
+- [x] **T.D.1** Above the auto-generated table: a 2-sentence paragraph explaining the model (translations are maintainer + Claude per-language, English is canonical, missing keys fall back to English). NOT a "we welcome contributions" pitch.
+- [x] **T.D.2** Linkified each language row to its `values-<locale>/` on github so the maintainer can jump straight to "edit this directory" — the script emits `[Language](app/src/main/res/values-<locale>/)`.
+- [x] **T.D.3** Ship + tick.
 
 **Effort:** XS (15 min). **Risk:** none.
 
@@ -106,7 +106,7 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 
 Per-locale ticks (extend as new languages land):
 
-- [ ] **T.E.1** German (`values-de/`) — user is local, primary review channel.
+- [x] **T.E.1** German (`values-de/`) — user is local, primary review channel. Drafted via 6 parallel sub-agents (one per surface XML), 481/481 keys (100% coverage). Caught + fixed a T.A regression: `GroupRef` was holding hardcoded English label strings; converted to `@StringRes` so Settings root section headers (Darstellung / Verhalten / Bibliothek) resolve through `stringResource`. Per-app locale switch via `cmd locale set-app-locales` confirmed German renders end-to-end. Per-entry editorial review still pending — drafted, not signed off.
 - [ ] **T.E.2** Next locale — user picks; same workflow.
 - [ ] **T.E.3** Next locale — same workflow.
 - [ ] (… one sub-step per locale shipped)

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- T.A.5 — runtime permission rationale + watcher service notification + scanner snackbars + file-deletion dialogs. -->
+<resources>
+
+  <!-- ========================================================== -->
+  <!-- Audio permission rationale (RequireAudioPermission.kt) -->
+  <!-- ========================================================== -->
+  <string name="permission_audio_title">tonearmboy braucht Zugriff auf Musik</string>
+  <string name="permission_audio_body">Erteile die Berechtigung für die Musikbibliothek, damit tonearmboy deine Titel indexieren kann. Es wird nichts anderes gelesen, nichts ins Netz hochgeladen und nichts nach Hause gefunkt.</string>
+  <string name="permission_audio_grant_button">Zugriff erteilen</string>
+  <string name="permission_audio_retry_button">Erneut versuchen</string>
+  <string name="permission_audio_open_settings_button">App-Einstellungen öffnen</string>
+
+  <!-- ========================================================== -->
+  <!-- POST_NOTIFICATIONS runtime gate (RequirePostNotifications.kt) -->
+  <!-- ========================================================== -->
+  <string name="permission_notifications_denied_snackbar">Benachrichtigungen deaktiviert — Wiedergabesteuerung erscheint nicht in deiner Benachrichtigungsleiste.</string>
+  <string name="permission_notifications_denied_dismiss">Schließen</string>
+
+  <!-- ========================================================== -->
+  <!-- LibraryWatcherService — sticky foreground-service notification -->
+  <!-- (channel ID stays hard-coded as a constant; channel name is user-facing) -->
+  <!-- ========================================================== -->
+  <string name="watcher_notif_channel_name">Bibliotheksbeobachter</string>
+  <string name="watcher_notif_channel_description">Dauerhafte Benachrichtigung, solange das automatische Neuladen aktiviert ist.</string>
+  <string name="watcher_notif_text">Bibliothek wird auf Änderungen überwacht. Tippen, um zu deaktivieren.</string>
+  <string name="watcher_notif_action_open">tonearmboy öffnen</string>
+  <string name="watcher_notif_action_disable">Deaktivieren</string>
+
+  <!-- ========================================================== -->
+  <!-- File deletion flow (DeleteFlow.kt + TrackDeleter.kt) -->
+  <!-- ========================================================== -->
+  <!-- Confirmation dialog. -->
+  <string name="library_delete_dialog_title_single">%1$s löschen?</string>
+  <string name="library_delete_dialog_title_multi">%1$d Titel löschen?</string>
+  <string name="library_delete_dialog_body_single">Die Datei wird dauerhaft von deinem Gerät gelöscht.</string>
+  <string name="library_delete_dialog_body_multi">%1$d Dateien werden dauerhaft von deinem Gerät gelöscht.</string>
+  <!-- library_delete_dialog_confirm / library_delete_dialog_cancel
+       are owned by strings_library.xml (DeleteFlow.kt's surface). -->
+  <!-- Outcome snackbars. -->
+  <string name="library_delete_snackbar_cancelled">Löschen abgebrochen.</string>
+  <string name="library_delete_snackbar_done_single">%1$s gelöscht</string>
+  <string name="library_delete_snackbar_done_multi">%1$d Titel gelöscht</string>
+  <!-- Failure snackbars. The "%1$s" slot carries the underlying reason. -->
+  <string name="library_delete_snackbar_failure_with_reason">Löschen fehlgeschlagen: %1$s</string>
+  <string name="library_delete_failure_consent_dialog">Zustimmungsdialog konnte nicht gestartet werden</string>
+  <string name="library_delete_failure_already_gone">Datei bereits entfernt.</string>
+  <string name="library_delete_failure_denied">Diese Datei konnte nicht gelöscht werden.</string>
+  <string name="library_delete_failure_create_request">createDeleteRequest fehlgeschlagen</string>
+  <string name="library_delete_failure_generic">Löschen fehlgeschlagen</string>
+
+</resources>

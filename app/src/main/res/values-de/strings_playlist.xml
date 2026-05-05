@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- T.A.6 — search overlay + playlist picker / create / rename / delete / cover-chooser / import-collision dialogs + settings search overlay. -->
+<resources>
+
+  <!-- Search overlay (ui/search/SearchScreen.kt) -->
+  <string name="search_title">Suchen</string>
+  <string name="search_placeholder">Titel, Künstler, Album suchen</string>
+  <string name="search_empty_hint">Tippe los, um zu suchen.</string>
+  <string name="search_no_matches">Keine Treffer für \"%1$s\".</string>
+  <string name="search_unknown_track_subtitle">Unbekannt</string>
+  <string name="search_cd_back">Zurück</string>
+
+  <!-- Settings search overlay (ui/settings/catalog/SettingsSearchScreen.kt) -->
+  <string name="settings_search_placeholder">Einstellungen suchen</string>
+  <string name="settings_search_empty_hint">Tippe los, um alle Einstellungen zu durchsuchen.</string>
+  <!-- settings_search_no_matches is owned by strings_settings.xml. -->
+  <string name="settings_search_cd_search">Einstellungen suchen</string>
+  <string name="settings_search_cd_back">Zurück</string>
+  <string name="settings_search_cd_clear">Leeren</string>
+
+  <!-- Playlist picker bottom sheet (ui/library/PlaylistPickerSheet.kt) -->
+  <string name="playlist_picker_title">Zur Playlist hinzufügen</string>
+  <string name="playlist_picker_create_new">Neue Playlist…</string>
+  <string name="playlist_picker_empty">Noch keine Playlists</string>
+
+  <!-- New-playlist dialog inside the picker (ui/library/PlaylistPickerSheet.kt) -->
+  <string name="playlist_create_dialog_title">Neue Playlist</string>
+  <string name="playlist_name_label">Name</string>
+  <string name="playlist_create_confirm">Erstellen</string>
+  <string name="playlist_dialog_cancel">Abbrechen</string>
+
+  <!-- Playlists tiles screen + new-playlist sheet + cover chooser (ui/library/PlaylistsTilesScreen.kt) -->
+  <string name="playlist_tiles_empty">Noch keine Playlists. Tippe auf +, um eine zu erstellen.</string>
+  <string name="playlist_tiles_new_fab">Neue Playlist</string>
+  <string name="playlist_context_rename">Umbenennen</string>
+  <string name="playlist_context_choose_cover">Cover wählen</string>
+  <string name="playlist_context_delete">Löschen</string>
+  <string name="playlist_new_sheet_hint">Du kannst nach dem Erstellen ein Coverbild auswählen.</string>
+  <string name="playlist_cover_chooser_title">Cover für \"%1$s\" wählen</string>
+  <string name="playlist_cover_pick_from_track">Aus einem Titel dieser Playlist wählen</string>
+  <string name="playlist_cover_pick_from_device">Vom Gerät auswählen</string>
+  <string name="playlist_cover_use_letter">Buchstabe verwenden</string>
+  <string name="playlist_cover_pick_track_title">Albumcover eines Titels wählen</string>
+  <string name="playlist_cover_no_art">Keiner der Titel in dieser Playlist hat ein Albumcover.</string>
+  <string name="playlist_track_unknown_subtitle">Unbekannt</string>
+
+  <!-- Rename / Delete dialogs (ui/library/PlaylistDialogHost.kt) -->
+  <string name="playlist_rename_dialog_title">Playlist umbenennen</string>
+  <string name="playlist_rename_confirm">Umbenennen</string>
+  <string name="playlist_delete_dialog_title">Playlist löschen</string>
+  <string name="playlist_delete_dialog_text">\"%1$s\" löschen? Dadurch wird nur die Playlist entfernt, nicht die Titel selbst.</string>
+  <string name="playlist_delete_confirm">Löschen</string>
+
+  <!-- Import-collision dialog (ui/settings/PlaylistImportDialog.kt) -->
+  <string name="playlist_collision_dialog_title">Playlist-Namen existieren bereits</string>
+  <string name="playlist_collision_dialog_intro">Diese Playlists existieren bereits in deiner Bibliothek:</string>
+  <string name="playlist_collision_dialog_explanation">Überschreiben ersetzt die vorhandenen Titel. Zusammenführen hängt neue Titel an die vorhandenen Playlists an. Abbrechen überspringt nur die kollidierenden Playlists; die übrigen werden trotzdem importiert.</string>
+  <string name="playlist_collision_overwrite">Überschreiben</string>
+  <string name="playlist_collision_merge">Zusammenführen</string>
+  <string name="playlist_collision_cancel">Kollisionen abbrechen</string>
+
+  <!-- Snackbar messages built from the picker (ui/nav/AddToPlaylistController.kt) -->
+  <string name="playlist_added_track">\"%1$s\" zu %2$s hinzugefügt</string>
+
+  <!-- Snackbar messages built from the import/export flow (ui/nav/PlaylistBackupController.kt) -->
+  <string name="playlist_export_failed">Export fehlgeschlagen: %1$s</string>
+  <string name="playlist_import_failed">Import fehlgeschlagen: %1$s</string>
+  <string name="playlist_import_unknown_error">Unbekannter Fehler</string>
+  <string name="playlist_import_read_failed">Ausgewählte Datei konnte nicht gelesen werden</string>
+
+  <!-- Plurals: track counts and import-summary fragments. -->
+  <plurals name="playlist_track_count">
+    <item quantity="one">%1$d Titel</item>
+    <item quantity="other">%1$d Titel</item>
+  </plurals>
+
+  <plurals name="playlist_added_tracks_count">
+    <item quantity="one">%1$d Titel zu %2$s hinzugefügt</item>
+    <item quantity="other">%1$d Titel zu %2$s hinzugefügt</item>
+  </plurals>
+
+  <plurals name="playlist_exported_count">
+    <item quantity="one">%1$d Playlist exportiert</item>
+    <item quantity="other">%1$d Playlists exportiert</item>
+  </plurals>
+
+  <plurals name="playlist_imported_count">
+    <item quantity="one">%1$d Playlist importiert</item>
+    <item quantity="other">%1$d Playlists importiert</item>
+  </plurals>
+
+  <plurals name="playlist_imported_skipped">
+    <item quantity="one">%1$d übersprungen</item>
+    <item quantity="other">%1$d übersprungen</item>
+  </plurals>
+
+  <plurals name="playlist_imported_unmatched">
+    <item quantity="one">%1$d Titel nicht gefunden</item>
+    <item quantity="other">%1$d Titel nicht gefunden</item>
+  </plurals>
+
+</resources>
