@@ -75,4 +75,22 @@ interface TabSpec<T : Any> {
     onClick: () -> Unit,
     onLongClick: () -> Unit,
   )
+
+  /**
+   * R4 — opt-in flag for the tile-mode overflow icon. Specs that
+   * return true also override [TileOverflowMenu] to render the menu
+   * items shown when the user taps the icon. Default false so
+   * existing tabs are unchanged.
+   */
+  val showTileOverflow: Boolean get() = false
+
+  /**
+   * R4 — menu content rendered inside a `DropdownMenu` anchored to
+   * the tile's overflow icon. Default no-op; specs that set
+   * [showTileOverflow] = true override this. [onDismiss] closes the
+   * menu after an item fires.
+   */
+  @Composable
+  fun TileOverflowMenu(item: T, onDismiss: () -> Unit) {
+  }
 }

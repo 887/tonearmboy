@@ -44,6 +44,20 @@
   <string name="library_album_cover_clear">Set to no cover</string>
   <string name="library_album_cover_reset">Reset to default cover</string>
 
+  <!-- Generic per-row cover-action menu (album-art-rows R1/R3/R4/R5). -->
+  <string name="library_cover_action_replace">Replace cover…</string>
+  <string name="library_cover_action_search">Search MusicBrainz for cover</string>
+  <string name="library_cover_action_clear">Set to no cover</string>
+  <string name="library_cover_action_reset">Reset to default cover</string>
+  <string name="library_cover_section_label">Cover art</string>
+  <string name="library_track_overflow_cd">Track options</string>
+  <string name="library_album_overflow_cd">Album options</string>
+  <string name="library_artist_overflow_cd">Artist options</string>
+  <string name="library_playlist_overflow_cd">Playlist options</string>
+  <string name="library_bulk_cover_action_clear">Set selected to no cover</string>
+  <string name="library_bulk_cover_action_reset">Reset selected to default</string>
+  <string name="library_bulk_cover_action_search">Search MusicBrainz for selected</string>
+
   <!-- Track context menu (TrackContextAction.kt). -->
   <string name="library_track_action_play">Play</string>
   <string name="library_track_action_add_to_queue">Add to queue</string>

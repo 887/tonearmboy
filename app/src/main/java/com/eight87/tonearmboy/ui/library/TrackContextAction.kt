@@ -41,6 +41,11 @@ internal fun TrackContextMenu(
   onDismiss: () -> Unit,
   onAction: (TrackContextAction) -> Unit,
   deleteTestTag: String,
+  // R1 — optional cover-action submenu. When non-null the four cover
+  // items render at the bottom of the menu, separated by a divider.
+  // Caller passes the current choice so Reset can hide on `NoChoice`.
+  coverChoice: com.eight87.tonearmboy.data.AlbumCoverChoice? = null,
+  coverHandlers: CoverActionHandlers? = null,
 ) {
   DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
     DropdownMenuItem(
@@ -68,5 +73,12 @@ internal fun TrackContextMenu(
       onClick = { onDismiss(); onAction(TrackContextAction.Delete) },
       modifier = Modifier.semantics { testTag = deleteTestTag },
     )
+    if (coverChoice != null && coverHandlers != null) {
+      CoverActionsMenuItems(
+        choice = coverChoice,
+        handlers = coverHandlers,
+        onDismiss = onDismiss,
+      )
+    }
   }
 }

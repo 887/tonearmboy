@@ -431,22 +431,46 @@ fun LibraryScreen(
             ),
           )
         } else when (activeTab) {
-          LibraryTab.Songs -> TracksListScreen(
-            repository = tracks,
-            sort = activeSort,
-            intelligentSorting = intelligentSorting,
-            filter = filter,
-            viewMode = activeViewMode,
-            albumCoversMode = albumCoversMode,
-            onTrackClick = onTrackClick,
-            onAddToQueue = onAddToQueue,
-            onAddToPlaylist = onAddToPlaylist,
-            onAddTracksToPlaylist = onAddTracksToPlaylist,
-            onGoToAlbum = { t -> onOpenAlbum(t.album ?: return@TracksListScreen, t.albumArtist ?: t.artist) },
-            onGoToArtist = { t -> onOpenArtist((t.albumArtist?.takeIf { it.isNotBlank() } ?: t.artist) ?: return@TracksListScreen) },
-            onComingSoon = onComingSoon,
-            onDeleteTracks = onDeleteTracks,
-          )
+          LibraryTab.Songs -> {
+            // R1 — track-row "Search MusicBrainz" routes through the
+            // album-level fetcher: a track without an MBID hint is too
+            // noisy for a recording lookup, but its album is exactly the
+            // album-level lookup AlbumDetail already uses, and a track
+            // with no per-track override falls back to its album cover.
+            val searchScope = rememberCoroutineScope()
+            val ctx = LocalContext.current
+            val onSearchTrackCover: (Track) -> Unit = { t ->
+              val name = t.album
+              if (name != null) {
+                searchScope.launch {
+                  com.eight87.tonearmboy.data.albumart.AlbumArtFetcher(albums)
+                    .fetch(
+                      context = ctx,
+                      albumName = name,
+                      albumArtist = t.albumArtist ?: t.artist,
+                      overwriteUserChoice = true,
+                    )
+                }
+              }
+            }
+            TracksListScreen(
+              repository = tracks,
+              sort = activeSort,
+              intelligentSorting = intelligentSorting,
+              filter = filter,
+              viewMode = activeViewMode,
+              albumCoversMode = albumCoversMode,
+              onTrackClick = onTrackClick,
+              onAddToQueue = onAddToQueue,
+              onAddToPlaylist = onAddToPlaylist,
+              onAddTracksToPlaylist = onAddTracksToPlaylist,
+              onGoToAlbum = { t -> onOpenAlbum(t.album ?: return@TracksListScreen, t.albumArtist ?: t.artist) },
+              onGoToArtist = { t -> onOpenArtist((t.albumArtist?.takeIf { it.isNotBlank() } ?: t.artist) ?: return@TracksListScreen) },
+              onComingSoon = onComingSoon,
+              onDeleteTracks = onDeleteTracks,
+              onSearchTrackCover = onSearchTrackCover,
+            )
+          }
           LibraryTab.Albums -> AlbumsTabScreen(
             repository = albums,
             sort = activeSort,

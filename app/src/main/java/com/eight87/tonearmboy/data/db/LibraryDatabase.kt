@@ -18,8 +18,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     PlaylistTrackEntity::class,
     CustomTabEntity::class,
     AlbumCoverEntity::class,
+    TrackCoverEntity::class,
+    ArtistCoverEntity::class,
   ],
-  version = 6,
+  version = 7,
   exportSchema = true,
 )
 abstract class LibraryDatabase : RoomDatabase() {
@@ -31,6 +33,8 @@ abstract class LibraryDatabase : RoomDatabase() {
   abstract fun libraryDao(): LibraryDao
   abstract fun customTabDao(): CustomTabDao
   abstract fun albumCoverDao(): AlbumCoverDao
+  abstract fun trackCoverDao(): TrackCoverDao
+  abstract fun artistCoverDao(): ArtistCoverDao
 
   companion object {
     private const val DB_NAME = "tonearmboy-library.db"
@@ -139,6 +143,27 @@ abstract class LibraryDatabase : RoomDatabase() {
       }
     }
 
+    /**
+     * v6 -> v7: add `track_covers` + `artist_covers` for the per-row
+     * cover override surface (`docs/plans/album-art-rows.md` R1, R3).
+     * Same nullable-coverUri tri-state as `album_covers`; each
+     * entity-kind has its own table keyed by its natural identity.
+     */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+          "CREATE TABLE IF NOT EXISTS `track_covers` (" +
+            "`trackId` INTEGER NOT NULL PRIMARY KEY, " +
+            "`coverUri` TEXT)"
+        )
+        db.execSQL(
+          "CREATE TABLE IF NOT EXISTS `artist_covers` (" +
+            "`artistKey` TEXT NOT NULL PRIMARY KEY, " +
+            "`coverUri` TEXT)"
+        )
+      }
+    }
+
     @Volatile private var instance: LibraryDatabase? = null
 
     /**
@@ -165,6 +190,7 @@ abstract class LibraryDatabase : RoomDatabase() {
             MIGRATION_3_4,
             MIGRATION_4_5,
             MIGRATION_5_6,
+            MIGRATION_6_7,
           )
           .build()
         instance = created

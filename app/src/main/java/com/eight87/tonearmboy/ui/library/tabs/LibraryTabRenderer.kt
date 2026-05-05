@@ -91,6 +91,16 @@ fun <T : Any> LibraryTabRenderer(
     if (effectiveTileMode) {
       val resources = LocalContext.current.resources
       val tileItems = remember(items, resources) { items.mapNotNull { spec.toTile(it, resources) } }
+      // R4 — when the spec opts into tile overflow, wrap its
+      // composable hook in a `(TileItem, dismiss) -> Unit` slot keyed
+      // off the underlying entity (resolved via spec.id(t) == tile.id).
+      val tileOverflowMenu: (@Composable (com.eight87.tonearmboy.ui.library.TileItem, () -> Unit) -> Unit)? =
+        if (spec.showTileOverflow) {
+          { tile, dismiss ->
+            val entity = items.firstOrNull { spec.id(it) == tile.id }
+            if (entity != null) spec.TileOverflowMenu(entity, dismiss)
+          }
+        } else null
       LibraryTileGrid(
         tiles = tileItems,
         sectionKeys = sectionKeys,
@@ -105,6 +115,8 @@ fun <T : Any> LibraryTabRenderer(
           val item = items.firstOrNull { spec.id(it) == tile.id } ?: return@LibraryTileGrid
           onItemLongClick?.invoke(item)
         },
+        tileOverflowMenu = tileOverflowMenu,
+        inSelectionMode = selection?.inSelectionMode ?: false,
         modifier = Modifier.fillMaxSize().padding(horizontal = SettingsDimens.PagePadding),
       )
     } else {

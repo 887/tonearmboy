@@ -1,16 +1,44 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
 import android.content.res.Resources
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.unit.dp
 import com.eight87.tonearmboy.R
+import com.eight87.tonearmboy.data.AlbumCoverChoice
 import com.eight87.tonearmboy.data.ArtistSource
 import com.eight87.tonearmboy.data.model.Artist
+import com.eight87.tonearmboy.ui.library.CoverActionsMenuItems
 import com.eight87.tonearmboy.ui.library.TileItem
 import com.eight87.tonearmboy.ui.library.initialKey
+import com.eight87.tonearmboy.ui.library.rememberArtistCoverActions
 import com.eight87.tonearmboy.ui.library.sortArtists
 import com.eight87.tonearmboy.ui.library.sortNameKey
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
@@ -18,6 +46,8 @@ import com.eight87.tonearmboy.ui.settings.SettingsRepository
 import com.eight87.tonearmboy.ui.settings.SortKey
 import com.eight87.tonearmboy.ui.settings.TabSort
 import com.eight87.tonearmboy.ui.settings.ViewMode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * D.28 — Artists tab dispatcher. List = sticky-header rows; Tile =
@@ -42,8 +72,11 @@ fun ArtistsTabScreen(
     else repository.artistsMatching(filter)
   }.collectAsState(initial = emptyList())
   val sorted = remember(artists, sort, intelligentSorting) { sortArtists(artists, sort, intelligentSorting) }
+  // R3 — pass the live ArtistSource down so the row's overflow menu
+  // can mutate the per-artist cover override.
+  val spec = remember(repository) { ArtistsTabSpecWithCovers(repository) }
   LibraryTabRenderer(
-    spec = ArtistsTabSpec,
+    spec = spec,
     items = sorted,
     sort = sort,
     viewMode = viewMode,
@@ -72,7 +105,7 @@ fun ArtistsListScreen(
   )
 }
 
-/** R.D.3 — TabSpec for the Artists tab. */
+/** R.D.3 — TabSpec for the Artists tab. Pre-R3 singleton form. */
 internal object ArtistsTabSpec : TabSpec<Artist> {
   override val testTag: String = "artists_tab"
   override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_artists
@@ -109,6 +142,122 @@ internal object ArtistsTabSpec : TabSpec<Artist> {
       onClick = onClick,
     )
   }
+}
+
+/**
+ * R3 — variant of [ArtistsTabSpec] that owns an [ArtistSource] handle
+ * so list rows can carry a 3-dot overflow menu with the four
+ * cover-action items. The non-cover form stays as the singleton above
+ * for callers (custom tabs, the contract test) that don't thread
+ * cover state through.
+ */
+internal class ArtistsTabSpecWithCovers(
+  private val artistSource: ArtistSource,
+) : TabSpec<Artist> {
+  override val testTag: String = ArtistsTabSpec.testTag
+  override val emptyMessageRes: Int = ArtistsTabSpec.emptyMessageRes
+  override val supportsTileMode: Boolean = ArtistsTabSpec.supportsTileMode
+
+  override fun id(item: Artist): Long = ArtistsTabSpec.id(item)
+
+  override fun sectionKey(item: Artist, sort: TabSort, intelligentSorting: Boolean): String? =
+    ArtistsTabSpec.sectionKey(item, sort, intelligentSorting)
+
+  override fun toTile(item: Artist, resources: Resources): TileItem? =
+    ArtistsTabSpec.toTile(item, resources)
+
+  @Composable
+  override fun ListRow(
+    item: Artist,
+    selected: Boolean,
+    inSelectionMode: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+  ) {
+    val albums = pluralStringResource(R.plurals.library_artist_detail_albums_count, item.albumCount, item.albumCount)
+    val tracks = pluralStringResource(R.plurals.library_artist_detail_tracks_count, item.trackCount, item.trackCount)
+    if (inSelectionMode) {
+      TwoLineRow(
+        primary = item.name,
+        secondary = "$albums · $tracks",
+        onClick = onClick,
+      )
+    } else {
+      ArtistOverflowRow(
+        primary = item.name,
+        secondary = "$albums · $tracks",
+        artistName = item.name,
+        artistSource = artistSource,
+        onClick = onClick,
+      )
+    }
+  }
+
+  // R4 — same cover-action surface in tile mode.
+  override val showTileOverflow: Boolean = true
+
+  @Composable
+  override fun TileOverflowMenu(item: Artist, onDismiss: () -> Unit) {
+    val choice = artistSource.artistCoverChoice(item.name)
+      .collectAsState(initial = AlbumCoverChoice.NoChoice)
+      .value
+    val handlers = rememberArtistCoverActions(
+      artistSource = artistSource,
+      artistName = item.name,
+      onSearchOnline = {},
+    ).copy(showSearchOnline = false)
+    CoverActionsMenuItems(choice = choice, handlers = handlers, onDismiss = onDismiss)
+  }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ArtistOverflowRow(
+  primary: String,
+  secondary: String,
+  artistName: String,
+  artistSource: ArtistSource,
+  onClick: () -> Unit,
+) {
+  var menuOpen by remember { mutableStateOf(false) }
+  val coverChoice by artistSource.artistCoverChoice(artistName)
+    .collectAsState(initial = AlbumCoverChoice.NoChoice)
+  // R3 — artist-level MusicBrainz lookup not yet implemented (would
+  // need `MusicBrainzClient.findArtistId(name)` + a CAA artist
+  // portrait endpoint). For now the menu surfaces Replace / Set
+  // empty / Reset; "Search MusicBrainz" is hidden until R3.5 lands.
+  val handlers = rememberArtistCoverActions(
+    artistSource = artistSource,
+    artistName = artistName,
+    onSearchOnline = {},
+  ).copy(showSearchOnline = false)
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .combinedClickable(onClick = onClick, onLongClick = {})
+      .padding(horizontal = 16.dp, vertical = 10.dp)
+      .semantics { testTag = "artist_list_row" },
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Column(modifier = Modifier.weight(1f)) {
+      Text(primary, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+      Text(secondary, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+    }
+    Box {
+      IconButton(
+        onClick = { menuOpen = true },
+        modifier = Modifier.semantics { testTag = "artist_row_overflow" },
+      ) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.library_artist_overflow_cd)) }
+      DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+        CoverActionsMenuItems(
+          choice = coverChoice,
+          handlers = handlers,
+          onDismiss = { menuOpen = false },
+        )
+      }
+    }
+  }
+  HorizontalDivider()
 }
 
 private fun formatArtistSubtitle(resources: Resources, albumCount: Int, trackCount: Int): String {

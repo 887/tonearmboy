@@ -18,12 +18,21 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.semantics
@@ -89,6 +98,18 @@ fun LibraryTileGrid(
    * pinned-two-columns mode.
    */
   columns: GridCells = GridCells.Adaptive(minSize = 160.dp),
+  /**
+   * R4 — when non-null, each tile gets a small 24-dp overflow icon
+   * pinned to the cover's top-right corner. The slot is invoked
+   * `(tile, dismiss) -> @Composable Unit` and is expected to render
+   * the menu items the caller wants for that tile (typically
+   * [CoverActionsMenuItems]). The dismiss callback closes the menu.
+   *
+   * Selection mode hides the icon — long-press to multi-select still
+   * works and the icon would crowd the checkbox visual.
+   */
+  tileOverflowMenu: (@Composable (TileItem, () -> Unit) -> Unit)? = null,
+  inSelectionMode: Boolean = false,
 ) {
   // Build the (header letter, runStartIndex, runLength) tuples once so
   // both the renderer and the alphabet helpers can reason about the
@@ -109,7 +130,7 @@ fun LibraryTileGrid(
   ) {
     if (groups.isEmpty()) {
       items(items = tiles, key = { it.id }) { tile ->
-        TileCell(tile, onTileClick, onTileLongClick, albumCoversMode)
+        TileCell(tile, onTileClick, onTileLongClick, albumCoversMode, tileOverflowMenu, inSelectionMode)
       }
     } else {
       groups.forEach { group ->
@@ -121,7 +142,7 @@ fun LibraryTileGrid(
         }
         val slice = tiles.subList(group.start, group.start + group.length)
         items(items = slice, key = { it.id }) { tile ->
-          TileCell(tile, onTileClick, onTileLongClick, albumCoversMode)
+          TileCell(tile, onTileClick, onTileLongClick, albumCoversMode, tileOverflowMenu, inSelectionMode)
         }
       }
     }
@@ -135,7 +156,10 @@ private fun TileCell(
   onClick: (TileItem) -> Unit,
   onLongClick: (TileItem) -> Unit,
   albumCoversMode: AlbumCoversMode,
+  overflowMenu: (@Composable (TileItem, () -> Unit) -> Unit)? = null,
+  inSelectionMode: Boolean = false,
 ) {
+  var menuOpen by remember { mutableStateOf(false) }
   Column(
     modifier = Modifier
       .fillMaxWidth()
@@ -173,6 +197,27 @@ private fun TileCell(
           style = MaterialTheme.typography.headlineLarge,
           fontWeight = FontWeight.Bold,
         )
+      }
+      // R4 — anchor the overflow icon + menu inside the cover Box so
+      // it sits on top of the artwork without affecting the title row
+      // layout below. Selection mode hides it (the long-press
+      // selection gesture takes precedence).
+      if (overflowMenu != null && !inSelectionMode) {
+        Box(modifier = Modifier.align(Alignment.TopEnd)) {
+          IconButton(
+            onClick = { menuOpen = true },
+            modifier = Modifier.semantics { testTag = "library_tile_overflow_${item.id}" },
+          ) {
+            Icon(
+              Icons.Filled.MoreVert,
+              contentDescription = stringResource(com.eight87.tonearmboy.R.string.library_cd_more_options),
+              tint = MaterialTheme.colorScheme.onSurface,
+            )
+          }
+          DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            overflowMenu(item, { menuOpen = false })
+          }
+        }
       }
     }
     Text(

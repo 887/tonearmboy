@@ -299,6 +299,8 @@ fun AlbumDetailScreen(
 fun ArtistDetailScreen(
   trackSource: TrackSource,
   albumSource: AlbumSource,
+  // R3 — needed for the artist-cover override write surface.
+  artistSource: com.eight87.tonearmboy.data.ArtistSource,
   artistName: String,
   albumCoversMode: AlbumCoversMode,
   onTrackClick: (List<Track>, Int) -> Unit,
@@ -324,6 +326,16 @@ fun ArtistDetailScreen(
   val sectionTitle = LocalSectionTitle.current
   LaunchedEffect(artistName) { sectionTitle.value = artistName }
 
+  // R3 — per-artist cover override drives the topbar overflow menu.
+  val artistCover by artistSource.artistCoverChoice(artistName)
+    .collectAsState(initial = AlbumCoverChoice.NoChoice)
+  val artistCoverHandlers = com.eight87.tonearmboy.ui.library.rememberArtistCoverActions(
+    artistSource = artistSource,
+    artistName = artistName,
+    onSearchOnline = {},
+  ).copy(showSearchOnline = false)
+  var artistCoverMenuOpen by remember { mutableStateOf(false) }
+
   Scaffold(
     topBar = {
       TopAppBar(
@@ -331,6 +343,24 @@ fun ArtistDetailScreen(
         navigationIcon = {
           IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.library_cd_back))
+          }
+        },
+        actions = {
+          IconButton(
+            onClick = { artistCoverMenuOpen = true },
+            modifier = Modifier.semantics { testTag = "artist_detail_overflow" },
+          ) {
+            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.library_artist_overflow_cd))
+          }
+          DropdownMenu(
+            expanded = artistCoverMenuOpen,
+            onDismissRequest = { artistCoverMenuOpen = false },
+          ) {
+            com.eight87.tonearmboy.ui.library.CoverActionsMenuItems(
+              choice = artistCover,
+              handlers = artistCoverHandlers,
+              onDismiss = { artistCoverMenuOpen = false },
+            )
           }
         },
       )

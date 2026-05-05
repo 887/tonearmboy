@@ -344,6 +344,62 @@ class LibraryRepository(
     db.albumCoverDao().delete(albumKey)
   }
 
+  // R1 — per-track cover overrides. Identical tri-state semantics to
+  // album_covers; keyed by trackId so a future track-rename / re-import
+  // can invalidate as part of the rescan if the id is recycled.
+  override fun trackCoverChoice(trackId: Long): Flow<AlbumCoverChoice> =
+    db.trackCoverDao().row(trackId).map { row ->
+      when {
+        row == null -> AlbumCoverChoice.NoChoice
+        row.coverUri.isNullOrBlank() -> AlbumCoverChoice.IntentionallyEmpty
+        else -> AlbumCoverChoice.Pinned(row.coverUri)
+      }
+    }
+
+  override suspend fun setTrackCoverUri(trackId: Long, uri: String) {
+    db.trackCoverDao().upsert(
+      com.eight87.tonearmboy.data.db.TrackCoverEntity(trackId, uri),
+    )
+  }
+
+  override suspend fun clearTrackCoverIntentional(trackId: Long) {
+    db.trackCoverDao().upsert(
+      com.eight87.tonearmboy.data.db.TrackCoverEntity(trackId, null),
+    )
+  }
+
+  override suspend fun resetTrackCover(trackId: Long) {
+    db.trackCoverDao().delete(trackId)
+  }
+
+  // R3 — per-artist cover overrides keyed by lowercase trimmed name
+  // (`artistKey()`), so casing / whitespace differences across the
+  // library don't fragment the override.
+  override fun artistCoverChoice(artistName: String): Flow<AlbumCoverChoice> =
+    db.artistCoverDao().row(artistKey(artistName)).map { row ->
+      when {
+        row == null -> AlbumCoverChoice.NoChoice
+        row.coverUri.isNullOrBlank() -> AlbumCoverChoice.IntentionallyEmpty
+        else -> AlbumCoverChoice.Pinned(row.coverUri)
+      }
+    }
+
+  override suspend fun setArtistCoverUri(artistName: String, uri: String) {
+    db.artistCoverDao().upsert(
+      com.eight87.tonearmboy.data.db.ArtistCoverEntity(artistKey(artistName), uri),
+    )
+  }
+
+  override suspend fun clearArtistCoverIntentional(artistName: String) {
+    db.artistCoverDao().upsert(
+      com.eight87.tonearmboy.data.db.ArtistCoverEntity(artistKey(artistName), null),
+    )
+  }
+
+  override suspend fun resetArtistCover(artistName: String) {
+    db.artistCoverDao().delete(artistKey(artistName))
+  }
+
   override fun artistsMatching(criteria: FilterCriteria): Flow<List<Artist>> {
     if (criteria.isEmpty()) return observeArtists()
     val tracks = observeTracks()

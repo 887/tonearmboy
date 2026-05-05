@@ -23,7 +23,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -67,6 +69,11 @@ fun TracksListScreen(
   // multi-select bar. When null (e.g. the search screen), Delete
   // routes through `onComingSoon` instead.
   onDeleteTracks: ((List<Track>) -> Unit)? = null,
+  // R1 — when both are present the row gains the 4 cover actions in
+  // its overflow menu. `onSearchTrackCover` falls through to the
+  // album-level MusicBrainz lookup since track-recording lookups
+  // without an MBID are too ambiguous (see album-art-rows.md R1.4).
+  onSearchTrackCover: ((Track) -> Unit)? = null,
 ) {
   val tracks by remember(filter) {
     if (filter.isEmpty()) repository.observeTracks() else repository.tracksMatching(filter)
@@ -85,6 +92,8 @@ fun TracksListScreen(
     onGoToAlbum = onGoToAlbum,
     onGoToArtist = onGoToArtist,
     onDeleteTracks = onDeleteTracks,
+    trackSource = repository,
+    onSearchTrackCover = onSearchTrackCover,
   )
 }
 
@@ -109,6 +118,8 @@ internal fun TracksListContent(
   onGoToAlbum: (Track) -> Unit = {},
   onGoToArtist: (Track) -> Unit = {},
   onDeleteTracks: ((List<Track>) -> Unit)? = null,
+  trackSource: TrackSource? = null,
+  onSearchTrackCover: ((Track) -> Unit)? = null,
 ) {
   val sorted = remember(tracks, sort, intelligentSorting) { sortTracks(tracks, sort, intelligentSorting) }
   // R.D.4 — multi-select state hoisted into rememberSelectionState.
@@ -125,8 +136,36 @@ internal fun TracksListContent(
       handleTrackAction(track, sorted, idx, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon, deleteComingSoonMessage)
     }
   }
-  val spec = remember(albumCoversMode, onAction) { TracksTabSpec(albumCoversMode, onAction) }
+  val spec = remember(albumCoversMode, onAction, trackSource, onSearchTrackCover) {
+    TracksTabSpec(albumCoversMode, onAction, trackSource, onSearchTrackCover)
+  }
 
+  // R5 — bulk cover handlers for the multi-select bar's overflow.
+  // Each variant calls the per-track repo method for every currently-
+  // selected id; we capture the snapshot before clearing so the
+  // selection state can collapse immediately.
+  val bulkCoverScope = rememberCoroutineScope()
+  val bulkCovers: BulkCoverHandlers? = trackSource?.let { src ->
+    BulkCoverHandlers(
+      onBulkSetEmpty = {
+        val ids = selection.snapshot()
+        selection.clear()
+        bulkCoverScope.launch { ids.forEach { src.clearTrackCoverIntentional(it) } }
+      },
+      onBulkReset = {
+        val ids = selection.snapshot()
+        selection.clear()
+        bulkCoverScope.launch { ids.forEach { src.resetTrackCover(it) } }
+      },
+      onBulkSearchOnline = onSearchTrackCover?.let { search ->
+        {
+          val selectedTracks = sorted.filter { selection.contains(it.id) }
+          selection.clear()
+          selectedTracks.forEach(search)
+        }
+      },
+    )
+  }
   Column(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_screen" }) {
     if (selection.inSelectionMode) {
       MultiSelectBar(
@@ -149,6 +188,7 @@ internal fun TracksListContent(
             delete(selectedTracks)
           }
         },
+        coverBulk = bulkCovers,
       )
     }
     Box(modifier = Modifier.weight(1f).semantics { testTag = "tracks_list" }) {
@@ -180,6 +220,8 @@ internal fun TracksListContent(
 internal class TracksTabSpec(
   private val albumCoversMode: AlbumCoversMode,
   private val onAction: (Track, TrackContextAction) -> Unit,
+  private val trackSource: TrackSource? = null,
+  private val onSearchTrackCover: ((Track) -> Unit)? = null,
 ) : TabSpec<Track> {
   override val testTag: String = "tracks_tab"
   override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_songs
@@ -214,6 +256,32 @@ internal class TracksTabSpec(
       onClick = onClick,
       onLongClick = onLongClick,
       onAction = { action -> onAction(item, action) },
+      trackSource = trackSource,
+      onSearchTrackCover = onSearchTrackCover,
+    )
+  }
+
+  // R4 — show the cover-action overflow on tiles only when the
+  // tracks tab is feeding from the live repository (so tests with the
+  // null trackSource don't render an interactive icon they can't act
+  // on).
+  override val showTileOverflow: Boolean get() = trackSource != null
+
+  @Composable
+  override fun TileOverflowMenu(item: Track, onDismiss: () -> Unit) {
+    val src = trackSource ?: return
+    val choice = src.trackCoverChoice(item.id)
+      .collectAsState(initial = com.eight87.tonearmboy.data.AlbumCoverChoice.NoChoice)
+      .value
+    val handlers = com.eight87.tonearmboy.ui.library.rememberTrackCoverActions(
+      trackSource = src,
+      trackId = item.id,
+      onSearchOnline = { onSearchTrackCover?.invoke(item) },
+    )
+    com.eight87.tonearmboy.ui.library.CoverActionsMenuItems(
+      choice = choice,
+      handlers = handlers,
+      onDismiss = onDismiss,
     )
   }
 }
@@ -255,10 +323,28 @@ private fun TrackRow(
   selected: Boolean = false,
   inSelectionMode: Boolean = false,
   onLongClick: () -> Unit = {},
+  trackSource: TrackSource? = null,
+  onSearchTrackCover: ((Track) -> Unit)? = null,
 ) {
   var menuOpen by remember { mutableStateOf(false) }
   val rowBackground = if (selected) MaterialTheme.colorScheme.secondaryContainer
   else androidx.compose.ui.graphics.Color.Transparent
+  // R1 — when the row has a TrackSource handle, render the four
+  // cover actions in the overflow menu. Without it the menu falls back
+  // to the legacy 6-item shape (e.g. the search screen, which doesn't
+  // own track-cover state yet).
+  val coverChoice = if (trackSource != null) {
+    trackSource.trackCoverChoice(track.id)
+      .collectAsState(initial = com.eight87.tonearmboy.data.AlbumCoverChoice.NoChoice)
+      .value
+  } else null
+  val coverHandlers = if (trackSource != null) {
+    com.eight87.tonearmboy.ui.library.rememberTrackCoverActions(
+      trackSource = trackSource,
+      trackId = track.id,
+      onSearchOnline = { onSearchTrackCover?.invoke(track) },
+    )
+  } else null
   Row(
     modifier = Modifier
       .fillMaxWidth()
@@ -290,6 +376,8 @@ private fun TrackRow(
         onDismiss = { menuOpen = false },
         onAction = onAction,
         deleteTestTag = "track_context_delete",
+        coverChoice = coverChoice,
+        coverHandlers = coverHandlers,
       )
     }
   }

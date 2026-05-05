@@ -178,6 +178,7 @@ fun ArtistDetail.Register(scope: RouteScope) {
     ArtistDetailScreen(
       trackSource = graph.tracks,
       albumSource = graph.albums,
+      artistSource = graph.artists,
       artistName = name,
       albumCoversMode = albumCoversMode,
       onTrackClick = { tracks, index ->
