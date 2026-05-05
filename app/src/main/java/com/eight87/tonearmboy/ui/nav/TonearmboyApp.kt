@@ -2,10 +2,15 @@ package com.eight87.tonearmboy.ui.nav
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -16,15 +21,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
+import kotlin.math.max
+import kotlin.math.min
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation3.runtime.entryProvider
@@ -38,7 +47,6 @@ import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 import com.eight87.tonearmboy.ui.settings.CustomBarAction
 import com.eight87.tonearmboy.ui.settings.MusicSourcesDialog
 import com.eight87.tonearmboy.ui.settings.catalog.LocalHighlightedSettingId
-import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 /**
@@ -131,14 +139,29 @@ fun TonearmboyApp(
     LocalHighlightedSettingId provides highlightedSettingId,
   ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-      val sheetTravelPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
+      val screenHeightDp = maxHeight
+      val density = LocalDensity.current
+      val screenHeightPx = with(density) { screenHeightDp.toPx() }.coerceAtLeast(1f)
 
-      // Drag-delta forwarder for the mini-player. delta < 0 means
-      // user dragged up by |delta| px, which raises the sheet by
-      // |delta|/sheetTravelPx of progress.
+      // Mini-player peek height. The three-row layout (info /
+      // transport / slider + duration labels) measures ~ 180 dp on the
+      // running AVD; less than that clips the timestamp row.
+      val peekDp = 180.dp
+      val peekPx = with(density) { peekDp.toPx() }
+      val effectivePeekPx = if (showMiniPlayer) peekPx else 0f
+
+      val progress = sheetProgress.value
+      // Auxio-style staggered crossfade. Mini-player visible 0..0.5,
+      // gone 0.5..1. NowPlaying gone 0..0.5, fading in 0.5..1.
+      val miniAlpha = (1f - min(progress * 2f, 1f)).coerceIn(0f, 1f)
+      val nowPlayingAlpha = (max(progress - 0.5f, 0f) * 2f).coerceIn(0f, 1f)
+
+      // Drag-delta forwarder. delta < 0 = user dragged up = sheet rises.
       val onSheetDragDelta: (Float) -> Unit = { delta ->
         coroutineScope.launch {
-          val next = (sheetProgress.value - delta / sheetTravelPx).coerceIn(0f, 1f)
+          // Travel = screenHeight - peek so progress=1 means sheet covers screen.
+          val travel = (screenHeightPx - effectivePeekPx).coerceAtLeast(1f)
+          val next = (sheetProgress.value - delta / travel).coerceIn(0f, 1f)
           sheetProgress.snapTo(next)
         }
       }
@@ -148,40 +171,17 @@ fun TonearmboyApp(
         }
       }
 
-      // ---- Layer 1: library + mini-player (always under the sheet) ----
-      // Mini-player's alpha tracks (1 - progress) so it fades out as
-      // the sheet rises — otherwise the bottom of the screen would
-      // double-render the same controls (sheet's NowPlaying header
-      // landing on top of the mini-player's row). When fully expanded,
-      // mini-player is fully transparent + non-interactive.
-      val miniPlayerAlpha = (1f - sheetProgress.value).coerceIn(0f, 1f)
-      Scaffold(
-        bottomBar = {
-          if (showMiniPlayer) {
-            Box(modifier = Modifier.alpha(miniPlayerAlpha)) {
-              MiniPlayer(
-                state = playbackState,
-                onTogglePlayPause = playback::togglePlayPause,
-                onClose = playback::stop,
-                onExpand = openNowPlayingSheet,
-                onSkipNext = playback::seekToNext,
-                onSkipPrevious = playback::seekToPrevious,
-                onPlayButtonLongPress = { playback.performCustomBarAction(customBarAction) },
-                onToggleShuffle = playback::toggleShuffle,
-                onCycleRepeat = playback::cycleRepeatMode,
-                onSeekTo = playback::seekTo,
-                albumCoversMode = albumCoversMode,
-                onSheetDragDelta = onSheetDragDelta,
-                onSheetDragSettle = onSheetDragSettle,
-              )
-            }
-          }
-        },
-      ) { innerPadding ->
+      // ---- Layer 1: library, with bottom inset = peek height ----
+      // No bottomBar; the mini-player lives in the sheet (Layer 2).
+      val libraryBottomPad = if (showMiniPlayer) peekDp else 0.dp
+      Scaffold { innerPadding ->
         NavDisplay(
           backStack = backStack.backStack,
           onBack = { backStack.pop() },
-          modifier = Modifier.fillMaxSize().padding(innerPadding),
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding)
+            .padding(bottom = libraryBottomPad),
           entryProvider = entryProvider {
             entry<LibraryRoot> { it.Register(scope) }
             entry<AlbumDetail> { it.Register(scope) }
@@ -207,8 +207,7 @@ fun TonearmboyApp(
         scope.addToPlaylist.Overlay()
         scope.playlistBackup.Overlay()
 
-        // D.17.3 — Music sources dialog. Toggled from the Settings root row
-        // (RowKind.OpenDialog) and from search results routed to SettingsMusicSources.
+        // D.17.3 — Music sources dialog.
         if (showMusicSourcesDialog) {
           MusicSourcesDialog(
             settings = graph.settingsRepository,
@@ -218,26 +217,29 @@ fun TonearmboyApp(
         }
       }
 
-      // ---- Layer 2: NowPlaying sheet (rises over the library) ----
-      // The sheet renders only when there is media to display, and is
-      // translated by `(1 - progress) * sheetTravelPx` so it slides in
-      // from the bottom. Alpha tracks progress so it crossfades over
-      // the mini-player + library beneath. Pointer-input is gated on
-      // a non-trivial progress so taps fall through to the mini-player
-      // while the sheet is fully closed.
-      if (playbackState.hasMedia) {
-        val progress = sheetProgress.value
-        val sheetIsInteractive = progress > 0.01f
-        // NestedScrollConnection drains over-scroll-down (e.g. queue
-        // already at top, user keeps pulling) into sheet progress so
-        // the queue's drag-from-top continues the same gesture.
-        val sheetNestedScroll = remember(sheetTravelPx) {
+      // ---- Layer 2: bottom-anchored sheet (Auxio-style) ----
+      // Outer Box anchored at bottom, height grows from peek to full
+      // screen as progress goes 0 → 1. Solid surface background covers
+      // the library above as the sheet expands. Inside: mini-player
+      // and full NowPlaying are layered z-stack; both anchored at the
+      // top of the sheet's inner area, mini-player sized to peekDp and
+      // NowPlaying sized to fillMaxSize. They cross-fade in place via
+      // the staggered alpha ratios — at progress=0 only mini-player is
+      // visible (the bottom strip); at progress=1 only NowPlaying is
+      // visible (full screen).
+      if (showMiniPlayer) {
+        val sheetHeightPx = effectivePeekPx + progress * (screenHeightPx - effectivePeekPx)
+        val sheetHeightDp = with(density) { sheetHeightPx.toDp() }
+
+        // NestedScrollConnection: queue overscroll-down at the top
+        // drains into sheet progress (Auxio's "pull-down to collapse"
+        // when expanded).
+        val sheetNestedScroll = remember(screenHeightPx, effectivePeekPx) {
           object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-              // Scrolling up while sheet is partially closed: re-open
-              // the sheet by consuming the upward delta first.
               if (available.y < 0f && sheetProgress.value < 1f) {
-                val delta = -available.y / sheetTravelPx
+                val travel = (screenHeightPx - effectivePeekPx).coerceAtLeast(1f)
+                val delta = -available.y / travel
                 coroutineScope.launch {
                   sheetProgress.snapTo((sheetProgress.value + delta).coerceAtMost(1f))
                 }
@@ -251,7 +253,8 @@ fun TonearmboyApp(
               source: NestedScrollSource,
             ): Offset {
               if (available.y > 0f && source == NestedScrollSource.UserInput) {
-                val delta = available.y / sheetTravelPx
+                val travel = (screenHeightPx - effectivePeekPx).coerceAtLeast(1f)
+                val delta = available.y / travel
                 coroutineScope.launch {
                   sheetProgress.snapTo((sheetProgress.value - delta).coerceAtLeast(0f))
                 }
@@ -266,41 +269,72 @@ fun TonearmboyApp(
           }
         }
 
-        // The sheet is always mounted (first-mount cost amortizes off
-        // the user-visible drag) but translated below the screen when
-        // closed, so pointer events at progress=0 fall through to the
-        // mini-player + library beneath. The sheet renders SOLID — no
-        // alpha crossfade. As the user drags up, the sheet rises from
-        // the bottom edge of the screen as a curtain; its top reveals
-        // the NowPlaying screen's top (TopAppBar + cover) progressively
-        // covering the library above. NestedScroll is only attached
-        // while interactive so closed-state queue drags don't bleed
-        // into sheet progress.
         Box(
           modifier = Modifier
-            .fillMaxSize()
-            .layout { measurable, constraints ->
-              val placeable = measurable.measure(constraints)
-              layout(placeable.width, placeable.height) {
-                placeable.placeRelative(0, ((1f - progress) * sheetTravelPx).roundToInt())
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .height(sheetHeightDp)
+            .background(MaterialTheme.colorScheme.surface)
+            .clipToBounds()
+            .nestedScroll(sheetNestedScroll),
+        ) {
+          // Inner stack: anchored to the TOP of the sheet, fixed at full
+          // screen height so the layout doesn't reflow as the sheet grows.
+          // Bottom of NowPlaying sits at screenHeight; top fades in at
+          // progress > 0.5 with the staggered ratio.
+          Box(
+            modifier = Modifier
+              .align(Alignment.TopCenter)
+              .fillMaxWidth()
+              .height(screenHeightDp),
+          ) {
+            // NowPlaying full surface (back of stack). Visible at expanded.
+            if (nowPlayingAlpha > 0f) {
+              Box(modifier = Modifier.fillMaxSize().alpha(nowPlayingAlpha)) {
+                NowPlayingScreen(
+                  nowPlayingState = playback,
+                  transport = playback,
+                  queueCommands = playback,
+                  onBack = closeSheet,
+                  albumCoversMode = albumCoversMode,
+                  onSaveQueueAsPlaylist = { mediaIds ->
+                    val trackIds = mediaIds.mapNotNull { it.toLongOrNull() }
+                    scope.addToPlaylist.requestBulk(trackIds)
+                  },
+                )
               }
             }
-            .then(
-              if (sheetIsInteractive) Modifier.nestedScroll(sheetNestedScroll)
-              else Modifier,
-            ),
-        ) {
-          NowPlayingScreen(
-            nowPlayingState = playback,
-            transport = playback,
-            queueCommands = playback,
-            onBack = closeSheet,
-            albumCoversMode = albumCoversMode,
-            onSaveQueueAsPlaylist = { mediaIds ->
-              val trackIds = mediaIds.mapNotNull { it.toLongOrNull() }
-              scope.addToPlaylist.requestBulk(trackIds)
-            },
-          )
+
+            // Mini-player (front of stack). Sized to peek, anchored at
+            // top of inner area — visible at peek state, fades out by
+            // progress=0.5. isInvisible-style hit-test gating: when
+            // alpha=0 we drop the composable so taps go through.
+            if (miniAlpha > 0f) {
+              Box(
+                modifier = Modifier
+                  .align(Alignment.TopCenter)
+                  .fillMaxWidth()
+                  .height(peekDp)
+                  .alpha(miniAlpha),
+              ) {
+                MiniPlayer(
+                  state = playbackState,
+                  onTogglePlayPause = playback::togglePlayPause,
+                  onClose = playback::stop,
+                  onExpand = openNowPlayingSheet,
+                  onSkipNext = playback::seekToNext,
+                  onSkipPrevious = playback::seekToPrevious,
+                  onPlayButtonLongPress = { playback.performCustomBarAction(customBarAction) },
+                  onToggleShuffle = playback::toggleShuffle,
+                  onCycleRepeat = playback::cycleRepeatMode,
+                  onSeekTo = playback::seekTo,
+                  albumCoversMode = albumCoversMode,
+                  onSheetDragDelta = onSheetDragDelta,
+                  onSheetDragSettle = onSheetDragSettle,
+                )
+              }
+            }
+          }
         }
       }
     }
