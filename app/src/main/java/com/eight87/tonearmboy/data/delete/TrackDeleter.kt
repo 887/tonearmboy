@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
+import com.eight87.tonearmboy.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -61,7 +62,7 @@ class TrackDeleter(private val context: Context) {
     DeleteRequest.Consent(pendingIntent.intentSender)
   } catch (t: Throwable) {
     Log.w(TAG, "createDeleteRequest failed", t)
-    DeleteRequest.Failure(t.message ?: "createDeleteRequest failed")
+    DeleteRequest.Failure(t.message ?: context.getString(R.string.library_delete_failure_create_request))
   }
 
   /**
@@ -80,16 +81,16 @@ class TrackDeleter(private val context: Context) {
     return try {
       val deleted = context.contentResolver.delete(first, null, null)
       if (deleted > 0) DeleteRequest.Immediate(listOf(first))
-      else DeleteRequest.Failure("File already gone.")
+      else DeleteRequest.Failure(context.getString(R.string.library_delete_failure_already_gone))
     } catch (e: RecoverableSecurityException) {
       val sender = e.userAction.actionIntent.intentSender
       DeleteRequest.Consent(sender)
     } catch (e: SecurityException) {
       Log.w(TAG, "delete() denied without recoverable action", e)
-      DeleteRequest.Failure("Couldn't delete this file.")
+      DeleteRequest.Failure(context.getString(R.string.library_delete_failure_denied))
     } catch (t: Throwable) {
       Log.w(TAG, "delete() failed", t)
-      DeleteRequest.Failure(t.message ?: "delete failed")
+      DeleteRequest.Failure(t.message ?: context.getString(R.string.library_delete_failure_generic))
     }
   }
 

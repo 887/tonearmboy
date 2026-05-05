@@ -40,7 +40,7 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 - [ ] **T.A.2** Settings sub-pages (highest-density surface): every label / subtitle / picker title / dialog button across `ui/settings/**`. ~120 strings.
 - [ ] **T.A.3** Library tabs + detail screens: section headers, empty states, sort sheet, multi-select bar, filter chips, custom-tab editor. ~100 strings.
 - [ ] **T.A.4** NowPlaying + MiniPlayer + queue: transport content-descriptions, sleep-timer dialog, queue picker. ~50 strings.
-- [ ] **T.A.5** Permissions + first-launch + system messages: audio permission rationale, watcher service notification copy, snackbar messages. ~40 strings.
+- [x] **T.A.5** Permissions + first-launch + system messages: audio permission rationale, watcher service notification copy, snackbar messages. ~40 strings. (file-deletion dialog also folded in; `library_scan_*` rescan/refresh snackbars in `ui/nav/RouteScopeFactory.kt` punted to T.A.3 / T.A.7 — out of stated scope.)
 - [ ] **T.A.6** Search + playlist picker + collision dialog. ~30 strings.
 - [ ] **T.A.7** Audit pass: grep for any remaining `Text("…")` or `contentDescription = "…"` in `ui/**` and confirm each is either resource-backed or genuinely internal.
 - [ ] **T.A.8** Verify: Robolectric tests green; AVD smoke confirms no string visibly broke.
