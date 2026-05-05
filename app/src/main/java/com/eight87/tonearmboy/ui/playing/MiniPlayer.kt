@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -105,9 +106,13 @@ fun MiniPlayer(
   onSheetDragSettle: () -> Unit = {},
 ) {
   if (!state.hasMedia) return
+  // G+ — fillMaxSize so the surfaceContainerHigh background fills the
+  // sheet's peek slot end-to-end. Wrapping content created a strip of
+  // the sheet's underlying `surface` color visible beneath the mini-
+  // player's last row (user-visible "gap").
   Column(
     modifier = Modifier
-      .fillMaxWidth()
+      .fillMaxSize()
       .background(MaterialTheme.colorScheme.surfaceContainerHigh),
   ) {
     // -- Info row ------------------------------------------------------

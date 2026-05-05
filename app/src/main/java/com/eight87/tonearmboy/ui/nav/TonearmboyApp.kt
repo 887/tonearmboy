@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -173,15 +175,25 @@ fun TonearmboyApp(
 
       // ---- Layer 1: library, with bottom inset = peek height ----
       // No bottomBar; the mini-player lives in the sheet (Layer 2).
+      // Consume only top + horizontal Scaffold insets — the bottom
+      // inset (system nav bar) would stack on top of `libraryBottomPad`
+      // and leave a gap between the library and the sheet (the sheet
+      // is at the BoxWithConstraints level and reaches the screen's
+      // physical bottom, ignoring the nav-bar inset).
       val libraryBottomPad = if (showMiniPlayer) peekDp else 0.dp
+      val layoutDir = androidx.compose.ui.platform.LocalLayoutDirection.current
       Scaffold { innerPadding ->
         NavDisplay(
           backStack = backStack.backStack,
           onBack = { backStack.pop() },
           modifier = Modifier
             .fillMaxSize()
-            .padding(innerPadding)
-            .padding(bottom = libraryBottomPad),
+            .padding(
+              top = innerPadding.calculateTopPadding(),
+              start = innerPadding.calculateStartPadding(layoutDir),
+              end = innerPadding.calculateEndPadding(layoutDir),
+              bottom = libraryBottomPad,
+            ),
           entryProvider = entryProvider {
             entry<LibraryRoot> { it.Register(scope) }
             entry<AlbumDetail> { it.Register(scope) }
