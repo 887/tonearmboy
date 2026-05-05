@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.eight87.tonearmboy.theme
 
 import android.os.Build
@@ -5,10 +7,12 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.expressiveLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -37,10 +41,17 @@ import com.eight87.tonearmboy.ui.settings.BaseTheme
  * [animateColorAsState] so transitions are smooth. When the tint is
  * null (no track / extraction failed) the chrome stays on the base.
  */
+// m3-expressive A.4 / B.1 — fall through to the expressive seed
+// schemes. They produce brighter container pairs (`primaryContainer` /
+// `secondaryContainer` / `tertiaryContainer`) and the wider
+// surface-tier ladder (`surfaceContainerLow…High`) the M3E look needs.
+// `expressiveDarkColorScheme()` doesn't exist yet — only the light
+// variant ships in 1.4.0 — so we pair `expressiveLightColorScheme()`
+// for light mode with `darkColorScheme()` plus our brand seeds for
+// dark mode. Both still produce the full surface-tier ladder.
 private val DarkColorScheme = darkColorScheme(primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80)
 
-private val LightColorScheme =
-  lightColorScheme(primary = Purple40, secondary = PurpleGrey40, tertiary = Pink40)
+private val LightColorScheme = expressiveLightColorScheme()
 
 @Composable
 fun TonearmboyTheme(
@@ -85,7 +96,12 @@ fun TonearmboyTheme(
     // tint themselves (e.g. a Preview that wants the same bias).
     LocalAlbumPalette provides palette,
   ) {
-    MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+    // m3-expressive A.5 — `MaterialExpressiveTheme` pulls in the new
+    // motion / typography / shape defaults (rounded extra-large group
+    // shapes, faster spring-based motion). It still resolves
+    // `MaterialTheme.colorScheme` against whatever scheme we hand in,
+    // so the per-track album tint blending above continues to work.
+    MaterialExpressiveTheme(colorScheme = colorScheme, typography = Typography, content = content)
   }
 }
 

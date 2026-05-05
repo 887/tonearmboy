@@ -2,30 +2,25 @@
 <resources>
 
     <!--
-        D.17.2 — Tonearmboy runs the SplashScreen API as the launch theme.
-        Activity body draws under Compose; the splash theme exists so
-        the cold-boot frame the system shows before onCreate hands off
-        cleanly to Compose without a white flash.
+        Tonearmboy launch theme. Originally (D.17.2) used the
+        SplashScreen API's `windowSplashScreenAnimatedIcon` path for
+        the cold-boot icon, but that path force-clips the icon to a
+        circle on Android 12+, hiding everything outside the inscribed
+        circle of the square launcher artwork (fox + vinyl + tonearm).
+        The user wanted the full square visible.
 
-        - windowSplashScreenBackground: same dark grey as the adaptive
-          icon background, so the splash and launcher icon read as one
-          continuous surface during the launch animation.
-        - windowSplashScreenAnimatedIcon: the launcher foreground (fox
-          + vinyl + tonearm). With the icon-background colour set
-          (next item) Android sizes the visible icon at 160dp inside
-          a 240dp area instead of the default 80dp/192dp — the fox
-          design is twice the linear size on the splash.
-        - windowSplashScreenIconBackgroundColor: same launcher
-          background colour as the splash, so the bigger icon area
-          blends with the surrounding splash and the fox reads as
-          one continuous visual instead of a tiny inset puck.
-        - postSplashScreenTheme: the regular Tonearmboy theme that
-          MainActivity continues to render under once Compose mounts.
+        We keep the `Theme.SplashScreen` parent (mandatory for the
+        SplashScreen 1.x compat library to wire `installSplashScreen`
+        properly on older APIs), drop the `windowSplashScreenAnimatedIcon`
+        + `windowSplashScreenIconBackgroundColor` so the system stops
+        drawing the circle-clipped icon, and set `android:windowBackground`
+        to a layer-list that paints the full launcher foreground
+        centred. The splash background colour stays for continuity
+        with the launcher icon backdrop.
     -->
     <style name="Theme.Tonearmboy" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/launcher_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
-        <item name="windowSplashScreenIconBackgroundColor">@color/launcher_background</item>
+        <item name="android:windowBackground">@drawable/splash_window_background</item>
         <item name="postSplashScreenTheme">@style/Theme.Tonearmboy.Main</item>
     </style>
 

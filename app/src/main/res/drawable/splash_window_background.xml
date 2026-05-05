@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Splash window background — replaces the SplashScreen-API circle-
+  clipped icon path with a layer-list that draws the full square
+  launcher artwork centred. The Android 12+ SplashScreen icon area
+  is a hard-coded circle; dropping the `windowSplashScreenAnimatedIcon`
+  + setting this as `android:windowBackground` means the user sees
+  the whole vinyl-player / fox design instead of just the inscribed
+  circle.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launcher_background" />
+    <item>
+        <bitmap
+            android:src="@mipmap/ic_launcher_foreground"
+            android:gravity="center" />
+    </item>
+</layer-list>
