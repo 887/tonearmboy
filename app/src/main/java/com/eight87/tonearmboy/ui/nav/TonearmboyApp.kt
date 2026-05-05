@@ -149,27 +149,32 @@ fun TonearmboyApp(
       }
 
       // ---- Layer 1: library + mini-player (always under the sheet) ----
+      // Mini-player's alpha tracks (1 - progress) so it fades out as
+      // the sheet rises — otherwise the bottom of the screen would
+      // double-render the same controls (sheet's NowPlaying header
+      // landing on top of the mini-player's row). When fully expanded,
+      // mini-player is fully transparent + non-interactive.
+      val miniPlayerAlpha = (1f - sheetProgress.value).coerceIn(0f, 1f)
       Scaffold(
         bottomBar = {
           if (showMiniPlayer) {
-            // Mini-player fades to invisible as the sheet rises so it
-            // doesn't compete with the NowPlaying surface. Disable
-            // hit-testing while the sheet covers it.
-            MiniPlayer(
-              state = playbackState,
-              onTogglePlayPause = playback::togglePlayPause,
-              onClose = playback::stop,
-              onExpand = openNowPlayingSheet,
-              onSkipNext = playback::seekToNext,
-              onSkipPrevious = playback::seekToPrevious,
-              onPlayButtonLongPress = { playback.performCustomBarAction(customBarAction) },
-              onToggleShuffle = playback::toggleShuffle,
-              onCycleRepeat = playback::cycleRepeatMode,
-              onSeekTo = playback::seekTo,
-              albumCoversMode = albumCoversMode,
-              onSheetDragDelta = onSheetDragDelta,
-              onSheetDragSettle = onSheetDragSettle,
-            )
+            Box(modifier = Modifier.alpha(miniPlayerAlpha)) {
+              MiniPlayer(
+                state = playbackState,
+                onTogglePlayPause = playback::togglePlayPause,
+                onClose = playback::stop,
+                onExpand = openNowPlayingSheet,
+                onSkipNext = playback::seekToNext,
+                onSkipPrevious = playback::seekToPrevious,
+                onPlayButtonLongPress = { playback.performCustomBarAction(customBarAction) },
+                onToggleShuffle = playback::toggleShuffle,
+                onCycleRepeat = playback::cycleRepeatMode,
+                onSeekTo = playback::seekTo,
+                albumCoversMode = albumCoversMode,
+                onSheetDragDelta = onSheetDragDelta,
+                onSheetDragSettle = onSheetDragSettle,
+              )
+            }
           }
         },
       ) { innerPadding ->
@@ -262,10 +267,15 @@ fun TonearmboyApp(
         }
 
         // The sheet is always mounted (first-mount cost amortizes off
-        // the user-visible drag) but translated below the screen +
-        // alpha 0 when closed, so pointer events at progress=0 fall
-        // through to the mini-player + library beneath. NestedScroll
-        // is only attached while interactive.
+        // the user-visible drag) but translated below the screen when
+        // closed, so pointer events at progress=0 fall through to the
+        // mini-player + library beneath. The sheet renders SOLID — no
+        // alpha crossfade. As the user drags up, the sheet rises from
+        // the bottom edge of the screen as a curtain; its top reveals
+        // the NowPlaying screen's top (TopAppBar + cover) progressively
+        // covering the library above. NestedScroll is only attached
+        // while interactive so closed-state queue drags don't bleed
+        // into sheet progress.
         Box(
           modifier = Modifier
             .fillMaxSize()
@@ -275,7 +285,6 @@ fun TonearmboyApp(
                 placeable.placeRelative(0, ((1f - progress) * sheetTravelPx).roundToInt())
               }
             }
-            .alpha(progress)
             .then(
               if (sheetIsInteractive) Modifier.nestedScroll(sheetNestedScroll)
               else Modifier,
