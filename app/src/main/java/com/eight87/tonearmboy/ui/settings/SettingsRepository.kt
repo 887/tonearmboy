@@ -436,17 +436,8 @@ class SettingsRepository(private val context: Context) :
   override val rememberShuffle: Setting<Boolean> = booleanSetting(
     store, KEY_REMEMBER_SHUFFLE, false,
   )
-  override val headsetAutoplay: Setting<Boolean> = booleanSetting(
-    store, KEY_HEADSET_AUTOPLAY, false,
-  )
-  override val rewindBeforeSkipBack: Setting<Boolean> = booleanSetting(
-    store, KEY_REWIND_BEFORE_SKIP, true,
-  )
   override val pauseOnRepeat: Setting<Boolean> = booleanSetting(
     store, KEY_PAUSE_ON_REPEAT, false,
-  )
-  override val rememberPause: Setting<Boolean> = booleanSetting(
-    store, KEY_REMEMBER_PAUSE, false,
   )
   override val customBarAction: Setting<CustomBarAction> = EnumSetting(
     store, KEY_CUSTOM_BAR_ACTION, CustomBarAction.Companion::fromStored,
@@ -567,9 +558,6 @@ class SettingsRepository(private val context: Context) :
   suspend fun setLibraryTabs(value: List<LibraryTab>) = libraryTabs.set(value)
   suspend fun setIntelligentSorting(value: Boolean) = intelligentSorting.set(value)
   suspend fun setForceSquareCovers(value: Boolean) = forceSquareCovers.set(value)
-  suspend fun setHeadsetAutoplay(value: Boolean) = headsetAutoplay.set(value)
-  suspend fun setRewindBeforeSkipBack(value: Boolean) = rewindBeforeSkipBack.set(value)
-  suspend fun setRememberPause(value: Boolean) = rememberPause.set(value)
   suspend fun setAutoDiscoverAlbumArt(value: Boolean) = autoDiscoverAlbumArt.set(value)
   suspend fun setCustomBarAction(value: CustomBarAction) = customBarAction.set(value)
   suspend fun setCustomNotificationAction(value: CustomNotificationAction) =
@@ -660,9 +648,6 @@ class SettingsRepository(private val context: Context) :
     internal val KEY_LIBRARY_TABS = stringPreferencesKey("library_tabs")
     internal val KEY_INTELLIGENT_SORTING = booleanPreferencesKey("intelligent_sorting")
     internal val KEY_FORCE_SQUARE_COVERS = booleanPreferencesKey("force_square_covers")
-    internal val KEY_HEADSET_AUTOPLAY = booleanPreferencesKey("headset_autoplay")
-    internal val KEY_REWIND_BEFORE_SKIP = booleanPreferencesKey("rewind_before_skip")
-    internal val KEY_REMEMBER_PAUSE = booleanPreferencesKey("remember_pause")
     internal val KEY_AUTO_DISCOVER_ALBUM_ART = booleanPreferencesKey("auto_discover_album_art")
     internal val KEY_CUSTOM_BAR_ACTION = stringPreferencesKey("custom_bar_action")
     internal val KEY_CUSTOM_NOTIFICATION_ACTION = stringPreferencesKey("custom_notification_action")

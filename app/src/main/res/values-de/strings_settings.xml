@@ -141,14 +141,8 @@
   <string name="settings_content_separators_change_applied">Änderung der Mehrwert-Trennzeichen übernommen. Führe Einstellungen &gt; Bibliothek &gt; Musik neu einlesen aus, um vorhandene Titel zu erfassen.</string>
 
   <!-- ===== Catalog: Audio ===== -->
-  <string name="settings_audio_headset_autoplay_label">Headset-Autoplay</string>
-  <string name="settings_audio_headset_autoplay_subtitle">Wiedergabe automatisch starten, wenn Kopfhörer verbunden werden.</string>
-  <string name="settings_audio_rewind_before_skip_label">Vor dem Zurückspringen zurückspulen</string>
-  <string name="settings_audio_rewind_before_skip_subtitle">Tippen auf „Zurück“ innerhalb weniger Sekunden spult zurück; sonst zum vorherigen Titel.</string>
   <string name="settings_audio_pause_on_repeat_label">Bei Wiederholung pausieren</string>
   <string name="settings_audio_pause_on_repeat_subtitle">Am Ende der ersten Wiedergabe pausieren, statt denselben Titel zu wiederholen.</string>
-  <string name="settings_audio_remember_pause_label">Pause merken</string>
-  <string name="settings_audio_remember_pause_subtitle">Die pausierte Position beim Neustart wiederherstellen.</string>
   <string name="settings_audio_replaygain_strategy_label">Replay-Gain-Strategie</string>
   <string name="settings_audio_replaygain_preamp_label">Replay-Gain-Vorverstärkung</string>
   <string name="settings_audio_sleep_timer_label">Sleep-Timer</string>
@@ -220,10 +214,6 @@
   <string name="settings_cd_remove_folder">Ordner entfernen</string>
   <string name="settings_music_sources_no_folders">Keine Ordner konfiguriert. Tippe auf +, um einen hinzuzufügen.</string>
   <string name="settings_music_sources_internal_storage">Interner gemeinsamer Speicher</string>
-  <string name="settings_music_sources_more_settings_title">Weitere Einstellungen</string>
-  <string name="settings_cd_more_settings_collapse">Einklappen</string>
-  <string name="settings_cd_more_settings_expand">Ausklappen</string>
-  <string name="settings_music_sources_more_settings_body">Mehrwert-Trennzeichen werden unter Einstellungen › Personalisieren › Mehrwert-Trennzeichen konfiguriert.</string>
 
   <!-- ===== Library tabs dialog ===== -->
   <string name="settings_library_tabs_dialog_title">Bibliothekstabs</string>

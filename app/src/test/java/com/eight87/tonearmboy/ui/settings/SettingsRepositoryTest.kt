@@ -36,9 +36,6 @@ class SettingsRepositoryTest {
     repo.setRememberShuffle(false)
     repo.setIntelligentSorting(true)
     repo.setForceSquareCovers(false)
-    repo.setHeadsetAutoplay(false)
-    repo.setRewindBeforeSkipBack(true)
-    repo.setRememberPause(false)
     repo.setAutoDiscoverAlbumArt(false)
     repo.setCustomBarAction(CustomBarAction.Default)
     repo.setCustomNotificationAction(CustomNotificationAction.Default)
@@ -74,9 +71,6 @@ class SettingsRepositoryTest {
     assertEquals(LibraryTab.DefaultOrder, repo.libraryTabs.flow.first())
     assertEquals(true, repo.intelligentSorting.flow.first())
     assertEquals(false, repo.forceSquareCovers.flow.first())
-    assertEquals(false, repo.headsetAutoplay.flow.first())
-    assertEquals(true, repo.rewindBeforeSkipBack.flow.first())
-    assertEquals(false, repo.rememberPause.flow.first())
     assertEquals(false, repo.autoDiscoverAlbumArt.flow.first())
     assertEquals(CustomBarAction.Default, repo.customBarAction.flow.first())
     assertEquals(CustomNotificationAction.Default, repo.customNotificationAction.flow.first())
@@ -100,11 +94,9 @@ class SettingsRepositoryTest {
     repo.setIntelligentSorting(false)
     repo.setForceSquareCovers(true)
     repo.setBlackTheme(true)
-    repo.setHeadsetAutoplay(true)
     assertEquals(false, repo.intelligentSorting.flow.first())
     assertEquals(true, repo.forceSquareCovers.flow.first())
     assertEquals(true, repo.blackTheme.flow.first())
-    assertEquals(true, repo.headsetAutoplay.flow.first())
   }
 
   @Test

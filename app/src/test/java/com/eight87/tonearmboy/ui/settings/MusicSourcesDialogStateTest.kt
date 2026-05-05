@@ -21,7 +21,6 @@ class MusicSourcesDialogStateTest {
     )
     assertEquals(MusicSourceMode.FilePicker, state.mode)
     assertEquals(setOf("a", "b"), state.folders.toSet())
-    assertFalse(state.moreSettingsExpanded)
   }
 
   @Test
@@ -67,18 +66,6 @@ class MusicSourcesDialogStateTest {
     assertEquals(listOf("a", "c"), removed.folders)
     val noop = removed.removeFolder("missing")
     assertEquals(listOf("a", "c"), noop.folders)
-  }
-
-  @Test
-  fun toggleMoreSettings_flips_expanded() {
-    val state = MusicSourcesDialogState(
-      mode = MusicSourceMode.System,
-      folders = emptyList(),
-    )
-    val open = state.toggleMoreSettings()
-    assertTrue(open.moreSettingsExpanded)
-    val closed = open.toggleMoreSettings()
-    assertFalse(closed.moreSettingsExpanded)
   }
 
   @Test

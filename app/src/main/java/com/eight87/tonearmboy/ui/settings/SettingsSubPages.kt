@@ -630,16 +630,7 @@ fun SettingsAudioScreen(
   // R.E.7 — injectable equalizer launcher (Settings-F6).
   equalizer: EqualizerLauncher = DefaultEqualizerLauncher,
 ) {
-  val headsetAutoplay by settings.headsetAutoplay.flow.collectAsState(
-    initial = false,
-  )
-  val rewindBeforeSkipBack by settings.rewindBeforeSkipBack.flow.collectAsState(
-    initial = true,
-  )
   val pauseOnRepeat by settings.pauseOnRepeat.flow.collectAsState(
-    initial = false,
-  )
-  val rememberPause by settings.rememberPause.flow.collectAsState(
     initial = false,
   )
   val replayGainStrategy by settings.replayGainStrategy.flow.collectAsState(
@@ -675,24 +666,9 @@ fun SettingsAudioScreen(
 
   val bindings = listOf(
     SettingsRowBinding.Toggle(
-      id = SettingsCatalog.ID_HEADSET_AUTOPLAY,
-      checked = headsetAutoplay,
-      onCheckedChange = { scope.launch { settings.headsetAutoplay.set(it) } },
-    ),
-    SettingsRowBinding.Toggle(
-      id = SettingsCatalog.ID_REWIND_BEFORE_SKIP,
-      checked = rewindBeforeSkipBack,
-      onCheckedChange = { scope.launch { settings.rewindBeforeSkipBack.set(it) } },
-    ),
-    SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_PAUSE_ON_REPEAT,
       checked = pauseOnRepeat,
       onCheckedChange = { scope.launch { settings.pauseOnRepeat.set(it) } },
-    ),
-    SettingsRowBinding.Toggle(
-      id = SettingsCatalog.ID_REMEMBER_PAUSE,
-      checked = rememberPause,
-      onCheckedChange = { scope.launch { settings.rememberPause.set(it) } },
     ),
     // Phase H.3 — sleep timer row.
     SettingsRowBinding.Picker(

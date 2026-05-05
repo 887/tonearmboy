@@ -141,14 +141,8 @@
   <string name="settings_content_separators_change_applied">Multi-value separator change applied. Run Settings &gt; Library &gt; Rescan music to pick up existing tracks.</string>
 
   <!-- ===== Catalog: Audio ===== -->
-  <string name="settings_audio_headset_autoplay_label">Headset autoplay</string>
-  <string name="settings_audio_headset_autoplay_subtitle">Begin playback automatically when headphones connect.</string>
-  <string name="settings_audio_rewind_before_skip_label">Rewind before skipping back</string>
-  <string name="settings_audio_rewind_before_skip_subtitle">Tap previous within a few seconds rewinds; otherwise jumps to the previous track.</string>
   <string name="settings_audio_pause_on_repeat_label">Pause on repeat</string>
   <string name="settings_audio_pause_on_repeat_subtitle">Pause at the end of the first play instead of looping the same track.</string>
-  <string name="settings_audio_remember_pause_label">Remember pause</string>
-  <string name="settings_audio_remember_pause_subtitle">Restore the paused position on relaunch.</string>
   <string name="settings_audio_replaygain_strategy_label">ReplayGain strategy</string>
   <string name="settings_audio_replaygain_preamp_label">ReplayGain pre-amp</string>
   <string name="settings_audio_sleep_timer_label">Sleep timer</string>
@@ -228,10 +222,6 @@
   <string name="settings_cd_remove_folder">Remove folder</string>
   <string name="settings_music_sources_no_folders">No folders configured. Tap + to add one.</string>
   <string name="settings_music_sources_internal_storage">Internal shared storage</string>
-  <string name="settings_music_sources_more_settings_title">More settings</string>
-  <string name="settings_cd_more_settings_collapse">Collapse</string>
-  <string name="settings_cd_more_settings_expand">Expand</string>
-  <string name="settings_music_sources_more_settings_body">Multi-value separators are configured in Settings › Personalize › Multi-value separators.</string>
 
   <!-- ===== Library tabs dialog ===== -->
   <string name="settings_library_tabs_dialog_title">Library tabs</string>

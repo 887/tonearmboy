@@ -71,7 +71,6 @@ import kotlinx.coroutines.launch
 data class MusicSourcesDialogState(
   val mode: MusicSourceMode,
   val folders: List<String>,
-  val moreSettingsExpanded: Boolean = false,
 ) {
   fun setMode(mode: MusicSourceMode): MusicSourcesDialogState =
     copy(mode = mode)
@@ -81,9 +80,6 @@ data class MusicSourcesDialogState(
 
   fun removeFolder(uri: String): MusicSourcesDialogState =
     if (uri !in folders) this else copy(folders = folders - uri)
-
-  fun toggleMoreSettings(): MusicSourcesDialogState =
-    copy(moreSettingsExpanded = !moreSettingsExpanded)
 
   companion object {
     fun fromPersisted(mode: MusicSourceMode, folders: Set<String>): MusicSourcesDialogState =
@@ -202,11 +198,12 @@ fun MusicSourcesDialog(
             ImplicitSystemSection()
           }
 
-          HorizontalDivider()
-          MoreSettingsSection(
-            expanded = state.moreSettingsExpanded,
-            onToggle = { state = state.toggleMoreSettings() },
-          )
+          // G+ — `MoreSettingsSection` removed. It was an expandable
+          // panel whose only content was a pointer text saying
+          // "Multi-value separators are configured in Settings ›
+          // Personalize › Multi-value separators." That setting still
+          // lives in Personalize; the empty-shell expander on this
+          // dialog was just visual noise.
         }
 
         HorizontalDivider()
@@ -407,46 +404,3 @@ internal fun displayNameForUri(uriStr: String): String {
   }
 }
 
-@Composable
-private fun MoreSettingsSection(
-  expanded: Boolean,
-  onToggle: () -> Unit,
-) {
-  Column {
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 4.dp)
-        .semantics { testTag = "music_sources_more_settings" },
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Text(
-        text = stringResource(R.string.settings_music_sources_more_settings_title),
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.weight(1f),
-      )
-      IconButton(onClick = onToggle) {
-        Icon(
-          Icons.Filled.ExpandMore,
-          contentDescription = stringResource(
-            if (expanded) R.string.settings_cd_more_settings_collapse
-            else R.string.settings_cd_more_settings_expand,
-          ),
-          modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 180f else 0f },
-        )
-      }
-    }
-    if (expanded) {
-      Column(
-        modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        Text(
-          text = stringResource(R.string.settings_music_sources_more_settings_body),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-    }
-  }
-}

@@ -68,10 +68,7 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_ALBUM_COVERS,
       SettingsCatalog.ID_FORCE_SQUARE_COVERS,
       // Audio.
-      SettingsCatalog.ID_HEADSET_AUTOPLAY,
-      SettingsCatalog.ID_REWIND_BEFORE_SKIP,
       SettingsCatalog.ID_PAUSE_ON_REPEAT,
-      SettingsCatalog.ID_REMEMBER_PAUSE,
       SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
       SettingsCatalog.ID_REPLAYGAIN_PREAMP,
       // Phase H.3 / H.4.

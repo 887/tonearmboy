@@ -158,10 +158,7 @@ object SettingsCatalog {
   const val ID_ALBUM_COVERS = "content.album_covers"
   const val ID_FORCE_SQUARE_COVERS = "content.force_square_covers"
 
-  const val ID_HEADSET_AUTOPLAY = "audio.headset_autoplay"
-  const val ID_REWIND_BEFORE_SKIP = "audio.rewind_before_skip"
   const val ID_PAUSE_ON_REPEAT = "audio.pause_on_repeat"
-  const val ID_REMEMBER_PAUSE = "audio.remember_pause"
   const val ID_REPLAYGAIN_STRATEGY = "audio.replaygain_strategy"
   const val ID_REPLAYGAIN_PREAMP = "audio.replaygain_preamp"
   // Phase H.3 — sleep timer.

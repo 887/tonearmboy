@@ -37,10 +37,7 @@ interface ThemeSettings {
  */
 interface PlaybackSettings {
   val rememberShuffle: Setting<Boolean>
-  val headsetAutoplay: Setting<Boolean>
-  val rewindBeforeSkipBack: Setting<Boolean>
   val pauseOnRepeat: Setting<Boolean>
-  val rememberPause: Setting<Boolean>
   val customBarAction: Setting<CustomBarAction>
   val customNotificationAction: Setting<CustomNotificationAction>
   val playFromLibrary: Setting<PlayFromLibrary>

@@ -3,10 +3,7 @@ package com.eight87.tonearmboy.ui.settings.catalog.sections
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Equalizer
-import androidx.compose.material.icons.outlined.FastRewind
 import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.Headphones
-import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PauseCircle
 import androidx.compose.material.icons.outlined.Tune
 import com.eight87.tonearmboy.R
@@ -17,36 +14,15 @@ import com.eight87.tonearmboy.ui.settings.catalog.Section
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsCatalog
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsCatalogEntry
 
-/** R.F.14 — entries on the Audio sub-page. */
+/** R.F.14 — entries on the Audio sub-page.
+ *
+ * G+ — `headsetAutoplay`, `rewindBeforeSkipBack`, and `rememberPause`
+ * removed. Each was a persisted DataStore boolean with no consumer in
+ * the playback layer (the toggle saved, but the value was never read
+ * by anything that could change behaviour). Three honest options were
+ * available: implement the features, mark them "Coming in v1.1", or
+ * remove them. User picked remove. */
 internal val AudioEntries: List<SettingsCatalogEntry> = listOf(
-  SettingsCatalogEntry(
-    id = SettingsCatalog.ID_HEADSET_AUTOPLAY,
-    label = "Headset autoplay",
-    subtitle = "Begin playback automatically when headphones connect.",
-    labelRes = R.string.settings_audio_headset_autoplay_label,
-    subtitleRes = R.string.settings_audio_headset_autoplay_subtitle,
-    keywords = listOf("headphones", "bluetooth", "autoplay", "connect"),
-    icon = Icons.Outlined.Headphones,
-    section = Section.Audio,
-    group = Groups.Playback,
-    kind = RowKind.Toggle,
-    destination = SettingsAudio,
-    breadcrumb = listOf(SECTION_AUDIO, "Playback", "Headset autoplay"),
-  ),
-  SettingsCatalogEntry(
-    id = SettingsCatalog.ID_REWIND_BEFORE_SKIP,
-    label = "Rewind before skipping back",
-    subtitle = "Tap previous within a few seconds rewinds; otherwise jumps to the previous track.",
-    labelRes = R.string.settings_audio_rewind_before_skip_label,
-    subtitleRes = R.string.settings_audio_rewind_before_skip_subtitle,
-    keywords = listOf("previous", "rewind", "skip"),
-    icon = Icons.Outlined.FastRewind,
-    section = Section.Audio,
-    group = Groups.Playback,
-    kind = RowKind.Toggle,
-    destination = SettingsAudio,
-    breadcrumb = listOf(SECTION_AUDIO, "Playback", "Rewind before skipping back"),
-  ),
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_PAUSE_ON_REPEAT,
     label = "Pause on repeat",
@@ -60,20 +36,6 @@ internal val AudioEntries: List<SettingsCatalogEntry> = listOf(
     kind = RowKind.Toggle,
     destination = SettingsAudio,
     breadcrumb = listOf(SECTION_AUDIO, "Playback", "Pause on repeat"),
-  ),
-  SettingsCatalogEntry(
-    id = SettingsCatalog.ID_REMEMBER_PAUSE,
-    label = "Remember pause",
-    subtitle = "Restore the paused position on relaunch.",
-    labelRes = R.string.settings_audio_remember_pause_label,
-    subtitleRes = R.string.settings_audio_remember_pause_subtitle,
-    keywords = listOf("resume", "position", "pause"),
-    icon = Icons.Outlined.Pause,
-    section = Section.Audio,
-    group = Groups.Playback,
-    kind = RowKind.Toggle,
-    destination = SettingsAudio,
-    breadcrumb = listOf(SECTION_AUDIO, "Playback", "Remember pause"),
   ),
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
