@@ -1,6 +1,7 @@
 package com.eight87.tonearmboy.ui.settings.catalog.sections
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CropSquare
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PersonOff
@@ -76,14 +77,23 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     destination = SettingsContent,
     breadcrumb = listOf(SECTION_CONTENT, "Music", "Hide collaborators"),
   ),
-  // G+ — `ID_AUTO_DISCOVER_ALBUM_ART` removed. Was a persisted boolean
-  // with no consumer; tapping the toggle showed a "Coming in v1.1 —
-  // for now, manual cover-art import only" snackbar but neither the
-  // manual import nor the auto-discover path was actually wired. The
-  // full album-art roadmap (per-album override, custom folder
-  // sources, MusicBrainz Cover Art Archive) is captured in
-  // `docs/plans/album-art.md`; until any of it is real the toggle
-  // doesn't earn its place on the settings page.
+  // album-art Phase D — re-introduced as a real toggle. Now backed
+  // by AlbumArtBulkWorker + MusicBrainzClient. Default OFF (privacy:
+  // enabling sends artist + album text to a third-party service).
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
+    label = "Auto-discover missing album art",
+    subtitle = "Fetch covers from MusicBrainz Cover Art Archive for albums missing local art. Sends artist + album text to a third-party service.",
+    labelRes = R.string.settings_content_auto_discover_album_art_label,
+    subtitleRes = R.string.settings_content_auto_discover_album_art_subtitle,
+    keywords = listOf("cover", "art", "musicbrainz", "fetch", "download"),
+    icon = Icons.Outlined.CloudDownload,
+    section = Section.Content,
+    group = Groups.Images,
+    kind = RowKind.Toggle,
+    destination = SettingsContent,
+    breadcrumb = listOf(SECTION_CONTENT, "Images", "Auto-discover missing album art"),
+  ),
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_ALBUM_COVERS,
     label = "Album covers",

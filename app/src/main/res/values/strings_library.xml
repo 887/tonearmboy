@@ -40,6 +40,7 @@
   <!-- Album cover override menu (album-art Phase A). -->
   <string name="library_album_cover_menu_cd">Album cover options</string>
   <string name="library_album_cover_replace">Replace cover…</string>
+  <string name="library_album_cover_search">Search MusicBrainz for cover</string>
   <string name="library_album_cover_clear">Set to no cover</string>
   <string name="library_album_cover_reset">Reset to default cover</string>
 

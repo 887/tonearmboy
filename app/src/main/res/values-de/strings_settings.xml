@@ -115,6 +115,8 @@
   <string name="settings_content_intelligent_sorting_subtitle">Führende Artikel (Englisch, Französisch, Deutsch, Spanisch, Italienisch, Niederländisch) beim Sortieren ignorieren.</string>
   <string name="settings_content_hide_collaborators_label">Mitwirkende ausblenden</string>
   <string name="settings_content_hide_collaborators_subtitle">Nur den Hauptkünstler des Albums anzeigen; Gastkünstler-Credits zusammenfassen.</string>
+  <string name="settings_content_auto_discover_album_art_label">Fehlende Albumcover automatisch suchen</string>
+  <string name="settings_content_auto_discover_album_art_subtitle">Cover vom MusicBrainz Cover Art Archive für Alben ohne lokales Cover laden. Sendet Künstler- und Albumdaten an einen Drittanbieter.</string>
   <string name="settings_content_album_covers_label">Albumcover</string>
   <string name="settings_content_force_square_covers_label">Quadratische Albumcover erzwingen</string>
   <string name="settings_content_force_square_covers_subtitle">Cover als Quadrate statt abgerundeter Rechtecke darstellen.</string>

@@ -54,6 +54,8 @@ interface LibrarySettings {
   val forceSquareCovers: Setting<Boolean>
   val albumCoversMode: Setting<AlbumCoversMode>
   val multiValueSeparators: Setting<Set<MultiValueSeparator>>
+  /** album-art Phase D — toggle the MusicBrainz auto-fetch worker. */
+  val autoDiscoverAlbumArt: Setting<Boolean>
 }
 
 /**

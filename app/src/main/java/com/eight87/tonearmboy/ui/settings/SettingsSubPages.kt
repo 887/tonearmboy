@@ -463,6 +463,9 @@ fun SettingsContentScreen(
   val forceSquareCovers by library.forceSquareCovers.flow.collectAsState(
     initial = false,
   )
+  val autoDiscoverAlbumArt by library.autoDiscoverAlbumArt.flow.collectAsState(
+    initial = false,
+  )
   val scope = rememberCoroutineScope()
   // R.F.17 — picker state controllers (Settings-F5).
   val albumCoversPicker = rememberSettingPickerState()
@@ -495,6 +498,37 @@ fun SettingsContentScreen(
       id = SettingsCatalog.ID_HIDE_COLLABORATORS,
       checked = hideCollaborators,
       onCheckedChange = { scope.launch { library.hideCollaborators.set(it) } },
+    ),
+    // album-art Phase D — toggle the MusicBrainz auto-fetch worker.
+    // Enabling enqueues a one-shot bulk pass (rate-limited 1 req/sec
+    // through MusicBrainzClient); disabling cancels any pending work
+    // but doesn't undo covers already fetched.
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
+      checked = autoDiscoverAlbumArt,
+      onCheckedChange = { value ->
+        scope.launch { library.autoDiscoverAlbumArt.set(value) }
+        if (value) {
+          val req = androidx.work.OneTimeWorkRequestBuilder<
+            com.eight87.tonearmboy.data.albumart.AlbumArtBulkWorker
+          >()
+            .setConstraints(
+              androidx.work.Constraints.Builder()
+                .setRequiredNetworkType(androidx.work.NetworkType.UNMETERED)
+                .build(),
+            )
+            .build()
+          androidx.work.WorkManager.getInstance(context).enqueueUniqueWork(
+            com.eight87.tonearmboy.data.albumart.AlbumArtBulkWorker.UNIQUE_WORK_NAME,
+            androidx.work.ExistingWorkPolicy.KEEP,
+            req,
+          )
+        } else {
+          androidx.work.WorkManager.getInstance(context).cancelUniqueWork(
+            com.eight87.tonearmboy.data.albumart.AlbumArtBulkWorker.UNIQUE_WORK_NAME,
+          )
+        }
+      },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_ALBUM_COVERS,

@@ -169,6 +169,25 @@ fun AlbumDetailScreen(
                 pickCoverLauncher.launch(arrayOf("image/*"))
               },
             )
+            // album-art Phase D — on-tap MusicBrainz lookup. Always
+            // available (overwrites only if user hasn't pinned /
+            // intentionally-cleared); the fetcher dispatches off the
+            // UI thread.
+            DropdownMenuItem(
+              text = { Text(stringResource(R.string.library_album_cover_search)) },
+              onClick = {
+                coverMenuOpen = false
+                coverScope.launch {
+                  val fetcher = com.eight87.tonearmboy.data.albumart.AlbumArtFetcher(albumSource)
+                  fetcher.fetch(
+                    context = context,
+                    albumName = albumName,
+                    albumArtist = albumArtist,
+                    overwriteUserChoice = true,
+                  )
+                }
+              },
+            )
             DropdownMenuItem(
               text = { Text(stringResource(R.string.library_album_cover_clear)) },
               onClick = {

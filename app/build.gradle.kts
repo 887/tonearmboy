@@ -197,9 +197,12 @@ dependencies {
   implementation(libs.kotlinx.serialization.json)
 
   // Coil 3 — Compose-first image loader (Phase D.9b.3 album covers).
-  // We deliberately do NOT pull `coil-network-okhttp`; the image source
-  // is the local MediaStore album-art content URI, no network needed.
+  // album-art Phase D pulls coil-network-okhttp so Coil can load
+  // remote URLs directly (Cover Art Archive returns http(s) image
+  // URLs). The dep transitively brings in okhttp itself, which the
+  // MusicBrainzClient uses for the JSON API calls.
   implementation(libs.coil3.compose)
+  implementation(libs.coil3.network.okhttp)
 
   // D.20.4 — Palette ktx for album-art-driven theming. Used by
   // `AlbumPaletteExtractor` to derive dark-muted / dark-vibrant

@@ -27,6 +27,12 @@
     <!-- Keep the CPU awake during active playback. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- album-art Phase D — MusicBrainz Cover Art Archive lookups +
+         downloads. Auto-granted; gated by the user-facing
+         "Auto-discover missing album art (MusicBrainz)" toggle which
+         defaults OFF. See docs/plans/album-art.md. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

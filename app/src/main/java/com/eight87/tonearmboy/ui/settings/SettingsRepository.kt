@@ -422,6 +422,12 @@ class SettingsRepository(private val context: Context) :
   override val pauseOnRepeat: Setting<Boolean> = booleanSetting(
     store, KEY_PAUSE_ON_REPEAT, false,
   )
+  // album-art Phase D — opt-in to MusicBrainz Cover Art Archive
+  // auto-fetch. Default OFF (privacy: enabling sends artist + album
+  // text to a third-party service).
+  override val autoDiscoverAlbumArt: Setting<Boolean> = booleanSetting(
+    store, KEY_AUTO_DISCOVER_ALBUM_ART, false,
+  )
   override val customBarAction: Setting<CustomBarAction> = EnumSetting(
     store, KEY_CUSTOM_BAR_ACTION, CustomBarAction.Companion::fromStored,
   )
@@ -624,6 +630,7 @@ class SettingsRepository(private val context: Context) :
     internal val KEY_CUSTOM_BAR_ACTION = stringPreferencesKey("custom_bar_action")
     internal val KEY_CUSTOM_NOTIFICATION_ACTION = stringPreferencesKey("custom_notification_action")
     internal val KEY_PAUSE_ON_REPEAT = booleanPreferencesKey("pause_on_repeat")
+    internal val KEY_AUTO_DISCOVER_ALBUM_ART = booleanPreferencesKey("auto_discover_album_art")
     internal val KEY_PLAY_FROM_LIBRARY = stringPreferencesKey("play_from_library")
     internal val KEY_PLAY_FROM_ITEM_DETAILS = stringPreferencesKey("play_from_item_details")
     internal val KEY_HIDE_COLLABORATORS = booleanPreferencesKey("hide_collaborators")

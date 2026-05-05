@@ -115,6 +115,8 @@
   <string name="settings_content_intelligent_sorting_subtitle">Ignore leading articles (English, French, German, Spanish, Italian, Dutch) when sorting.</string>
   <string name="settings_content_hide_collaborators_label">Hide collaborators</string>
   <string name="settings_content_hide_collaborators_subtitle">Show only the primary album artist; collapse featured-artist credits.</string>
+  <string name="settings_content_auto_discover_album_art_label">Auto-discover missing album art</string>
+  <string name="settings_content_auto_discover_album_art_subtitle">Fetch covers from MusicBrainz Cover Art Archive for albums missing local art. Sends artist + album text to a third-party service.</string>
   <string name="settings_content_album_covers_label">Album covers</string>
   <string name="settings_content_force_square_covers_label">Force square album covers</string>
   <string name="settings_content_force_square_covers_subtitle">Render covers as squares instead of rounded rectangles.</string>
