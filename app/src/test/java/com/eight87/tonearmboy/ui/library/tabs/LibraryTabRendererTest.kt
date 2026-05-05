@@ -49,7 +49,7 @@ class LibraryTabRendererTest {
     override fun id(item: FakeItem): Long = item.id
     override fun sectionKey(item: FakeItem, sort: TabSort, intelligentSorting: Boolean): String? =
       if (sort.key == SortKey.Name) item.letter else null
-    override fun toTile(item: FakeItem): TileItem =
+    override fun toTile(item: FakeItem, resources: android.content.res.Resources): TileItem =
       TileItem(id = item.id, title = item.label, subtitle = null, artUri = null, albumArtId = null)
 
     @Composable

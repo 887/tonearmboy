@@ -28,10 +28,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.db.CustomTabEntity
 import com.eight87.tonearmboy.ui.settings.LibraryTab
 
@@ -108,7 +110,7 @@ fun LibraryRail(
         Spacer(Modifier.size(8.dp))
         tabs.forEachIndexed { index, tab ->
           RailTabItem(
-            label = tabLabel(tab),
+            label = stringResource(tabLabelRes(tab)),
             tabName = tab.name,
             selected = index == selectedIndex,
             onClick = { onSelect(index) },
@@ -135,7 +137,7 @@ fun LibraryRail(
       ) {
         Icon(
           imageVector = Icons.Filled.Settings,
-          contentDescription = "Settings",
+          contentDescription = stringResource(R.string.library_cd_settings),
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }

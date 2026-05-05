@@ -18,9 +18,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.LibraryScanner
 
 /**
@@ -63,13 +65,15 @@ fun ScanProgressBar(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           Text(
-            text = if (p.total > 0) "Scanning ${p.scanned} of ${p.total}" else "Scanning…",
+            text = if (p.total > 0)
+              stringResource(R.string.library_scan_progress_with_total, p.scanned, p.total)
+            else stringResource(R.string.library_scan_progress_indeterminate),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurface,
           )
           if (p.total > 0) {
             Text(
-              text = "${(p.fraction * 100).toInt()}%",
+              text = stringResource(R.string.library_scan_progress_percent, (p.fraction * 100).toInt()),
               style = MaterialTheme.typography.labelMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

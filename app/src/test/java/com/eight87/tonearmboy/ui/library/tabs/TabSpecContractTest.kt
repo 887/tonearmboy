@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
+import androidx.test.core.app.ApplicationProvider
 import com.eight87.tonearmboy.data.model.Album
 import com.eight87.tonearmboy.data.model.Artist
 import com.eight87.tonearmboy.data.model.Genre
@@ -15,19 +16,29 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /**
  * R.D.3 — pure-logic contract tests for the five [TabSpec]
  * implementations. These cover the non-Composable surface
  * (id / sectionKey / toTile / supportsTileMode / testTag /
- * emptyMessage) so the strategy abstraction is exercised in JVM
- * unit tests without spinning Robolectric.
+ * emptyMessage). [toTile] now takes a `Resources` (T.A.3) so the
+ * subtitle can be translated, which is why this test runs under
+ * Robolectric.
  */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class TabSpecContractTest {
 
   private val byName = TabSort(SortKey.Name, SortDirection.Ascending)
   private val byArtist = TabSort(SortKey.Artist, SortDirection.Ascending)
   private val byDuration = TabSort(SortKey.Duration, SortDirection.Ascending)
+
+  private val resources by lazy {
+    ApplicationProvider.getApplicationContext<android.content.Context>().resources
+  }
 
   // -- Albums ---------------------------------------------------------
 
@@ -46,7 +57,7 @@ class TabSpecContractTest {
     val spec = AlbumsTabSpec(AlbumCoversMode.Default)
     val a = Album(id = 7, name = "Beach", artist = "X",
       trackCount = 4, year = 2024, mediaStoreAlbumId = 42L)
-    val tile = spec.toTile(a)
+    val tile = spec.toTile(a, resources)
     assertNotNull(tile)
     assertEquals(7L, tile!!.id)
     assertEquals("Beach", tile.title)
@@ -60,7 +71,7 @@ class TabSpecContractTest {
     val spec = AlbumsTabSpec(AlbumCoversMode.Default)
     val a = Album(id = 1, name = "X", artist = null,
       trackCount = 4, year = 2024, mediaStoreAlbumId = null)
-    assertEquals("Unknown artist", spec.toTile(a)!!.subtitle)
+    assertEquals("Unknown artist", spec.toTile(a, resources)!!.subtitle)
   }
 
   // -- Artists --------------------------------------------------------
@@ -76,7 +87,7 @@ class TabSpecContractTest {
   @Test
   fun artists_spec_tile_has_no_album_art() {
     val a = Artist(id = 9, name = "Zaza", albumCount = 1, trackCount = 3)
-    val tile = ArtistsTabSpec.toTile(a)
+    val tile = ArtistsTabSpec.toTile(a, resources)
     assertNotNull(tile)
     assertNull(tile!!.albumArtId)
     assertEquals("artists_tab", ArtistsTabSpec.testTag)
@@ -99,7 +110,7 @@ class TabSpecContractTest {
   fun playlists_spec_does_not_support_tile_mode_and_returns_null_tile() {
     val p = Playlist(id = 1, name = "Mix", trackCount = 5, createdAtSeconds = 0)
     assertFalse(PlaylistsTabSpec.supportsTileMode)
-    assertNull(PlaylistsTabSpec.toTile(p))
+    assertNull(PlaylistsTabSpec.toTile(p, resources))
     assertEquals("M", PlaylistsTabSpec.sectionKey(p, byName, intelligentSorting = false))
     assertEquals("playlists_tab", PlaylistsTabSpec.testTag)
   }
@@ -128,7 +139,7 @@ class TabSpecContractTest {
       durationMs = 1000, trackNumber = null, year = null, genre = null,
       data = "/x", dateAddedSeconds = 0, mediaStoreAlbumId = 99L,
     )
-    val tile = spec.toTile(t)
+    val tile = spec.toTile(t, resources)
     assertNotNull(tile)
     assertEquals(99L, tile!!.albumArtId)
     assertEquals("Solo", tile.subtitle)
@@ -142,6 +153,6 @@ class TabSpecContractTest {
       durationMs = 1, trackNumber = null, year = null, genre = null,
       data = "/x", dateAddedSeconds = 0,
     )
-    assertNull(spec.toTile(t)!!.subtitle)
+    assertNull(spec.toTile(t, resources)!!.subtitle)
   }
 }

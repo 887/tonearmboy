@@ -5,8 +5,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
+import com.eight87.tonearmboy.R
 
 /**
  * R.F.1 — the canonical context-menu action for a track row. Replaces
@@ -42,27 +44,27 @@ internal fun TrackContextMenu(
 ) {
   DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
     DropdownMenuItem(
-      text = { Text("Play") },
+      text = { Text(stringResource(R.string.library_track_action_play)) },
       onClick = { onDismiss(); onAction(TrackContextAction.Play) },
     )
     DropdownMenuItem(
-      text = { Text("Add to queue") },
+      text = { Text(stringResource(R.string.library_track_action_add_to_queue)) },
       onClick = { onDismiss(); onAction(TrackContextAction.AddToQueue) },
     )
     DropdownMenuItem(
-      text = { Text("Add to playlist…") },
+      text = { Text(stringResource(R.string.library_track_action_add_to_playlist)) },
       onClick = { onDismiss(); onAction(TrackContextAction.AddToPlaylist) },
     )
     DropdownMenuItem(
-      text = { Text("Go to album") },
+      text = { Text(stringResource(R.string.library_track_action_go_to_album)) },
       onClick = { onDismiss(); onAction(TrackContextAction.GoToAlbum) },
     )
     DropdownMenuItem(
-      text = { Text("Go to artist") },
+      text = { Text(stringResource(R.string.library_track_action_go_to_artist)) },
       onClick = { onDismiss(); onAction(TrackContextAction.GoToArtist) },
     )
     DropdownMenuItem(
-      text = { Text("Delete file…") },
+      text = { Text(stringResource(R.string.library_track_action_delete)) },
       onClick = { onDismiss(); onAction(TrackContextAction.Delete) },
       modifier = Modifier.semantics { testTag = deleteTestTag },
     )

@@ -29,9 +29,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.PlaylistStore
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.ui.nav.LocalSectionTitle
@@ -54,16 +56,17 @@ fun PlaylistDetailScreen(
   val playlist = playlists.firstOrNull { it.id == playlistId }
 
   val sectionTitle = LocalSectionTitle.current
-  val resolvedTitle = playlist?.name ?: "Playlist"
+  val playlistFallback = stringResource(R.string.library_playlist_detail_default_title)
+  val resolvedTitle = playlist?.name ?: playlistFallback
   LaunchedEffect(resolvedTitle) { sectionTitle.value = resolvedTitle }
 
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text(playlist?.name ?: "Playlist") },
+        title = { Text(playlist?.name ?: playlistFallback) },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.library_cd_back))
           }
         },
         actions = {
@@ -73,7 +76,7 @@ fun PlaylistDetailScreen(
           IconButton(
             onClick = { onAddTracks(playlistId) },
             modifier = Modifier.semantics { testTag = "playlist_detail_add" },
-          ) { Icon(Icons.Filled.Add, contentDescription = "Add tracks") }
+          ) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.library_playlist_detail_add_tracks_cd)) }
         },
       )
     },
@@ -98,7 +101,7 @@ fun PlaylistDetailScreen(
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-          text = "No tracks yet",
+          text = stringResource(R.string.library_playlist_detail_empty_title),
           style = MaterialTheme.typography.titleMedium,
           modifier = Modifier.padding(top = 16.dp),
         )
@@ -110,12 +113,12 @@ fun PlaylistDetailScreen(
         ) {
           Icon(Icons.Filled.Add, contentDescription = null)
           Text(
-            "Add tracks",
+            stringResource(R.string.library_playlist_detail_empty_button),
             modifier = Modifier.padding(start = 8.dp),
           )
         }
         Text(
-          text = "Or long-press a song in your library and choose 'Add to playlist'.",
+          text = stringResource(R.string.library_playlist_detail_empty_hint),
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier
@@ -142,7 +145,7 @@ fun PlaylistDetailScreen(
           ) {
             Text(track.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
             Text(
-              text = listOfNotNull(track.artist, track.album).joinToString(" · ").ifEmpty { "Unknown" },
+              text = listOfNotNull(track.artist, track.album).joinToString(" · ").ifEmpty { stringResource(R.string.library_unknown) },
               style = MaterialTheme.typography.bodySmall,
               maxLines = 1,
             )

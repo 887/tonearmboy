@@ -30,9 +30,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.PlaylistStore
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.model.Track
@@ -85,16 +87,16 @@ fun TrackPickerScreen(
           val newCount = (selected - initialIds).size
           val removedCount = (initialIds - selected).size
           val sub = when {
-            newCount == 0 && removedCount == 0 -> "Add tracks"
-            removedCount == 0 -> "+$newCount"
-            newCount == 0 -> "-$removedCount"
-            else -> "+$newCount / -$removedCount"
+            newCount == 0 && removedCount == 0 -> stringResource(R.string.library_track_picker_title_default)
+            removedCount == 0 -> stringResource(R.string.library_track_picker_title_added, newCount)
+            newCount == 0 -> stringResource(R.string.library_track_picker_title_removed, removedCount)
+            else -> stringResource(R.string.library_track_picker_title_added_removed, newCount, removedCount)
           }
           Text(sub, modifier = Modifier.semantics { testTag = "track_picker_title" })
         },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.library_cd_back))
           }
         },
         actions = {
@@ -105,7 +107,7 @@ fun TrackPickerScreen(
               onConfirm(toAdd, toRemove)
             },
             modifier = Modifier.semantics { testTag = "track_picker_confirm" },
-          ) { Icon(Icons.Filled.Check, contentDescription = "Confirm selection") }
+          ) { Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.library_cd_track_picker_confirm)) }
         },
       )
     },
@@ -137,7 +139,7 @@ fun TrackPickerScreen(
           Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(t.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
             Text(
-              text = listOfNotNull(t.artist, t.album).joinToString(" · ").ifEmpty { "Unknown" },
+              text = listOfNotNull(t.artist, t.album).joinToString(" · ").ifEmpty { stringResource(R.string.library_unknown) },
               style = MaterialTheme.typography.bodySmall,
               maxLines = 1,
             )

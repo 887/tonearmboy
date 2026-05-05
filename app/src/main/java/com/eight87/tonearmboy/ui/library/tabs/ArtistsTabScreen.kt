@@ -1,9 +1,12 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
+import android.content.res.Resources
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.pluralStringResource
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.ArtistSource
 import com.eight87.tonearmboy.data.model.Artist
 import com.eight87.tonearmboy.ui.library.TileItem
@@ -82,10 +85,10 @@ internal object ArtistsTabSpec : TabSpec<Artist> {
       initialKey(sortNameKey(item.name, intelligentSorting))
     else null
 
-  override fun toTile(item: Artist): TileItem = TileItem(
+  override fun toTile(item: Artist, resources: Resources): TileItem = TileItem(
     id = item.id,
     title = item.name,
-    subtitle = "${item.albumCount} albums · ${item.trackCount} tracks",
+    subtitle = formatArtistSubtitle(resources, item.albumCount, item.trackCount),
     artUri = null,
     albumArtId = null,
   )
@@ -98,10 +101,18 @@ internal object ArtistsTabSpec : TabSpec<Artist> {
     onClick: () -> Unit,
     onLongClick: () -> Unit,
   ) {
+    val albums = pluralStringResource(R.plurals.library_artist_detail_albums_count, item.albumCount, item.albumCount)
+    val tracks = pluralStringResource(R.plurals.library_artist_detail_tracks_count, item.trackCount, item.trackCount)
     TwoLineRow(
       primary = item.name,
-      secondary = "${item.albumCount} albums · ${item.trackCount} tracks",
+      secondary = "$albums · $tracks",
       onClick = onClick,
     )
   }
+}
+
+private fun formatArtistSubtitle(resources: Resources, albumCount: Int, trackCount: Int): String {
+  val albums = resources.getQuantityString(R.plurals.library_artist_detail_albums_count, albumCount, albumCount)
+  val tracks = resources.getQuantityString(R.plurals.library_artist_detail_tracks_count, trackCount, trackCount)
+  return "$albums · $tracks"
 }

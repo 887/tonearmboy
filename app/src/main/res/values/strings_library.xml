@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  T.A.3 — library tabs + detail screens + custom-tab editor + sort sheet + multi-select bar.
+
+  Naming: <surface>_<role>, lowercase snake. Surface for everything in
+  this file is `library_`. Sub-surfaces grouped by leading XML comment.
+  Content-descriptions live under `library_cd_*`. Plurals live under
+  `library_*` plurals at the bottom.
+
+  Already-shipped (in strings.xml under T.A.3):
+    library_tab_{songs,albums,artists,genres,playlists}
+    library_empty_{songs,albums,artists,genres,playlists}
+-->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
+
+  <!-- Library top-bar content-descriptions. -->
+  <string name="library_cd_search">Search</string>
+  <string name="library_cd_sort">Sort</string>
+  <string name="library_cd_view_mode_to_list">Switch to list view</string>
+  <string name="library_cd_view_mode_to_tile">Switch to tile view</string>
+  <string name="library_cd_filter">Filter</string>
+  <string name="library_cd_filter_active">Filter (active)</string>
+  <string name="library_cd_settings">Settings</string>
+  <string name="library_cd_back">Back</string>
+  <string name="library_cd_more_options">More options</string>
+
+  <!-- Track context menu (TrackContextAction.kt). -->
+  <string name="library_track_action_play">Play</string>
+  <string name="library_track_action_add_to_queue">Add to queue</string>
+  <string name="library_track_action_add_to_playlist">Add to playlist…</string>
+  <string name="library_track_action_go_to_album">Go to album</string>
+  <string name="library_track_action_go_to_artist">Go to artist</string>
+  <string name="library_track_action_delete">Delete file…</string>
+  <!-- Snackbar surfaced when the host hasn't wired delete yet. -->
+  <string name="library_track_action_delete_coming_soon">Delete file</string>
+
+  <!-- Generic fallbacks shown in two-line track / album rows. -->
+  <string name="library_unknown">Unknown</string>
+  <string name="library_unknown_artist">Unknown artist</string>
+
+  <!-- Album / Artist / Genre detail screens (DetailScreens.kt). -->
+  <string name="library_detail_artist_albums_section">Albums</string>
+  <string name="library_detail_artist_tracks_section">Tracks</string>
+
+  <!-- Sort sheet (SortSheet.kt). -->
+  <string name="library_sort_title">Sort by</string>
+  <string name="library_sort_by_name">Name</string>
+  <string name="library_sort_by_artist">Artist</string>
+  <string name="library_sort_by_album">Album</string>
+  <string name="library_sort_by_date">Date</string>
+  <string name="library_sort_by_duration">Duration</string>
+  <string name="library_sort_by_date_added">Date added</string>
+  <string name="library_sort_direction_ascending">Ascending</string>
+  <string name="library_sort_direction_descending">Descending</string>
+  <string name="library_sort_cancel">Cancel</string>
+  <string name="library_sort_ok">OK</string>
+
+  <!-- Filter sheet (LibraryFilterSheet.kt). -->
+  <string name="library_filter_sheet_title">Filter library</string>
+  <string name="library_filter_sheet_name_label">Name (title / artist / album)</string>
+  <string name="library_filter_sheet_year_label">Year: %1$d–%2$d</string>
+  <string name="library_filter_sheet_date_added_label">Date added</string>
+  <string name="library_filter_sheet_date_from">From: %1$s</string>
+  <string name="library_filter_sheet_date_from_any">From: any</string>
+  <string name="library_filter_sheet_date_to">To: %1$s</string>
+  <string name="library_filter_sheet_date_to_any">To: any</string>
+  <string name="library_filter_sheet_reset">Reset</string>
+  <string name="library_filter_sheet_apply">Apply</string>
+  <string name="library_filter_sheet_ok">OK</string>
+  <string name="library_filter_sheet_clear">Clear</string>
+
+  <!-- Custom-tab editor (CustomTabEditorScreen.kt). -->
+  <string name="library_custom_tab_editor_new_title">New custom tab</string>
+  <string name="library_custom_tab_editor_edit_title">Edit custom tab</string>
+  <string name="library_custom_tab_editor_create">Create</string>
+  <string name="library_custom_tab_editor_save">Save</string>
+  <string name="library_custom_tab_editor_name_label">Name</string>
+  <string name="library_custom_tab_editor_content_section">Content</string>
+  <string name="library_custom_tab_editor_filters_section">Filters</string>
+  <string name="library_custom_tab_editor_no_filters">No filters — every track matches. Tap Add filter to narrow it.</string>
+  <string name="library_custom_tab_editor_add_filter">Add filter</string>
+  <string name="library_custom_tab_editor_remove_filter_cd">Remove filter</string>
+  <string name="library_custom_tab_editor_collapse_cd">Collapse</string>
+  <string name="library_custom_tab_editor_expand_cd">Expand</string>
+  <string name="library_custom_tab_editor_chooser_title">Add filter</string>
+  <!-- Content-type segmented row labels. Kept distinct from
+       library_tab_* so a future translator can pick a different form
+       for the editor segmented row vs the rail tab. -->
+  <string name="library_custom_tab_content_type_songs">Songs</string>
+  <string name="library_custom_tab_content_type_albums">Albums</string>
+  <string name="library_custom_tab_content_type_artists">Artists</string>
+  <string name="library_custom_tab_content_type_genres">Genres</string>
+
+  <!-- Filter conditions (ConditionUi.kt). One label + one add-subtitle
+       per ConditionUi variant. summary() formats are below. -->
+  <string name="library_filter_genre_label">Genre</string>
+  <string name="library_filter_genre_add_subtitle">Match selected genres</string>
+  <string name="library_filter_artist_label">Artist</string>
+  <string name="library_filter_artist_add_subtitle">Match selected artists</string>
+  <string name="library_filter_album_label">Album</string>
+  <string name="library_filter_album_add_subtitle">Match selected albums</string>
+  <string name="library_filter_year_label">Year range</string>
+  <string name="library_filter_year_add_subtitle">Limit by release year</string>
+  <string name="library_filter_date_added_label">Date added</string>
+  <string name="library_filter_date_added_add_subtitle">Limit by when added to library</string>
+  <string name="library_filter_album_art_label">Album art</string>
+  <string name="library_filter_album_art_add_subtitle">Only tracks with / without art</string>
+  <string name="library_filter_path_label">File path contains</string>
+  <string name="library_filter_path_add_subtitle">Substring match on the file path</string>
+  <string name="library_filter_title_label">Title contains</string>
+  <string name="library_filter_title_add_subtitle">Substring match on title / artist / album</string>
+
+  <!-- Filter-condition summaries (ConditionUi.kt). -->
+  <string name="library_filter_summary_any">Any</string>
+  <string name="library_filter_summary_year_range">%1$d – %2$d</string>
+  <string name="library_filter_summary_year_from">from %1$d</string>
+  <string name="library_filter_summary_year_up_to">up to %1$d</string>
+  <string name="library_filter_summary_date_range">%1$s – %2$s</string>
+  <string name="library_filter_summary_date_since">since %1$s</string>
+  <string name="library_filter_summary_date_until">until %1$s</string>
+  <string name="library_filter_summary_album_art_with">Only with album art</string>
+  <string name="library_filter_summary_album_art_without">Only without album art</string>
+  <string name="library_filter_summary_quoted">\"%1$s\"</string>
+
+  <!-- Filter-condition editor labels. -->
+  <string name="library_filter_path_field_label">Path contains</string>
+  <string name="library_filter_title_field_label">Title contains</string>
+  <string name="library_filter_album_art_only_with">Only with album art</string>
+  <string name="library_filter_album_art_only_without">Only without album art</string>
+  <string name="library_filter_date_from">From: %1$s</string>
+  <string name="library_filter_date_from_any">From: any</string>
+  <string name="library_filter_date_to">To: %1$s</string>
+  <string name="library_filter_date_to_any">To: any</string>
+  <string name="library_filter_date_picker_ok">OK</string>
+  <string name="library_filter_date_picker_clear">Clear</string>
+  <string name="library_filter_multicheck_empty">No values yet — scan your library first.</string>
+  <string name="library_filter_multicheck_show_all">Show all (%1$d)</string>
+
+  <!-- Multi-select bar (tabs/MultiSelectBar.kt). -->
+  <string name="library_cd_multiselect_close">Exit selection mode</string>
+
+  <!-- Scan progress bar (ScanProgressBar.kt). -->
+  <string name="library_scan_progress_with_total">Scanning %1$d of %2$d</string>
+  <string name="library_scan_progress_indeterminate">Scanning…</string>
+  <string name="library_scan_progress_percent">%1$d%%</string>
+
+  <!-- Delete-file flow (DeleteFlow.kt). -->
+  <string name="library_delete_dialog_title_one">Delete %1$s?</string>
+  <string name="library_delete_dialog_title_many">Delete %1$d tracks?</string>
+  <string name="library_delete_dialog_body_one">This will permanently delete the file from your device.</string>
+  <string name="library_delete_dialog_body_many">This will permanently delete %1$d files from your device.</string>
+  <string name="library_delete_dialog_confirm">Delete</string>
+  <string name="library_delete_dialog_cancel">Cancel</string>
+  <string name="library_delete_done_one">Deleted %1$s</string>
+  <string name="library_delete_done_many">Deleted %1$d tracks</string>
+  <string name="library_delete_cancelled">Deletion cancelled.</string>
+  <string name="library_delete_failed_consent_default">unable to start consent dialog</string>
+  <string name="library_delete_failed">Couldn\'t delete: %1$s</string>
+
+  <!-- Playlist detail screen (PlaylistDetailScreen.kt). -->
+  <string name="library_playlist_detail_default_title">Playlist</string>
+  <string name="library_playlist_detail_add_tracks_cd">Add tracks</string>
+  <string name="library_playlist_detail_empty_title">No tracks yet</string>
+  <string name="library_playlist_detail_empty_button">Add tracks</string>
+  <string name="library_playlist_detail_empty_hint">Or long-press a song in your library and choose \'Add to playlist\'.</string>
+
+  <!-- Track-picker screen (TrackPickerScreen.kt). -->
+  <string name="library_track_picker_title_default">Add tracks</string>
+  <string name="library_track_picker_title_added">+%1$d</string>
+  <string name="library_track_picker_title_removed">-%1$d</string>
+  <string name="library_track_picker_title_added_removed">+%1$d / -%2$d</string>
+  <string name="library_cd_track_picker_confirm">Confirm selection</string>
+
+  <!-- Plurals: count-bearing copy. -->
+  <plurals name="library_multiselect_count">
+    <item quantity="one">%1$d selected</item>
+    <item quantity="other">%1$d selected</item>
+  </plurals>
+  <plurals name="library_multiselect_add_to_playlist_cd">
+    <item quantity="one">Add %1$d track to playlist</item>
+    <item quantity="other">Add %1$d tracks to playlist</item>
+  </plurals>
+  <plurals name="library_multiselect_delete_cd">
+    <item quantity="one">Delete %1$d track</item>
+    <item quantity="other">Delete %1$d tracks</item>
+  </plurals>
+  <plurals name="library_album_detail_meta_tracks">
+    <item quantity="one">%1$d track</item>
+    <item quantity="other">%1$d tracks</item>
+  </plurals>
+  <plurals name="library_artist_detail_albums_count">
+    <item quantity="one">%1$d album</item>
+    <item quantity="other">%1$d albums</item>
+  </plurals>
+  <plurals name="library_artist_detail_tracks_count">
+    <item quantity="one">%1$d track</item>
+    <item quantity="other">%1$d tracks</item>
+  </plurals>
+  <plurals name="library_genre_detail_tracks_count">
+    <item quantity="one">%1$d track</item>
+    <item quantity="other">%1$d tracks</item>
+  </plurals>
+  <plurals name="library_genre_subtitle_tracks">
+    <item quantity="one">%1$d track</item>
+    <item quantity="other">%1$d tracks</item>
+  </plurals>
+  <plurals name="library_playlist_subtitle_tracks">
+    <item quantity="one">%1$d track</item>
+    <item quantity="other">%1$d tracks</item>
+  </plurals>
+
+</resources>

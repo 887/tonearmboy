@@ -68,10 +68,13 @@ import com.eight87.tonearmboy.ui.nav.LocalSectionTitle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.AlbumSource
 import com.eight87.tonearmboy.data.ArtistSource
 import com.eight87.tonearmboy.data.CustomTabStore
@@ -261,11 +264,14 @@ fun LibraryScreen(
 
   // Drive the dynamic top-bar title for the active tab.
   val sectionTitle = LocalSectionTitle.current
+  // Resolve resource ids outside the LaunchedEffect so we don't have to
+  // hold a Context reference inside the suspend block.
+  val context = LocalContext.current
   LaunchedEffect(activeTab, activeCustomTab) {
     sectionTitle.value = if (activeCustomTab != null) {
       activeCustomTab.name
     } else {
-      tabLabel(activeTab)
+      context.getString(tabLabelRes(activeTab))
     }
   }
 
@@ -280,12 +286,12 @@ fun LibraryScreen(
         },
         actions = {
           IconButton(onClick = onOpenSearch, modifier = Modifier.semantics { testTag = "topbar_search" }) {
-            Icon(Icons.Filled.Search, contentDescription = "Search")
+            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.library_cd_search))
           }
           IconButton(
             onClick = { showSortSheet = true },
             modifier = Modifier.semantics { testTag = "topbar_sort" },
-          ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort") }
+          ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.library_cd_sort)) }
           // D.28.2 — view-mode toggle. Sits between sort and filter so
           // the row reads search → sort → view → filter → settings. The
           // icon shows the *target* mode (tap to switch), not the
@@ -304,12 +310,12 @@ fun LibraryScreen(
             if (activeViewMode == ViewMode.Tile) {
               Icon(
                 Icons.AutoMirrored.Filled.ViewList,
-                contentDescription = "Switch to list view",
+                contentDescription = stringResource(R.string.library_cd_view_mode_to_list),
               )
             } else {
               Icon(
                 Icons.Filled.GridView,
-                contentDescription = "Switch to tile view",
+                contentDescription = stringResource(R.string.library_cd_view_mode_to_tile),
               )
             }
           }
@@ -329,10 +335,10 @@ fun LibraryScreen(
                   )
                 },
               ) {
-                Icon(Icons.Filled.FilterList, contentDescription = "Filter (active)")
+                Icon(Icons.Filled.FilterList, contentDescription = stringResource(R.string.library_cd_filter_active))
               }
             } else {
-              Icon(Icons.Filled.FilterList, contentDescription = "Filter")
+              Icon(Icons.Filled.FilterList, contentDescription = stringResource(R.string.library_cd_filter))
             }
           }
           // D.16.3 — direct Settings entry. The kebab dropdown is gone;
@@ -345,7 +351,7 @@ fun LibraryScreen(
           ) {
             Icon(
               Icons.Outlined.Settings,
-              contentDescription = "Settings",
+              contentDescription = stringResource(R.string.library_cd_settings),
             )
           }
         },

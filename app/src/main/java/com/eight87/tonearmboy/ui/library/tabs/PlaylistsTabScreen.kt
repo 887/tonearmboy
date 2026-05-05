@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.pluralStringResource
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.PlaylistStore
 import com.eight87.tonearmboy.data.model.Playlist
 import com.eight87.tonearmboy.ui.library.PlaylistsTilesScreen
@@ -83,7 +85,7 @@ internal object PlaylistsTabSpec : TabSpec<Playlist> {
   override fun sectionKey(item: Playlist, sort: TabSort, intelligentSorting: Boolean): String? =
     initialKey(item.name.uppercase())
 
-  override fun toTile(item: Playlist): TileItem? = null
+  override fun toTile(item: Playlist, resources: android.content.res.Resources): TileItem? = null
 
   @Composable
   override fun ListRow(
@@ -95,7 +97,7 @@ internal object PlaylistsTabSpec : TabSpec<Playlist> {
   ) {
     TwoLineRow(
       primary = item.name,
-      secondary = "${item.trackCount} tracks",
+      secondary = pluralStringResource(R.plurals.library_playlist_subtitle_tracks, item.trackCount, item.trackCount),
       onClick = onClick,
     )
   }
