@@ -73,12 +73,12 @@ fun SettingsSearchBar(
   ) {
     Icon(
       imageVector = Icons.Filled.Search,
-      contentDescription = stringResource(R.string.settings_cd_search_settings),
+      contentDescription = stringResource(R.string.settings_search_cd_search),
       tint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(Modifier.size(12.dp))
     Text(
-      text = stringResource(R.string.settings_search_bar_label),
+      text = stringResource(R.string.settings_search_placeholder),
       style = MaterialTheme.typography.bodyLarge,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -122,13 +122,13 @@ fun SettingsSearchScreen(
         IconButton(onClick = onBack) {
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = stringResource(R.string.settings_cd_back),
+            contentDescription = stringResource(R.string.settings_search_cd_back),
           )
         }
         TextField(
           value = query,
           onValueChange = { query = it },
-          placeholder = { Text(stringResource(R.string.settings_search_field_placeholder)) },
+          placeholder = { Text(stringResource(R.string.settings_search_placeholder)) },
           singleLine = true,
           keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
           colors = TextFieldDefaults.colors(
@@ -140,10 +140,7 @@ fun SettingsSearchScreen(
           trailingIcon = {
             if (query.isNotEmpty()) {
               IconButton(onClick = { query = "" }) {
-                Icon(
-                  Icons.Filled.Clear,
-                  contentDescription = stringResource(R.string.settings_cd_clear),
-                )
+                Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.settings_search_cd_clear))
               }
             }
           },
@@ -158,7 +155,7 @@ fun SettingsSearchScreen(
     Box(modifier = Modifier.fillMaxSize().padding(padding)) {
       when {
         query.isBlank() -> SearchEmptyState(
-          message = stringResource(R.string.settings_search_empty_initial),
+          message = stringResource(R.string.settings_search_empty_hint),
           tag = "search_empty_initial",
         )
         results.isEmpty() -> SearchEmptyState(
@@ -204,7 +201,7 @@ private fun ResultsList(
         Spacer(Modifier.size(SettingsDimens.IconLabelGap))
         Column(modifier = Modifier.weight(1f)) {
           Text(
-            text = stringResource(entry.labelRes),
+            text = entry.label,
             style = MaterialTheme.typography.titleSmall,
           )
           Text(

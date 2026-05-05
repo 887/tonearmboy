@@ -26,16 +26,16 @@ fun PlaylistImportCollisionDialog(
 ) {
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.settings_playlist_import_collision_title)) },
+    title = { Text(stringResource(R.string.playlist_collision_dialog_title)) },
     text = {
       Column(modifier = Modifier.semantics { testTag = "playlist_import_collision_dialog" }) {
-        Text(stringResource(R.string.settings_playlist_import_collision_intro))
+        Text(stringResource(R.string.playlist_collision_dialog_intro))
         Text(
           collidingNames.joinToString(", "),
           modifier = Modifier.padding(top = 4.dp),
         )
         Text(
-          stringResource(R.string.settings_playlist_import_collision_explainer),
+          stringResource(R.string.playlist_collision_dialog_explanation),
           modifier = Modifier.padding(top = 8.dp),
         )
       }
@@ -44,18 +44,18 @@ fun PlaylistImportCollisionDialog(
       TextButton(
         onClick = { onPick(PlaylistImportCollisionPolicy.Overwrite) },
         modifier = Modifier.semantics { testTag = "playlist_import_overwrite" },
-      ) { Text(stringResource(R.string.settings_playlist_import_overwrite)) }
+      ) { Text(stringResource(R.string.playlist_collision_overwrite)) }
     },
     dismissButton = {
       Column {
         TextButton(
           onClick = { onPick(PlaylistImportCollisionPolicy.Merge) },
           modifier = Modifier.semantics { testTag = "playlist_import_merge" },
-        ) { Text(stringResource(R.string.settings_playlist_import_merge)) }
+        ) { Text(stringResource(R.string.playlist_collision_merge)) }
         TextButton(
           onClick = { onPick(PlaylistImportCollisionPolicy.Cancel) },
           modifier = Modifier.semantics { testTag = "playlist_import_skip" },
-        ) { Text(stringResource(R.string.settings_playlist_import_cancel_collisions)) }
+        ) { Text(stringResource(R.string.playlist_collision_cancel)) }
       }
     },
   )
