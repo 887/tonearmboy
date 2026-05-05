@@ -39,7 +39,7 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 - [x] **T.A.1** Naming scheme: `<surface>_<role>` lowercase snake (e.g. `library_tab_songs`, `now_playing_save_queue_cd`, `settings_audio_replaygain_strategy_label`). Surfaces: `library_`, `playing_`, `settings_`, `playlist_`, `search_`, `permission_`, `dialog_`, `error_`, `cd_` (content-descriptions). Document in a leading XML comment in `values/strings.xml`.
 - [ ] **T.A.2** Settings sub-pages (highest-density surface): every label / subtitle / picker title / dialog button across `ui/settings/**`. ~120 strings.
 - [ ] **T.A.3** Library tabs + detail screens: section headers, empty states, sort sheet, multi-select bar, filter chips, custom-tab editor. ~100 strings.
-- [ ] **T.A.4** NowPlaying + MiniPlayer + queue: transport content-descriptions, sleep-timer dialog, queue picker. ~50 strings.
+- [x] **T.A.4** NowPlaying + MiniPlayer + queue: transport content-descriptions, sleep-timer dialog, queue picker. ~50 strings. *(shipped in commit `8c68bc9` — extracted ~35 strings into `values/strings_playing.xml`. SleepTimerDialog at `ui/settings/SleepTimerDialog.kt` punted to T.A.2 because it sits in the settings surface, not `ui/playing/`.)*
 - [ ] **T.A.5** Permissions + first-launch + system messages: audio permission rationale, watcher service notification copy, snackbar messages. ~40 strings.
 - [ ] **T.A.6** Search + playlist picker + collision dialog. ~30 strings.
 - [ ] **T.A.7** Audit pass: grep for any remaining `Text("…")` or `contentDescription = "…"` in `ui/**` and confirm each is either resource-backed or genuinely internal.
