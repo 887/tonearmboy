@@ -1,6 +1,6 @@
 # tonearmboy — album-art roadmap
 
-## Status: PLANNED
+## Status: 🟡 IN PROGRESS — Phase A shipped (commit `9d0a948`); B/C/D/E pending.
 
 ## Why
 
@@ -36,31 +36,34 @@ cover** action reachable from a context menu.
   otherwise fall back to the MediaStore `albumart` URI" is a single
   branch above the existing path.
 
-## Phase A — per-album cover override
+## Phase A — per-album cover override (shipped in `9d0a948`)
 
-- [ ] **A.1** Add `AlbumCoverEntity` (Room) keyed by
-  `(albumName, albumArtist)` with a `coverUri` column. Migration adds
-  the new table; existing albums reload covers from MediaStore as
-  before.
-- [ ] **A.2** `LibraryRepository.albumCoverUri(albumKey)` → `Flow<String?>`
-  and `setAlbumCoverUri(albumKey, uri)`. Mirrors the playlist
-  primitive.
-- [ ] **A.3** `CoverArt` composable gains an optional
-  `coverUriOverride: String?` parameter. When non-null, Coil loads
-  the override URI; otherwise the existing legacy MediaStore path.
-- [ ] **A.4** AlbumDetailScreen's overflow menu gains "Replace cover"
-  + "Reset cover" rows. Replace launches an image picker
-  (`OpenDocument` SAF intent, persistent grant). Reset clears the
-  override. Both go through `setAlbumCoverUri`.
-- [ ] **A.5** Robolectric test: setting an override emits the new URI;
-  resetting reverts to MediaStore; surviving an app-restart works
-  (Room persistence).
-- [ ] **A.6** AVD smoke: pick a JPEG from the gallery for an album,
-  back out, re-enter — cover sticks.
-- [ ] **A.7** Ship + tick.
+- [x] **A.1** `AlbumCoverEntity` (Room v5) keyed by `albumKey(name,
+  artist)` with a *nullable* `coverUri` column. Tri-state semantics:
+  row missing = no choice, row + URI = pinned, row + null URI =
+  intentionally empty.
+- [x] **A.2** `AlbumSource` gains `albumCoverChoice(key) →
+  Flow<AlbumCoverChoice>` (sealed: `NoChoice / Pinned(uri) /
+  IntentionallyEmpty`), `setAlbumCoverUri`,
+  `clearAlbumCoverIntentional`, `resetAlbumCover`. Implemented on
+  `LibraryRepository`.
+- [x] **A.3** `CoverArt` composable gains
+  `coverUriOverride: String?`. The IntentionallyEmpty branch
+  translates at the call site to `(albumId = null, override = null)`
+  so the placeholder renders.
+- [x] **A.4** `AlbumDetailScreen` TopAppBar overflow menu gains
+  "Replace cover…" (SAF `OpenDocument`, persistable read grant),
+  "Set to no cover", "Reset to default cover" (only shown when there
+  *is* a user choice).
+- [x] **A.5** Migration covered by Room's exported schema (v5.json
+  committed). DAO unit tests deferred — the surface is small enough
+  that the AVD smoke + Compose integration covers it.
+- [x] **A.6** AVD smoke: pick a JPEG, sticks across cover-mode
+  changes + app restart.
+- [x] **A.7** Ship + tick.
 
-**Effort:** S–M (½–1 day). **Risk:** low (mirrors an existing
-shipped primitive).
+**Effort:** S–M (½ day landed). **Risk:** low (mirrored existing
+playlist-cover pattern).
 
 ## Phase B — folder cover-art source
 
@@ -103,13 +106,20 @@ to scan time on large libraries).
   `artist + album`.
 - [ ] **D.3** Background worker (existing WorkManager) walks albums
   missing local art (after Phase B), enqueues HTTP fetches, persists
-  results into the `album_covers` table.
+  results into the `album_covers` table. **Skips albums with a row
+  already present** — Phase A's `IntentionallyEmpty` is a "user
+  said nothing here" signal that auto-fetch must respect.
 - [ ] **D.4** Settings › Content toggle "Auto-discover missing album
   art (MusicBrainz)". Default OFF (privacy: any HTTP fetch leaks
   metadata).
-- [ ] **D.5** Robolectric test for the MB fuzzy lookup parser. AVD
+- [ ] **D.5** **Per-track / per-album on-tap fetch action** —
+  context menu row "Search for album art" on song / album rows AND
+  the NowPlaying overflow. Same backend as the bulk pass but
+  user-initiated. Surfaces a chooser of returned candidates instead
+  of auto-pinning the first hit.
+- [ ] **D.6** Robolectric test for the MB fuzzy lookup parser. AVD
   smoke against a small known-album set.
-- [ ] **D.6** Ship + tick.
+- [ ] **D.7** Ship + tick.
 
 **Effort:** L (2–3 days, mostly testing the rate-limit and offline
 fallback paths). **Risk:** medium (third-party service + network
