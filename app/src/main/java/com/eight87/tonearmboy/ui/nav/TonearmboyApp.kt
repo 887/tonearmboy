@@ -284,6 +284,12 @@ fun TonearmboyApp(
         val sheetNestedScroll = remember(screenHeightPx, effectivePeekPx) {
           object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+              // Only react to direct user drag, NOT to fling /
+              // overscroll-bounce side-effects. Fling-source events
+              // arriving after release would otherwise call snapTo
+              // and cancel the settle's in-flight animateTo, leaving
+              // the sheet stuck mid-progress.
+              if (source != NestedScrollSource.UserInput) return Offset.Zero
               // Drag-up: if sheet partially open, finish opening first.
               if (available.y < 0f && sheetProgress.value < 1f) {
                 val travel = (screenHeightPx - effectivePeekPx).coerceAtLeast(1f)
@@ -294,13 +300,8 @@ fun TonearmboyApp(
                 }
                 return Offset(0f, available.y)
               }
-              // Drag-down: if the queue is already at its top
-              // (firstVisibleItemIndex/Offset both 0), pre-empt the
-              // drag here so it drains the sheet *before* the
-              // LazyColumn's overscroll effect eats it. Otherwise the
-              // LazyColumn consumes it for bounce-animation and onPost
-              // never sees the leftover, so the user can't close the
-              // sheet by dragging down on the cover/transport area.
+              // Drag-down at top of queue: pre-empt before LazyColumn
+              // overscroll eats the leftover.
               if (available.y > 0f &&
                 nowPlayingListState.firstVisibleItemIndex == 0 &&
                 nowPlayingListState.firstVisibleItemScrollOffset == 0
@@ -320,6 +321,7 @@ fun TonearmboyApp(
               available: Offset,
               source: NestedScrollSource,
             ): Offset {
+              if (source != NestedScrollSource.UserInput) return Offset.Zero
               if (available.y > 0f) {
                 val travel = (screenHeightPx - effectivePeekPx).coerceAtLeast(1f)
                 val delta = available.y / travel
