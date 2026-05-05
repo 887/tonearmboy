@@ -41,9 +41,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.ui.settings.catalog.Section
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsCatalog
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsCatalogPage
@@ -73,7 +75,10 @@ private fun SettingsSubScaffold(
         title = { Text(title) },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(
+              Icons.AutoMirrored.Filled.ArrowBack,
+              contentDescription = stringResource(R.string.settings_cd_back),
+            )
           }
         },
       )
@@ -106,6 +111,7 @@ fun SettingsLookAndFeelScreen(
     initial = true,
   )
   val scope = rememberCoroutineScope()
+  val context = LocalContext.current
   // R.F.17 — picker state controllers (Settings-F5).
   val themePicker = rememberSettingPickerState()
   val baseThemePicker = rememberSettingPickerState()
@@ -129,7 +135,7 @@ fun SettingsLookAndFeelScreen(
   val bindings = listOf(
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_THEME,
-      currentLabel = themeLabel(themePref),
+      currentLabel = themeLabel(context, themePref),
       onClick = themePicker::show,
     ),
     // D.20.4 / D.25.1 — base-theme picker. Custom-color is a fourth
@@ -137,7 +143,7 @@ fun SettingsLookAndFeelScreen(
     // surfaces the picked seed when Custom is active.
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_BASE_THEME,
-      currentLabel = baseThemeLabel(baseTheme),
+      currentLabel = baseThemeLabel(context, baseTheme),
       onClick = baseThemePicker::show,
       trailing = customSwatch,
     ),
@@ -148,7 +154,12 @@ fun SettingsLookAndFeelScreen(
     ),
   )
 
-  SettingsSubScaffold("Look and Feel", "settings_look_and_feel", onBack, snackbarHostState) { mod ->
+  SettingsSubScaffold(
+    stringResource(R.string.settings_lookandfeel_title),
+    "settings_look_and_feel",
+    onBack,
+    snackbarHostState,
+  ) { mod ->
     SettingsCatalogPage(
       testTagName = "settings_look_and_feel_body",
       section = Section.LookAndFeel,
@@ -158,18 +169,18 @@ fun SettingsLookAndFeelScreen(
   }
 
   themePicker.Render(
-    title = "Theme",
+    title = stringResource(R.string.settings_lookandfeel_theme_label),
     options = ThemePreference.entries,
-    label = ::themeLabel,
+    label = { themeLabel(context, it) },
     current = themePref,
     onPick = { scope.launch { theme.theme.set(it) } },
   )
   // D.25.1 — base-theme picker. Tapping Custom hands off to the colour
   // picker; the other three commit immediately like before.
   baseThemePicker.Render(
-    title = "Base theme",
+    title = stringResource(R.string.settings_lookandfeel_base_theme_label),
     options = baseThemePickerOptions,
-    label = ::baseThemeLabel,
+    label = { baseThemeLabel(context, it) },
     current = baseThemeMatch(baseTheme),
     onPick = { picked ->
       if (picked is BaseTheme.Custom) {
@@ -195,18 +206,24 @@ fun SettingsLookAndFeelScreen(
   }
 }
 
-private fun themeLabel(p: ThemePreference): String = when (p) {
-  ThemePreference.System -> "Automatic"
-  ThemePreference.Light -> "Light"
-  ThemePreference.Dark -> "Dark"
-}
+internal fun themeLabel(context: android.content.Context, p: ThemePreference): String =
+  context.getString(
+    when (p) {
+      ThemePreference.System -> R.string.settings_lookandfeel_theme_automatic
+      ThemePreference.Light -> R.string.settings_lookandfeel_theme_light
+      ThemePreference.Dark -> R.string.settings_lookandfeel_theme_dark
+    },
+  )
 
-internal fun baseThemeLabel(b: BaseTheme): String = when (b) {
-  is BaseTheme.DefaultAndroid -> "Default Android (Material You)"
-  is BaseTheme.DefaultColors -> "Default colors"
-  is BaseTheme.PureBlack -> "Pure black"
-  is BaseTheme.Custom -> "Custom color"
-}
+internal fun baseThemeLabel(context: android.content.Context, b: BaseTheme): String =
+  context.getString(
+    when (b) {
+      is BaseTheme.DefaultAndroid -> R.string.settings_lookandfeel_base_theme_default_android
+      is BaseTheme.DefaultColors -> R.string.settings_lookandfeel_base_theme_default_colors
+      is BaseTheme.PureBlack -> R.string.settings_lookandfeel_base_theme_pure_black
+      is BaseTheme.Custom -> R.string.settings_lookandfeel_base_theme_custom
+    },
+  )
 
 // =============================================================================
 // Personalize
@@ -244,6 +261,7 @@ fun SettingsPersonalizeScreen(
     initial = false,
   )
   val scope = rememberCoroutineScope()
+  val context = LocalContext.current
   // R.F.17 — picker state controllers (Settings-F5).
   var showLibraryTabs by remember { mutableStateOf(false) }
   val customBarPicker = rememberSettingPickerState()
@@ -254,27 +272,27 @@ fun SettingsPersonalizeScreen(
   val bindings = listOf(
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_LIBRARY_TABS,
-      currentLabel = describeLibraryTabs(libraryTabs),
+      currentLabel = describeLibraryTabs(context, libraryTabs),
       onClick = { showLibraryTabs = true },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_CUSTOM_PLAYBACK_BAR_ACTION,
-      currentLabel = customBarActionLabel(customBarAction),
+      currentLabel = customBarActionLabel(context, customBarAction),
       onClick = customBarPicker::show,
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_CUSTOM_NOTIFICATION_ACTION,
-      currentLabel = customNotificationActionLabel(customNotificationAction),
+      currentLabel = customNotificationActionLabel(context, customNotificationAction),
       onClick = customNotifPicker::show,
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_PLAY_FROM_LIBRARY,
-      currentLabel = playFromLibraryLabel(playFromLibrary),
+      currentLabel = playFromLibraryLabel(context, playFromLibrary),
       onClick = playFromLibPicker::show,
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_PLAY_FROM_ITEM_DETAILS,
-      currentLabel = playFromItemDetailsLabel(playFromItemDetails),
+      currentLabel = playFromItemDetailsLabel(context, playFromItemDetails),
       onClick = playFromDetailPicker::show,
     ),
     SettingsRowBinding.Toggle(
@@ -284,7 +302,12 @@ fun SettingsPersonalizeScreen(
     ),
   )
 
-  SettingsSubScaffold("Personalize", "settings_personalize", onBack, snackbarHostState) { mod ->
+  SettingsSubScaffold(
+    stringResource(R.string.settings_personalize_title),
+    "settings_personalize",
+    onBack,
+    snackbarHostState,
+  ) { mod ->
     SettingsCatalogPage(
       testTagName = "settings_personalize_body",
       section = Section.Personalize,
@@ -337,62 +360,78 @@ fun SettingsPersonalizeScreen(
     )
   }
   customBarPicker.Render(
-    title = "Custom playback bar action",
+    title = stringResource(R.string.settings_personalize_custom_bar_action_label),
     options = CustomBarAction.entries,
-    label = ::customBarActionLabel,
+    label = { customBarActionLabel(context, it) },
     current = customBarAction,
     onPick = { scope.launch { playback.customBarAction.set(it) } },
   )
   customNotifPicker.Render(
-    title = "Custom notification action",
+    title = stringResource(R.string.settings_personalize_custom_notification_action_label),
     options = CustomNotificationAction.entries,
-    label = ::customNotificationActionLabel,
+    label = { customNotificationActionLabel(context, it) },
     current = customNotificationAction,
     onPick = { scope.launch { playback.customNotificationAction.set(it) } },
   )
   playFromLibPicker.Render(
-    title = "When playing from the library",
+    title = stringResource(R.string.settings_personalize_play_from_library_label),
     options = PlayFromLibrary.entries,
-    label = ::playFromLibraryLabel,
+    label = { playFromLibraryLabel(context, it) },
     current = playFromLibrary,
     onPick = { scope.launch { playback.playFromLibrary.set(it) } },
   )
   playFromDetailPicker.Render(
-    title = "When playing from item details",
+    title = stringResource(R.string.settings_personalize_play_from_item_details_label),
     options = PlayFromItemDetails.entries,
-    label = ::playFromItemDetailsLabel,
+    label = { playFromItemDetailsLabel(context, it) },
     current = playFromItemDetails,
     onPick = { scope.launch { playback.playFromItemDetails.set(it) } },
   )
 }
 
-internal fun customBarActionLabel(action: CustomBarAction): String = when (action) {
-  CustomBarAction.SkipNext -> "Skip to next"
-  CustomBarAction.ShuffleToggle -> "Shuffle toggle"
-  CustomBarAction.RepeatToggle -> "Repeat mode toggle"
-  CustomBarAction.None -> "None"
-}
+internal fun customBarActionLabel(context: android.content.Context, action: CustomBarAction): String =
+  context.getString(
+    when (action) {
+      CustomBarAction.SkipNext -> R.string.settings_personalize_bar_action_skip_next
+      CustomBarAction.ShuffleToggle -> R.string.settings_personalize_bar_action_shuffle_toggle
+      CustomBarAction.RepeatToggle -> R.string.settings_personalize_bar_action_repeat_toggle
+      CustomBarAction.None -> R.string.settings_personalize_bar_action_none
+    },
+  )
 
-internal fun customNotificationActionLabel(action: CustomNotificationAction): String = when (action) {
-  CustomNotificationAction.RepeatMode -> "Repeat mode"
-  CustomNotificationAction.Shuffle -> "Shuffle"
-  CustomNotificationAction.None -> "None"
-}
+internal fun customNotificationActionLabel(
+  context: android.content.Context,
+  action: CustomNotificationAction,
+): String = context.getString(
+  when (action) {
+    CustomNotificationAction.RepeatMode -> R.string.settings_personalize_notification_action_repeat
+    CustomNotificationAction.Shuffle -> R.string.settings_personalize_notification_action_shuffle
+    CustomNotificationAction.None -> R.string.settings_personalize_notification_action_none
+  },
+)
 
-internal fun playFromLibraryLabel(value: PlayFromLibrary): String = when (value) {
-  PlayFromLibrary.AllSongs -> "Play from all songs"
-  PlayFromLibrary.ItemOnly -> "Play from item only"
-  PlayFromLibrary.CurrentFilter -> "Play from current filter"
-}
+internal fun playFromLibraryLabel(context: android.content.Context, value: PlayFromLibrary): String =
+  context.getString(
+    when (value) {
+      PlayFromLibrary.AllSongs -> R.string.settings_personalize_play_from_library_all_songs
+      PlayFromLibrary.ItemOnly -> R.string.settings_personalize_play_from_library_item_only
+      PlayFromLibrary.CurrentFilter -> R.string.settings_personalize_play_from_library_current_filter
+    },
+  )
 
-internal fun playFromItemDetailsLabel(value: PlayFromItemDetails): String = when (value) {
-  PlayFromItemDetails.ShownItem -> "Play from shown item"
-  PlayFromItemDetails.Album -> "Play from album"
-  PlayFromItemDetails.Artist -> "Play from artist"
-}
+internal fun playFromItemDetailsLabel(
+  context: android.content.Context,
+  value: PlayFromItemDetails,
+): String = context.getString(
+  when (value) {
+    PlayFromItemDetails.ShownItem -> R.string.settings_personalize_play_from_item_shown
+    PlayFromItemDetails.Album -> R.string.settings_personalize_play_from_item_album
+    PlayFromItemDetails.Artist -> R.string.settings_personalize_play_from_item_artist
+  },
+)
 
-private fun describeLibraryTabs(tabs: List<LibraryTab>): String {
-  if (tabs.isEmpty()) return "Default"
+private fun describeLibraryTabs(context: android.content.Context, tabs: List<LibraryTab>): String {
+  if (tabs.isEmpty()) return context.getString(R.string.settings_personalize_library_tabs_default)
   return tabs.joinToString(" · ") { it.name }
 }
 
@@ -455,7 +494,7 @@ fun SettingsContentScreen(
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_MULTI_VALUE_SEPARATORS,
-      currentLabel = multiValueSeparatorsLabel(multiValueSeparators),
+      currentLabel = multiValueSeparatorsLabel(context, multiValueSeparators),
       onClick = { separatorsPicker = true },
     ),
     SettingsRowBinding.Toggle(
@@ -475,14 +514,14 @@ fun SettingsContentScreen(
         scope.launch { library.autoDiscoverAlbumArt.set(value) }
         scope.launch {
           snackbarHostState.showSnackbar(
-            "Coming in v1.1 — for now, manual cover-art import only.",
+            context.getString(R.string.settings_content_auto_discover_album_art_unavailable),
           )
         }
       },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_ALBUM_COVERS,
-      currentLabel = albumCoversLabel(albumCoversMode),
+      currentLabel = albumCoversLabel(context, albumCoversMode),
       onClick = albumCoversPicker::show,
     ),
     SettingsRowBinding.Toggle(
@@ -492,7 +531,12 @@ fun SettingsContentScreen(
     ),
   )
 
-  SettingsSubScaffold("Content", "settings_content", onBack, snackbarHostState) { mod ->
+  SettingsSubScaffold(
+    stringResource(R.string.settings_content_title),
+    "settings_content",
+    onBack,
+    snackbarHostState,
+  ) { mod ->
     SettingsCatalogPage(
       testTagName = "settings_content_body",
       section = Section.Content,
@@ -502,18 +546,18 @@ fun SettingsContentScreen(
   }
 
   albumCoversPicker.Render(
-    title = "Album covers",
+    title = stringResource(R.string.settings_content_album_covers_label),
     options = AlbumCoversMode.entries,
-    label = ::albumCoversLabel,
+    label = { albumCoversLabel(context, it) },
     current = albumCoversMode,
     onPick = { scope.launch { library.albumCoversMode.set(it) } },
   )
 
   if (separatorsPicker) {
     MultiSelectPicker(
-      title = "Multi-value separators",
+      title = stringResource(R.string.settings_content_multi_value_separators_label),
       options = MultiValueSeparator.entries,
-      label = ::multiValueSeparatorOptionLabel,
+      label = { multiValueSeparatorOptionLabel(context, it) },
       currentSelection = multiValueSeparators,
       onSave = { newSelection ->
         scope.launch { library.multiValueSeparators.set(newSelection) }
@@ -521,8 +565,7 @@ fun SettingsContentScreen(
         if (newSelection != multiValueSeparators) {
           scope.launch {
             snackbarHostState.showSnackbar(
-              "Multi-value separator change applied. Run Settings > Library > " +
-                "Rescan music to pick up existing tracks.",
+              context.getString(R.string.settings_content_separators_change_applied),
             )
           }
         }
@@ -532,27 +575,38 @@ fun SettingsContentScreen(
   }
 }
 
-internal fun multiValueSeparatorOptionLabel(s: MultiValueSeparator): String = when (s) {
-  MultiValueSeparator.Semicolon -> "Semicolon  ;"
-  MultiValueSeparator.Slash -> "Slash  /"
-  MultiValueSeparator.Comma -> "Comma  ,"
-  MultiValueSeparator.Ampersand -> "Ampersand  &"
-  MultiValueSeparator.Feat -> "feat."
-  MultiValueSeparator.Ft -> "ft."
-}
+internal fun multiValueSeparatorOptionLabel(
+  context: android.content.Context,
+  s: MultiValueSeparator,
+): String = context.getString(
+  when (s) {
+    MultiValueSeparator.Semicolon -> R.string.settings_content_separators_semicolon
+    MultiValueSeparator.Slash -> R.string.settings_content_separators_slash
+    MultiValueSeparator.Comma -> R.string.settings_content_separators_comma
+    MultiValueSeparator.Ampersand -> R.string.settings_content_separators_ampersand
+    MultiValueSeparator.Feat -> R.string.settings_content_separators_feat
+    MultiValueSeparator.Ft -> R.string.settings_content_separators_ft
+  },
+)
 
-internal fun multiValueSeparatorsLabel(selection: Set<MultiValueSeparator>): String {
-  if (selection.isEmpty()) return "Off"
+internal fun multiValueSeparatorsLabel(
+  context: android.content.Context,
+  selection: Set<MultiValueSeparator>,
+): String {
+  if (selection.isEmpty()) return context.getString(R.string.settings_content_separators_off)
   // Surface the literal tokens so the row preview matches what the user
   // selected. Sort by enum order to keep the preview deterministic.
   return selection.sortedBy { it.ordinal }.joinToString("  ") { it.token }
 }
 
-internal fun albumCoversLabel(mode: AlbumCoversMode): String = when (mode) {
-  AlbumCoversMode.Balanced -> "Balanced"
-  AlbumCoversMode.On -> "Always load"
-  AlbumCoversMode.Off -> "Never load"
-}
+internal fun albumCoversLabel(context: android.content.Context, mode: AlbumCoversMode): String =
+  context.getString(
+    when (mode) {
+      AlbumCoversMode.Balanced -> R.string.settings_content_album_covers_balanced
+      AlbumCoversMode.On -> R.string.settings_content_album_covers_on
+      AlbumCoversMode.Off -> R.string.settings_content_album_covers_off
+    },
+  )
 
 // =============================================================================
 // Audio
@@ -611,12 +665,12 @@ fun SettingsAudioScreen(
   val sleepRowSubtitle = when (val s = sleepState) {
     is com.eight87.tonearmboy.playback.SleepTimerState.Running -> {
       val minutes = (s.remainingMs / 60_000L).coerceAtLeast(0)
-      "Active — about ${minutes} min remaining"
+      stringResource(R.string.settings_audio_sleep_timer_running_subtitle, minutes.toInt())
     }
     com.eight87.tonearmboy.playback.SleepTimerState.WaitingForTrackEnd ->
-      "Waiting for end of song"
+      stringResource(R.string.settings_audio_sleep_timer_waiting_subtitle)
     com.eight87.tonearmboy.playback.SleepTimerState.Idle ->
-      "Pause playback after a delay."
+      stringResource(R.string.settings_audio_sleep_timer_subtitle)
   }
 
   val bindings = listOf(
@@ -648,7 +702,7 @@ fun SettingsAudioScreen(
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
-      currentLabel = replayGainStrategyLabel(replayGainStrategy),
+      currentLabel = replayGainStrategyLabel(context, replayGainStrategy),
       onClick = rgStrategyPicker::show,
     ),
     SettingsRowBinding.Picker(
@@ -664,14 +718,21 @@ fun SettingsAudioScreen(
           ?: androidx.media3.common.C.AUDIO_SESSION_ID_UNSET
         if (!equalizer.launch(context, sessionId)) {
           scope.launch {
-            snackbarHostState.showSnackbar("No system equalizer available on this device.")
+            snackbarHostState.showSnackbar(
+              context.getString(R.string.error_settings_no_system_equalizer),
+            )
           }
         }
       },
     ),
   )
 
-  SettingsSubScaffold("Audio", "settings_audio", onBack, snackbarHostState) { mod ->
+  SettingsSubScaffold(
+    stringResource(R.string.settings_audio_title),
+    "settings_audio",
+    onBack,
+    snackbarHostState,
+  ) { mod ->
     SettingsCatalogPage(
       testTagName = "settings_audio_body",
       section = Section.Audio,
@@ -688,7 +749,9 @@ fun SettingsAudioScreen(
         sleepDialog = false
         scope.launch {
           val mins = durationMs / 60_000L
-          snackbarHostState.showSnackbar("Sleep timer set for $mins min")
+          snackbarHostState.showSnackbar(
+            context.getString(R.string.settings_audio_sleep_timer_set_snackbar, mins.toInt()),
+          )
         }
       },
       onCancel = {
@@ -699,9 +762,9 @@ fun SettingsAudioScreen(
   }
 
   rgStrategyPicker.Render(
-    title = "ReplayGain strategy",
+    title = stringResource(R.string.settings_audio_replaygain_strategy_label),
     options = ReplayGainStrategy.entries,
-    label = ::replayGainStrategyLabel,
+    label = { replayGainStrategyLabel(context, it) },
     current = replayGainStrategy,
     onPick = { scope.launch { settings.replayGainStrategy.set(it) } },
   )
@@ -717,12 +780,17 @@ fun SettingsAudioScreen(
   }
 }
 
-internal fun replayGainStrategyLabel(s: ReplayGainStrategy): String = when (s) {
-  ReplayGainStrategy.Off -> "Off"
-  ReplayGainStrategy.Track -> "Track"
-  ReplayGainStrategy.Album -> "Album"
-  ReplayGainStrategy.Smart -> "Smart"
-}
+internal fun replayGainStrategyLabel(
+  context: android.content.Context,
+  s: ReplayGainStrategy,
+): String = context.getString(
+  when (s) {
+    ReplayGainStrategy.Off -> R.string.settings_audio_replaygain_off
+    ReplayGainStrategy.Track -> R.string.settings_audio_replaygain_track
+    ReplayGainStrategy.Album -> R.string.settings_audio_replaygain_album
+    ReplayGainStrategy.Smart -> R.string.settings_audio_replaygain_smart
+  },
+)
 
 /** Format a pre-amp dB value with one decimal and an explicit sign. */
 internal fun formatPreampDb(dB: Float): String {
@@ -748,7 +816,7 @@ private fun ReplayGainPreampDialog(
   var value by remember(currentDb) { mutableStateOf(currentDb) }
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("ReplayGain pre-amp") },
+    title = { Text(stringResource(R.string.settings_audio_replaygain_preamp_dialog_title)) },
     text = {
       Column(modifier = Modifier.semantics { testTag = "rg_preamp_dialog" }) {
         Text(
@@ -756,9 +824,7 @@ private fun ReplayGainPreampDialog(
           style = androidx.compose.material3.MaterialTheme.typography.headlineSmall,
         )
         Text(
-          text = "Adds a constant offset on top of the strategy gain. " +
-            "Negative values attenuate; positive values clamp at 0 dB " +
-            "(Player.volume cannot amplify above unity).",
+          text = stringResource(R.string.settings_audio_replaygain_preamp_dialog_text),
           style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
           modifier = Modifier.padding(top = 4.dp),
         )
@@ -776,12 +842,22 @@ private fun ReplayGainPreampDialog(
             .semantics { testTag = "rg_preamp_slider" },
         )
         Row(modifier = Modifier.fillMaxWidth()) {
-          TextButton(onClick = { value = 0f }) { Text("Reset to 0 dB") }
+          TextButton(onClick = { value = 0f }) {
+            Text(stringResource(R.string.settings_audio_replaygain_preamp_reset))
+          }
         }
       }
     },
-    confirmButton = { TextButton(onClick = { onConfirm(value) }) { Text("Save") } },
-    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    confirmButton = {
+      TextButton(onClick = { onConfirm(value) }) {
+        Text(stringResource(R.string.settings_dialog_save))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.settings_dialog_cancel))
+      }
+    },
   )
 }
 
@@ -817,7 +893,11 @@ private fun <T> RadioPicker(
         }
       }
     },
-    confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    confirmButton = {
+      TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.settings_dialog_close))
+      }
+    },
   )
 }
 
@@ -864,7 +944,15 @@ private fun <T> MultiSelectPicker(
         }
       }
     },
-    confirmButton = { TextButton(onClick = { onSave(draft) }) { Text("Save") } },
-    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    confirmButton = {
+      TextButton(onClick = { onSave(draft) }) {
+        Text(stringResource(R.string.settings_dialog_save))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.settings_dialog_cancel))
+      }
+    },
   )
 }

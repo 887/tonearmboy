@@ -130,8 +130,6 @@ class LibraryWatcherService : Service() {
     private const val TAG = "tonearmboy-watcher"
     const val CHANNEL_ID = "tonearmboy.library.watcher"
     const val NOTIFICATION_ID = 4242
-    const val NOTIFICATION_TITLE = "tonearmboy"
-    const val NOTIFICATION_TEXT = "Watching for library changes. Tap to disable."
 
     /**
      * Idempotent — start the service if it isn't already running. Safe
@@ -174,10 +172,10 @@ class LibraryWatcherService : Service() {
       if (nm.getNotificationChannel(CHANNEL_ID) != null) return
       val channel = NotificationChannel(
         CHANNEL_ID,
-        "Library watcher",
+        context.getString(R.string.watcher_notif_channel_name),
         NotificationManager.IMPORTANCE_LOW,
       ).apply {
-        description = "Sticky notification while automatic reloading is enabled."
+        description = context.getString(R.string.watcher_notif_channel_description)
         setShowBadge(false)
       }
       nm.createNotificationChannel(channel)
@@ -211,16 +209,16 @@ class LibraryWatcherService : Service() {
       )
 
       return NotificationCompat.Builder(context, CHANNEL_ID)
-        .setContentTitle(NOTIFICATION_TITLE)
-        .setContentText(NOTIFICATION_TEXT)
+        .setContentTitle(context.getString(R.string.app_name))
+        .setContentText(context.getString(R.string.watcher_notif_text))
         .setSmallIcon(R.mipmap.ic_launcher)
         .setOngoing(true)
         .setPriority(NotificationCompat.PRIORITY_LOW)
         .setSilent(true)
         // Tap notification = disable directly (per the spec text "tap to disable").
         .setContentIntent(disablePending)
-        .addAction(0, "Open tonearmboy", openPending)
-        .addAction(0, "Disable", disablePending)
+        .addAction(0, context.getString(R.string.watcher_notif_action_open), openPending)
+        .addAction(0, context.getString(R.string.watcher_notif_action_disable), disablePending)
         .build()
     }
   }

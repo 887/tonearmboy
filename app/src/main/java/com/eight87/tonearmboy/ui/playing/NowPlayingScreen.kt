@@ -50,11 +50,13 @@ import androidx.compose.ui.Alignment
 import com.eight87.tonearmboy.ui.common.FastScrollbar
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.playback.ConnectionPhase
 import com.eight87.tonearmboy.playback.NowPlayingState
 import com.eight87.tonearmboy.playback.PlaybackUiController
@@ -106,10 +108,13 @@ fun NowPlayingScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("Now Playing") },
+        title = { Text(stringResource(R.string.playing_top_bar_title)) },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(
+              Icons.AutoMirrored.Filled.ArrowBack,
+              contentDescription = stringResource(R.string.playing_cd_back),
+            )
           }
         },
         actions = {
@@ -126,7 +131,10 @@ fun NowPlayingScreen(
             modifier = Modifier.semantics { testTag = "now_playing_save_queue" },
             enabled = state.hasMedia && queueSnapshot.items.isNotEmpty(),
           ) {
-            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Save queue as playlist")
+            Icon(
+              Icons.AutoMirrored.Filled.PlaylistAdd,
+              contentDescription = stringResource(R.string.playing_cd_save_queue_as_playlist),
+            )
           }
         },
       )
@@ -259,8 +267,9 @@ internal fun NowPlayingMergedSurface(
             .clip(RoundedCornerShape(12.dp))
             .semantics { testTag = "now_playing_cover" },
         )
+        val noTrackPlaceholder = stringResource(R.string.playing_no_track)
         Text(
-          text = state.title.ifEmpty { "No track" },
+          text = state.title.ifEmpty { noTrackPlaceholder },
           style = MaterialTheme.typography.headlineSmall,
           maxLines = 2,
           modifier = Modifier.semantics { testTag = "now_playing_title" },
@@ -300,7 +309,7 @@ internal fun NowPlayingMergedSurface(
           IconButton(onClick = onSeekBackward) {
             Icon(
               Icons.Filled.Replay10,
-              contentDescription = "Seek back 10 seconds",
+              contentDescription = stringResource(R.string.playing_cd_seek_back_10),
               modifier = Modifier.size(36.dp),
             )
           }
@@ -309,7 +318,7 @@ internal fun NowPlayingMergedSurface(
           IconButton(onClick = onSeekForward) {
             Icon(
               Icons.Filled.Forward10,
-              contentDescription = "Seek forward 10 seconds",
+              contentDescription = stringResource(R.string.playing_cd_seek_forward_10),
               modifier = Modifier.size(36.dp),
             )
           }
@@ -386,7 +395,7 @@ private fun NowPlayingConnecting(modifier: Modifier = Modifier) {
   ) {
     CircularProgressIndicator()
     Text(
-      text = "Connecting to playback…",
+      text = stringResource(R.string.playing_connecting),
       style = MaterialTheme.typography.bodyMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -408,18 +417,18 @@ private fun NowPlayingEmpty(
     verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
   ) {
     Text(
-      text = "Nothing playing",
+      text = stringResource(R.string.playing_empty_title),
       style = MaterialTheme.typography.headlineSmall,
     )
     Text(
-      text = "Pick a track in the library to start playback.",
+      text = stringResource(R.string.playing_empty_message),
       style = MaterialTheme.typography.bodyMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     TextButton(
       onClick = onBack,
       modifier = Modifier.semantics { testTag = "now_playing_empty_back" },
-    ) { Text("Back to library") }
+    ) { Text(stringResource(R.string.playing_empty_back_button)) }
   }
 }
 

@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
+import android.content.res.Resources
 import androidx.compose.runtime.Composable
 import com.eight87.tonearmboy.ui.library.TileItem
 import com.eight87.tonearmboy.ui.settings.TabSort
@@ -30,8 +31,9 @@ interface TabSpec<T : Any> {
   /** `Modifier.semantics { testTag = … }` value for the outer Row. */
   val testTag: String
 
-  /** Copy for [EmptyState] when the data list is empty. */
-  val emptyMessage: String
+  /** T.A.3 — string-resource id for [EmptyState] when the data list is empty. */
+  @get:androidx.annotation.StringRes
+  val emptyMessageRes: Int
 
   /** Tile-mode availability — list-only tabs (e.g. Playlists) return false. */
   val supportsTileMode: Boolean
@@ -53,8 +55,12 @@ interface TabSpec<T : Any> {
    * Implementations that don't support tile mode (or for which a
    * particular item has no tile representation) return null. The
    * renderer skips items whose `toTile` returns null.
+   *
+   * [resources] is supplied so a spec can resolve translated
+   * subtitle copy (e.g. "X albums · Y tracks") without needing a
+   * Compose scope. Specs that don't need it can ignore the parameter.
    */
-  fun toTile(item: T): TileItem?
+  fun toTile(item: T, resources: Resources): TileItem?
 
   /**
    * List-mode row composable. [selected] / [inSelectionMode] are

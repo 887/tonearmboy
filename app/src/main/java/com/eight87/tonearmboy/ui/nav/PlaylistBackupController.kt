@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.nav
 
+import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.SnackbarHostState
@@ -10,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.PlaylistStore
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.playlist.PlaylistBackupCodec
@@ -79,10 +81,18 @@ fun rememberPlaylistBackupController(
         }
       }.fold(
         onSuccess = {
-          snackbar.showSnackbar("Exported ${envelope.playlists.size} playlists")
+          val count = envelope.playlists.size
+          snackbar.showSnackbar(
+            context.resources.getQuantityString(R.plurals.playlist_exported_count, count, count),
+          )
         },
         onFailure = {
-          snackbar.showSnackbar("Export failed: ${it.message ?: "unknown error"}")
+          snackbar.showSnackbar(
+            context.getString(
+              R.string.playlist_export_failed,
+              it.message ?: context.getString(R.string.playlist_import_unknown_error),
+            ),
+          )
         },
       )
     }
@@ -97,7 +107,7 @@ fun rememberPlaylistBackupController(
         withContext(Dispatchers.IO) {
           val raw = context.contentResolver.openInputStream(uri)?.use {
             it.bufferedReader(Charsets.UTF_8).readText()
-          } ?: error("Could not read selected file")
+          } ?: error(context.getString(R.string.playlist_import_read_failed))
           val envelope = PlaylistBackupCodec.decode(raw)
           val libraryTracks = tracks.observeTracks().first()
           val resolution = resolvePlaylistImport(envelope, libraryTracks)
@@ -114,13 +124,18 @@ fun rememberPlaylistBackupController(
               resolution = resolution,
               collisionPolicy = PlaylistImportCollisionPolicy.Merge,
             )
-            snackbar.showSnackbar(importSummaryMessage(summary))
+            snackbar.showSnackbar(importSummaryMessage(context, summary))
           } else {
             pendingImport = PlaylistImportPending(env, resolution, collisions)
           }
         },
         onFailure = {
-          snackbar.showSnackbar("Import failed: ${it.message ?: "unknown error"}")
+          snackbar.showSnackbar(
+            context.getString(
+              R.string.playlist_import_failed,
+              it.message ?: context.getString(R.string.playlist_import_unknown_error),
+            ),
+          )
         },
       )
     }
@@ -154,7 +169,7 @@ fun rememberPlaylistBackupController(
                   resolution = captured.resolution,
                   collisionPolicy = policy,
                 )
-                snackbar.showSnackbar(importSummaryMessage(summary))
+                snackbar.showSnackbar(importSummaryMessage(context, summary))
               }
             },
             onDismiss = { pendingImport = null },
@@ -171,12 +186,27 @@ private data class PlaylistImportPending(
   val collisions: List<String>,
 )
 
-private fun importSummaryMessage(summary: PlaylistImportSummary): String {
+private fun importSummaryMessage(context: Context, summary: PlaylistImportSummary): String {
+  val resources = context.resources
   val parts = mutableListOf<String>()
-  parts += "Imported ${summary.importedCount} playlists"
-  if (summary.skippedCount > 0) parts += "${summary.skippedCount} skipped"
+  parts += resources.getQuantityString(
+    R.plurals.playlist_imported_count,
+    summary.importedCount,
+    summary.importedCount,
+  )
+  if (summary.skippedCount > 0) {
+    parts += resources.getQuantityString(
+      R.plurals.playlist_imported_skipped,
+      summary.skippedCount,
+      summary.skippedCount,
+    )
+  }
   if (summary.unmatchedTrackCount > 0) {
-    parts += "${summary.unmatchedTrackCount} tracks not found"
+    parts += resources.getQuantityString(
+      R.plurals.playlist_imported_unmatched,
+      summary.unmatchedTrackCount,
+      summary.unmatchedTrackCount,
+    )
   }
   return parts.joinToString(", ")
 }

@@ -29,11 +29,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.playback.PlaybackUiState
 
 /**
@@ -86,7 +88,10 @@ fun PlaybackTransportRow(
     ) {
       Icon(
         imageVector = if (state.shuffleEnabled) Icons.Filled.ShuffleOn else Icons.Filled.Shuffle,
-        contentDescription = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
+        contentDescription = stringResource(
+          if (state.shuffleEnabled) R.string.playing_cd_shuffle_on
+          else R.string.playing_cd_shuffle_off,
+        ),
         modifier = Modifier.size(iconSize),
       )
     }
@@ -97,7 +102,7 @@ fun PlaybackTransportRow(
     ) {
       Icon(
         Icons.Filled.SkipPrevious,
-        contentDescription = "Previous",
+        contentDescription = stringResource(R.string.playing_cd_skip_previous),
         modifier = Modifier.size(iconSize),
       )
     }
@@ -106,6 +111,9 @@ fun PlaybackTransportRow(
       // D.9a.1 — IconButton has no long-press hook; build a tap target
       // by hand so long-press triggers the custom-bar-action.
       val interaction = remember { MutableInteractionSource() }
+      val playLabel = stringResource(R.string.playing_cd_play)
+      val pauseLabel = stringResource(R.string.playing_cd_pause)
+      val customActionLabel = stringResource(R.string.playing_cd_custom_action)
       Box(
         modifier = Modifier
           .size(40.dp)
@@ -115,23 +123,25 @@ fun PlaybackTransportRow(
             indication = ripple(bounded = false, radius = 20.dp),
             onClick = onTogglePlayPause,
             onLongClick = onPlayLongPress,
-            onClickLabel = if (state.isPlaying) "Pause" else "Play",
-            onLongClickLabel = "Custom action",
+            onClickLabel = if (state.isPlaying) pauseLabel else playLabel,
+            onLongClickLabel = customActionLabel,
           )
           .semantics { testTag = "${testTagPrefix}_play_button" },
         contentAlignment = Alignment.Center,
       ) {
         Icon(
           imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-          contentDescription = if (state.isPlaying) "Pause" else "Play",
+          contentDescription = if (state.isPlaying) pauseLabel else playLabel,
           tint = LocalContentColor.current,
         )
       }
     } else {
+      val playLabel = stringResource(R.string.playing_cd_play)
+      val pauseLabel = stringResource(R.string.playing_cd_pause)
       IconButton(onClick = onTogglePlayPause) {
         Icon(
           imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-          contentDescription = if (state.isPlaying) "Pause" else "Play",
+          contentDescription = if (state.isPlaying) pauseLabel else playLabel,
           modifier = Modifier.size(playIconSize),
         )
       }
@@ -144,7 +154,7 @@ fun PlaybackTransportRow(
     ) {
       Icon(
         Icons.Filled.SkipNext,
-        contentDescription = "Next",
+        contentDescription = stringResource(R.string.playing_cd_skip_next),
         modifier = Modifier.size(iconSize),
       )
     }
@@ -153,12 +163,16 @@ fun PlaybackTransportRow(
       onCheckedChange = { onCycleRepeat() },
       modifier = Modifier.semantics { testTag = "${testTagPrefix}_repeat" },
     ) {
-      val (icon, desc) = when (state.repeatMode) {
-        Player.REPEAT_MODE_ONE -> Icons.Filled.RepeatOneOn to "Repeat one"
-        Player.REPEAT_MODE_ALL -> Icons.Filled.RepeatOn to "Repeat all"
-        else -> Icons.Filled.Repeat to "Repeat off"
+      val (icon, descRes) = when (state.repeatMode) {
+        Player.REPEAT_MODE_ONE -> Icons.Filled.RepeatOneOn to R.string.playing_cd_repeat_one
+        Player.REPEAT_MODE_ALL -> Icons.Filled.RepeatOn to R.string.playing_cd_repeat_all
+        else -> Icons.Filled.Repeat to R.string.playing_cd_repeat_off
       }
-      Icon(imageVector = icon, contentDescription = desc, modifier = Modifier.size(iconSize))
+      Icon(
+        imageVector = icon,
+        contentDescription = stringResource(descRes),
+        modifier = Modifier.size(iconSize),
+      )
     }
   }
 }

@@ -12,6 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.PlaylistStore
 import com.eight87.tonearmboy.data.model.Playlist
 
@@ -57,12 +59,12 @@ internal fun PlaylistDialogHost(
       var name by remember(state.target.id) { mutableStateOf(state.target.name) }
       AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename playlist") },
+        title = { Text(stringResource(R.string.playlist_rename_dialog_title)) },
         text = {
           OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Name") },
+            label = { Text(stringResource(R.string.playlist_name_label)) },
             singleLine = true,
           )
         },
@@ -73,22 +75,22 @@ internal fun PlaylistDialogHost(
               onRename(state.target.id, trimmed)
             }
             onDismiss()
-          }) { Text("Rename") }
+          }) { Text(stringResource(R.string.playlist_rename_confirm)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.playlist_dialog_cancel)) } },
       )
     }
     is PlaylistDialogState.Delete -> AlertDialog(
       onDismissRequest = onDismiss,
-      title = { Text("Delete playlist") },
-      text = { Text("Delete \"${state.target.name}\"? This removes the playlist but not the tracks themselves.") },
+      title = { Text(stringResource(R.string.playlist_delete_dialog_title)) },
+      text = { Text(stringResource(R.string.playlist_delete_dialog_text, state.target.name)) },
       confirmButton = {
         TextButton(onClick = {
           onDelete(state.target.id)
           onDismiss()
-        }) { Text("Delete") }
+        }) { Text(stringResource(R.string.playlist_delete_confirm)) }
       },
-      dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+      dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.playlist_dialog_cancel)) } },
     )
     is PlaylistDialogState.CoverChooser -> PlaylistCoverChooserSheet(
       playlist = state.target,

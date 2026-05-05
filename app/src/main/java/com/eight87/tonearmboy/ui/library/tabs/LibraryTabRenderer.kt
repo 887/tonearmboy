@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import com.eight87.tonearmboy.ui.common.FastScrollbar
@@ -52,7 +53,7 @@ fun <T : Any> LibraryTabRenderer(
   onItemLongClick: ((T) -> Unit)? = null,
 ) {
   if (items.isEmpty()) {
-    EmptyState(spec.emptyMessage)
+    EmptyState(spec.emptyMessageRes)
     return
   }
 
@@ -73,7 +74,8 @@ fun <T : Any> LibraryTabRenderer(
 
   Row(modifier = modifier.fillMaxSize().semantics { testTag = spec.testTag }) {
     if (effectiveTileMode) {
-      val tileItems = remember(items) { items.mapNotNull { spec.toTile(it) } }
+      val resources = LocalContext.current.resources
+      val tileItems = remember(items, resources) { items.mapNotNull { spec.toTile(it, resources) } }
       LibraryTileGrid(
         tiles = tileItems,
         sectionKeys = sectionKeys,

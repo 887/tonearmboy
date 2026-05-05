@@ -44,10 +44,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.AlbumSource
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.model.Album
@@ -110,7 +113,7 @@ fun AlbumDetailScreen(
         title = { Text(albumName) },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.library_cd_back))
           }
         },
       )
@@ -149,13 +152,13 @@ fun AlbumDetailScreen(
           Spacer(Modifier.height(12.dp))
           Text(albumName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
           Text(
-            text = albumArtist ?: "Unknown artist",
+            text = albumArtist ?: stringResource(R.string.library_unknown_artist),
             style = MaterialTheme.typography.bodyMedium,
           )
           Text(
             text = listOfNotNull(
               album?.year?.toString(),
-              "${tracks.size} tracks",
+              pluralStringResource(R.plurals.library_album_detail_meta_tracks, tracks.size, tracks.size),
               formatDuration(totalDurationMs),
             ).joinToString(" · "),
             style = MaterialTheme.typography.bodySmall,
@@ -218,7 +221,7 @@ fun ArtistDetailScreen(
         title = { Text(artistName) },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.library_cd_back))
           }
         },
       )
@@ -239,7 +242,9 @@ fun ArtistDetailScreen(
         Column(modifier = Modifier.libraryDetailCard().padding(16.dp)) {
           Text(artistName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
           Text(
-            text = "${albums.size} albums · ${tracks.size} tracks",
+            text = pluralStringResource(R.plurals.library_artist_detail_albums_count, albums.size, albums.size) +
+              " · " +
+              pluralStringResource(R.plurals.library_artist_detail_tracks_count, tracks.size, tracks.size),
             style = MaterialTheme.typography.bodySmall,
           )
         }
@@ -248,7 +253,7 @@ fun ArtistDetailScreen(
         item {
           Column(modifier = Modifier.libraryDetailCard().padding(vertical = 8.dp)) {
             Text(
-              text = "Albums",
+              text = stringResource(R.string.library_detail_artist_albums_section),
               style = MaterialTheme.typography.titleSmall,
               modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
@@ -286,7 +291,7 @@ fun ArtistDetailScreen(
       item {
         Column(modifier = Modifier.libraryDetailCard()) {
           Text(
-            text = "Tracks",
+            text = stringResource(R.string.library_detail_artist_tracks_section),
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
           )
@@ -328,7 +333,7 @@ fun GenreDetailScreen(
         title = { Text(genreName) },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.library_cd_back))
           }
         },
       )
@@ -347,7 +352,7 @@ fun GenreDetailScreen(
         Column(modifier = Modifier.fillMaxWidth().libraryDetailCard().padding(16.dp)) {
           Text(genreName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
           Text(
-            text = "${tracks.size} tracks",
+            text = pluralStringResource(R.plurals.library_genre_detail_tracks_count, tracks.size, tracks.size),
             style = MaterialTheme.typography.bodySmall,
           )
         }
@@ -390,7 +395,7 @@ private fun DetailTrackRow(
       Text(track.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
       Text(
         text = listOfNotNull(track.artist?.takeIf { it.isNotBlank() }, track.album?.takeIf { it.isNotBlank() })
-          .joinToString(" · ").ifEmpty { "Unknown" },
+          .joinToString(" · ").ifEmpty { stringResource(R.string.library_unknown) },
         style = MaterialTheme.typography.bodySmall,
         maxLines = 1,
       )
@@ -399,7 +404,7 @@ private fun DetailTrackRow(
       IconButton(
         onClick = { menuOpen = true },
         modifier = Modifier.semantics { testTag = "detail_track_overflow" },
-      ) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
+      ) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.library_cd_more_options)) }
       TrackContextMenu(
         expanded = menuOpen,
         onDismiss = { menuOpen = false },

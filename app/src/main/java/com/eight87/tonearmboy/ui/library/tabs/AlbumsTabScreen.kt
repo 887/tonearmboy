@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
+import android.content.res.Resources
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,9 +18,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.AlbumSource
 import com.eight87.tonearmboy.data.model.Album
 import com.eight87.tonearmboy.ui.library.CoverArt
@@ -96,8 +99,7 @@ internal class AlbumsTabSpec(
   private val albumCoversMode: AlbumCoversMode,
 ) : TabSpec<Album> {
   override val testTag: String = "albums_tab"
-  override val emptyMessage: String =
-    "No albums yet. Add audio files to your device, then tap Rescan music."
+  override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_albums
   override val supportsTileMode: Boolean = true
 
   override fun id(item: Album): Long = item.id
@@ -106,10 +108,10 @@ internal class AlbumsTabSpec(
     if (sort.key == SortKey.Name) initialKey(sortNameKey(item.name, intelligentSorting))
     else null
 
-  override fun toTile(item: Album): TileItem = TileItem(
+  override fun toTile(item: Album, resources: Resources): TileItem = TileItem(
     id = item.id,
     title = item.name,
-    subtitle = item.artist ?: "Unknown artist",
+    subtitle = item.artist ?: resources.getString(R.string.library_unknown_artist),
     artUri = null,
     albumArtId = item.mediaStoreAlbumId,
   )
@@ -155,7 +157,7 @@ internal fun AlbumListRow(
     Column(modifier = Modifier.padding(start = 12.dp)) {
       Text(album.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
       Text(
-        text = album.artist ?: "Unknown artist",
+        text = album.artist ?: stringResource(R.string.library_unknown_artist),
         style = MaterialTheme.typography.bodySmall,
         maxLines = 1,
       )

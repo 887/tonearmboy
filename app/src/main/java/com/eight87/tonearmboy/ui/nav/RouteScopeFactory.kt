@@ -67,21 +67,30 @@ fun rememberRouteScope(
   // persistence in v1, per the plan).
   var libraryFilter by remember { mutableStateOf(FilterCriteria()) }
 
+  val context = androidx.compose.ui.platform.LocalContext.current
+  val refreshedMessage = androidx.compose.ui.res.stringResource(
+    com.eight87.tonearmboy.R.string.library_scan_refreshed,
+  )
+  val rescannedMessage = androidx.compose.ui.res.stringResource(
+    com.eight87.tonearmboy.R.string.library_scan_rescanned,
+  )
   val onRefreshMusic: () -> Unit = {
     graph.applicationScope.launch {
       graph.scanner.rescanNow()
-      snackbar.showSnackbar("Refreshed music library")
+      snackbar.showSnackbar(refreshedMessage)
     }
   }
   val onRescanMusic: () -> Unit = {
     graph.applicationScope.launch {
       graph.scanner.rescanNow()
-      snackbar.showSnackbar("Rescanned music library")
+      snackbar.showSnackbar(rescannedMessage)
     }
   }
   val onComingSoon: (String) -> Unit = { feature ->
     graph.applicationScope.launch {
-      snackbar.showSnackbar("$feature — coming in v1.1")
+      snackbar.showSnackbar(
+        context.getString(com.eight87.tonearmboy.R.string.library_coming_soon, feature),
+      )
     }
   }
 

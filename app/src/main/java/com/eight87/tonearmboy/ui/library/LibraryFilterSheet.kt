@@ -24,9 +24,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.FilterCondition
 import com.eight87.tonearmboy.data.FilterCriteria
 import com.eight87.tonearmboy.data.model.Track
@@ -108,12 +110,12 @@ fun LibraryFilterSheet(
         .padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      Text("Filter library", style = MaterialTheme.typography.titleMedium)
+      Text(stringResource(R.string.library_filter_sheet_title), style = MaterialTheme.typography.titleMedium)
 
       OutlinedTextField(
         value = nameDraft,
         onValueChange = { nameDraft = it },
-        label = { Text("Name (title / artist / album)") },
+        label = { Text(stringResource(R.string.library_filter_sheet_name_label)) },
         singleLine = true,
         modifier = Modifier
           .fillMaxWidth()
@@ -121,7 +123,11 @@ fun LibraryFilterSheet(
       )
 
       Text(
-        "Year: ${yearLowDraft.toInt()}–${yearHighDraft.toInt()}",
+        stringResource(
+          R.string.library_filter_sheet_year_label,
+          yearLowDraft.toInt(),
+          yearHighDraft.toInt(),
+        ),
         style = MaterialTheme.typography.bodyMedium,
       )
       RangeSlider(
@@ -137,7 +143,7 @@ fun LibraryFilterSheet(
           .semantics { testTag = "filter_year_slider" },
       )
 
-      Text("Date added", style = MaterialTheme.typography.bodyMedium)
+      Text(stringResource(R.string.library_filter_sheet_date_added_label), style = MaterialTheme.typography.bodyMedium)
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -148,7 +154,10 @@ fun LibraryFilterSheet(
             .weight(1f)
             .semantics { testTag = "filter_date_after_button" },
         ) {
-          Text(dateAfterDraft?.let { "From: ${formatDate(it)}" } ?: "From: any")
+          Text(
+            dateAfterDraft?.let { stringResource(R.string.library_filter_sheet_date_from, formatDate(it)) }
+              ?: stringResource(R.string.library_filter_sheet_date_from_any),
+          )
         }
         OutlinedButton(
           onClick = { showDateBeforePicker = true },
@@ -156,7 +165,10 @@ fun LibraryFilterSheet(
             .weight(1f)
             .semantics { testTag = "filter_date_before_button" },
         ) {
-          Text(dateBeforeDraft?.let { "To: ${formatDate(it)}" } ?: "To: any")
+          Text(
+            dateBeforeDraft?.let { stringResource(R.string.library_filter_sheet_date_to, formatDate(it)) }
+              ?: stringResource(R.string.library_filter_sheet_date_to_any),
+          )
         }
       }
 
@@ -178,7 +190,7 @@ fun LibraryFilterSheet(
           modifier = Modifier
             .weight(1f)
             .semantics { testTag = "filter_reset_button" },
-        ) { Text("Reset") }
+        ) { Text(stringResource(R.string.library_filter_sheet_reset)) }
         Button(
           onClick = {
             // Build the criteria. We treat the slider thumbs as
@@ -198,7 +210,7 @@ fun LibraryFilterSheet(
           modifier = Modifier
             .weight(1f)
             .semantics { testTag = "filter_apply_button" },
-        ) { Text("Apply") }
+        ) { Text(stringResource(R.string.library_filter_sheet_apply)) }
       }
     }
   }
@@ -213,13 +225,13 @@ fun LibraryFilterSheet(
         TextButton(onClick = {
           dateAfterDraft = state.selectedDateMillis?.let { it / 1000 }
           showDateAfterPicker = false
-        }) { Text("OK") }
+        }) { Text(stringResource(R.string.library_filter_sheet_ok)) }
       },
       dismissButton = {
         TextButton(onClick = {
           dateAfterDraft = null
           showDateAfterPicker = false
-        }) { Text("Clear") }
+        }) { Text(stringResource(R.string.library_filter_sheet_clear)) }
       },
     ) { DatePicker(state = state) }
   }
@@ -234,13 +246,13 @@ fun LibraryFilterSheet(
         TextButton(onClick = {
           dateBeforeDraft = state.selectedDateMillis?.let { it / 1000 }
           showDateBeforePicker = false
-        }) { Text("OK") }
+        }) { Text(stringResource(R.string.library_filter_sheet_ok)) }
       },
       dismissButton = {
         TextButton(onClick = {
           dateBeforeDraft = null
           showDateBeforePicker = false
-        }) { Text("Clear") }
+        }) { Text(stringResource(R.string.library_filter_sheet_clear)) }
       },
     ) { DatePicker(state = state) }
   }

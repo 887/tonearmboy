@@ -1,9 +1,12 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
+import android.content.res.Resources
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.pluralStringResource
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.GenreSource
 import com.eight87.tonearmboy.data.model.Genre
 import com.eight87.tonearmboy.ui.library.TileItem
@@ -61,7 +64,7 @@ fun GenresListScreen(
 /** R.D.3 — TabSpec for the Genres tab. */
 internal object GenresTabSpec : TabSpec<Genre> {
   override val testTag: String = "genres_tab"
-  override val emptyMessage: String = "No genres yet."
+  override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_genres
   override val supportsTileMode: Boolean = true
 
   override fun id(item: Genre): Long = item.id
@@ -69,10 +72,14 @@ internal object GenresTabSpec : TabSpec<Genre> {
   override fun sectionKey(item: Genre, sort: TabSort, intelligentSorting: Boolean): String? =
     if (sort.key != SortKey.Duration) initialKey(item.name.uppercase()) else null
 
-  override fun toTile(item: Genre): TileItem = TileItem(
+  override fun toTile(item: Genre, resources: Resources): TileItem = TileItem(
     id = item.id,
     title = item.name,
-    subtitle = "${item.trackCount} tracks",
+    subtitle = resources.getQuantityString(
+      R.plurals.library_genre_subtitle_tracks,
+      item.trackCount,
+      item.trackCount,
+    ),
     artUri = null,
     albumArtId = null,
   )
@@ -87,7 +94,7 @@ internal object GenresTabSpec : TabSpec<Genre> {
   ) {
     TwoLineRow(
       primary = item.name,
-      secondary = "${item.trackCount} tracks",
+      secondary = pluralStringResource(R.plurals.library_genre_subtitle_tracks, item.trackCount, item.trackCount),
       onClick = onClick,
     )
   }

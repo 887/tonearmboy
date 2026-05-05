@@ -24,9 +24,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.ui.settings.SortDirection
 import com.eight87.tonearmboy.ui.settings.SortKey
 import com.eight87.tonearmboy.ui.settings.TabSort
@@ -60,7 +62,7 @@ fun SortSheet(
     modifier = Modifier.semantics { testTag = "sort_sheet" },
   ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-      Text("Sort by", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 12.dp))
+      Text(stringResource(R.string.library_sort_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 12.dp))
 
       SortKey.entries.forEach { option ->
         Row(
@@ -75,7 +77,7 @@ fun SortSheet(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           RadioButton(selected = pendingKey == option, onClick = null)
-          Text(text = sortKeyLabel(option), modifier = Modifier.padding(start = 12.dp))
+          Text(text = stringResource(sortKeyLabelRes(option)), modifier = Modifier.padding(start = 12.dp))
         }
       }
 
@@ -87,7 +89,14 @@ fun SortSheet(
             onClick = { pendingDir = dir },
             shape = SegmentedButtonDefaults.itemShape(index = index, count = directions.size),
             modifier = Modifier.semantics { testTag = "sort_dir_${dir.name}" },
-          ) { Text(if (dir == SortDirection.Ascending) "Ascending" else "Descending") }
+          ) {
+            Text(
+              stringResource(
+                if (dir == SortDirection.Ascending) R.string.library_sort_direction_ascending
+                else R.string.library_sort_direction_descending,
+              ),
+            )
+          }
         }
       }
 
@@ -95,18 +104,19 @@ fun SortSheet(
         modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.End,
       ) {
-        TextButton(onClick = onDismiss) { Text("Cancel") }
-        TextButton(onClick = { onConfirm(TabSort(pendingKey, pendingDir)) }) { Text("OK") }
+        TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_sort_cancel)) }
+        TextButton(onClick = { onConfirm(TabSort(pendingKey, pendingDir)) }) { Text(stringResource(R.string.library_sort_ok)) }
       }
     }
   }
 }
 
-private fun sortKeyLabel(k: SortKey): String = when (k) {
-  SortKey.Name -> "Name"
-  SortKey.Artist -> "Artist"
-  SortKey.Album -> "Album"
-  SortKey.Date -> "Date"
-  SortKey.Duration -> "Duration"
-  SortKey.DateAdded -> "Date added"
+@androidx.annotation.StringRes
+private fun sortKeyLabelRes(k: SortKey): Int = when (k) {
+  SortKey.Name -> R.string.library_sort_by_name
+  SortKey.Artist -> R.string.library_sort_by_artist
+  SortKey.Album -> R.string.library_sort_by_album
+  SortKey.Date -> R.string.library_sort_by_date
+  SortKey.Duration -> R.string.library_sort_by_duration
+  SortKey.DateAdded -> R.string.library_sort_by_date_added
 }

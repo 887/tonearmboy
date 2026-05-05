@@ -50,10 +50,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.annotation.StringRes
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.FilterCondition
 import com.eight87.tonearmboy.data.FilterCriteria
 import com.eight87.tonearmboy.data.db.CustomTabContentType
@@ -106,10 +110,17 @@ fun CustomTabEditorScreen(
       .semantics { testTag = "custom_tab_editor" },
     topBar = {
       TopAppBar(
-        title = { Text(if (existing == null) "New custom tab" else "Edit custom tab") },
+        title = {
+          Text(
+            stringResource(
+              if (existing == null) R.string.library_custom_tab_editor_new_title
+              else R.string.library_custom_tab_editor_edit_title,
+            ),
+          )
+        },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.library_cd_back))
           }
         },
         actions = {
@@ -123,7 +134,14 @@ fun CustomTabEditorScreen(
             },
             enabled = canSave,
             modifier = Modifier.semantics { testTag = "editor_save" },
-          ) { Text(if (existing == null) "Create" else "Save") }
+          ) {
+            Text(
+              stringResource(
+                if (existing == null) R.string.library_custom_tab_editor_create
+                else R.string.library_custom_tab_editor_save,
+              ),
+            )
+          }
         },
       )
     },
@@ -138,7 +156,7 @@ fun CustomTabEditorScreen(
         OutlinedTextField(
           value = name,
           onValueChange = { if (it.length <= 32) name = it },
-          label = { Text("Name") },
+          label = { Text(stringResource(R.string.library_custom_tab_editor_name_label)) },
           singleLine = true,
           modifier = Modifier
             .fillMaxWidth()
@@ -148,7 +166,7 @@ fun CustomTabEditorScreen(
       }
       item {
         Text(
-          "Content",
+          stringResource(R.string.library_custom_tab_editor_content_section),
           style = MaterialTheme.typography.titleSmall,
           modifier = Modifier.padding(top = 16.dp, bottom = 6.dp),
         )
@@ -160,14 +178,14 @@ fun CustomTabEditorScreen(
               onClick = { contentType = ct },
               shape = SegmentedButtonDefaults.itemShape(index = index, count = all.size),
               modifier = Modifier.semantics { testTag = "editor_ct_${ct.name}" },
-            ) { Text(contentTypeLabel(ct)) }
+            ) { Text(stringResource(contentTypeLabelRes(ct))) }
           }
         }
       }
       item { HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp)) }
       item {
         Text(
-          "Filters",
+          stringResource(R.string.library_custom_tab_editor_filters_section),
           style = MaterialTheme.typography.titleSmall,
           modifier = Modifier.padding(bottom = 4.dp),
         )
@@ -175,7 +193,7 @@ fun CustomTabEditorScreen(
       if (conditions.isEmpty()) {
         item {
           Text(
-            "No filters — every track matches. Tap Add filter to narrow it.",
+            stringResource(R.string.library_custom_tab_editor_no_filters),
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(vertical = 8.dp),
           )
@@ -204,7 +222,7 @@ fun CustomTabEditorScreen(
             .semantics { testTag = "editor_add_filter" },
         ) {
           Icon(Icons.Filled.Add, contentDescription = null)
-          Text("Add filter", modifier = Modifier.padding(start = 8.dp))
+          Text(stringResource(R.string.library_custom_tab_editor_add_filter), modifier = Modifier.padding(start = 8.dp))
         }
       }
     }
@@ -230,20 +248,22 @@ data class FilterUniverse(
   val maxYear: Int?,
 )
 
-internal fun contentTypeLabel(ct: CustomTabContentType): String = when (ct) {
-  CustomTabContentType.SONGS -> "Songs"
-  CustomTabContentType.ALBUMS -> "Albums"
-  CustomTabContentType.ARTISTS -> "Artists"
-  CustomTabContentType.GENRES -> "Genres"
+@StringRes
+internal fun contentTypeLabelRes(ct: CustomTabContentType): Int = when (ct) {
+  CustomTabContentType.SONGS -> R.string.library_custom_tab_content_type_songs
+  CustomTabContentType.ALBUMS -> R.string.library_custom_tab_content_type_albums
+  CustomTabContentType.ARTISTS -> R.string.library_custom_tab_content_type_artists
+  CustomTabContentType.GENRES -> R.string.library_custom_tab_content_type_genres
 }
 
 // R.F.2 — conditionTypeLabel + conditionSummary collapsed into the
 // per-variant ConditionUi registry; see `ConditionUi.kt`.
-internal fun conditionTypeLabel(condition: FilterCondition): String =
-  ConditionUiRegistry.uiFor(condition).label
+@StringRes
+internal fun conditionTypeLabelRes(condition: FilterCondition): Int =
+  ConditionUiRegistry.uiFor(condition).labelRes
 
-internal fun conditionSummary(condition: FilterCondition): String =
-  ConditionUiRegistry.uiFor(condition).summary(condition)
+internal fun conditionSummary(condition: FilterCondition, context: android.content.Context): String =
+  ConditionUiRegistry.uiFor(condition).summary(condition, context)
 
 internal fun formatEpochDay(epochSeconds: Long): String {
   val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
@@ -283,6 +303,7 @@ private fun FilterConditionRow(
   tagPrefix: String,
 ) {
   var expanded by remember { mutableStateOf(false) }
+  val context = LocalContext.current
   Column(
     modifier = Modifier
       .fillMaxWidth()
@@ -297,21 +318,24 @@ private fun FilterConditionRow(
     ) {
       Column(modifier = Modifier.weight(1f)) {
         Text(
-          conditionTypeLabel(condition),
+          stringResource(conditionTypeLabelRes(condition)),
           style = MaterialTheme.typography.titleSmall,
           fontWeight = FontWeight.Medium,
         )
-        Text(conditionSummary(condition), style = MaterialTheme.typography.bodySmall)
+        Text(conditionSummary(condition, context), style = MaterialTheme.typography.bodySmall)
       }
       IconButton(
         onClick = onDelete,
         modifier = Modifier.semantics { testTag = "${tagPrefix}_delete" },
       ) {
-        Icon(Icons.Filled.Delete, contentDescription = "Remove filter")
+        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.library_custom_tab_editor_remove_filter_cd))
       }
       Icon(
         imageVector = Icons.Filled.ExpandMore,
-        contentDescription = if (expanded) "Collapse" else "Expand",
+        contentDescription = stringResource(
+          if (expanded) R.string.library_custom_tab_editor_collapse_cd
+          else R.string.library_custom_tab_editor_expand_cd,
+        ),
         modifier = Modifier.rotate(if (expanded) 180f else 0f),
       )
     }
@@ -380,7 +404,10 @@ internal fun DateAddedEditor(
         .weight(1f)
         .semantics { testTag = "date_after_button" },
     ) {
-      Text(condition.afterEpochSeconds?.let { "From: ${formatEpochDay(it)}" } ?: "From: any")
+      Text(
+        condition.afterEpochSeconds?.let { stringResource(R.string.library_filter_date_from, formatEpochDay(it)) }
+          ?: stringResource(R.string.library_filter_date_from_any),
+      )
     }
     OutlinedButton(
       onClick = { showBeforePicker = true },
@@ -388,7 +415,10 @@ internal fun DateAddedEditor(
         .weight(1f)
         .semantics { testTag = "date_before_button" },
     ) {
-      Text(condition.beforeEpochSeconds?.let { "To: ${formatEpochDay(it)}" } ?: "To: any")
+      Text(
+        condition.beforeEpochSeconds?.let { stringResource(R.string.library_filter_date_to, formatEpochDay(it)) }
+          ?: stringResource(R.string.library_filter_date_to_any),
+      )
     }
   }
 
@@ -438,9 +468,9 @@ private fun DatePickerSheet(
     confirmButton = {
       TextButton(onClick = {
         state.selectedDateMillis?.let { onConfirm(it / 1000) } ?: onDismiss()
-      }) { Text("OK") }
+      }) { Text(stringResource(R.string.library_filter_date_picker_ok)) }
     },
-    dismissButton = { TextButton(onClick = onClear) { Text("Clear") } },
+    dismissButton = { TextButton(onClick = onClear) { Text(stringResource(R.string.library_filter_date_picker_clear)) } },
   ) { DatePicker(state = state) }
 }
 
@@ -450,7 +480,10 @@ internal fun HasAlbumArtEditor(
   onChange: (FilterCondition.HasAlbumArt) -> Unit,
 ) {
   Column {
-    listOf(true to "Only with album art", false to "Only without album art").forEach { (value, label) ->
+    listOf(
+      true to stringResource(R.string.library_filter_album_art_only_with),
+      false to stringResource(R.string.library_filter_album_art_only_without),
+    ).forEach { (value, label) ->
       Row(
         modifier = Modifier
           .fillMaxWidth()
@@ -476,7 +509,7 @@ internal fun MultiCheckList(
   var showAll by remember { mutableStateOf(false) }
   if (options.isEmpty()) {
     Text(
-      "No values yet — scan your library first.",
+      stringResource(R.string.library_filter_multicheck_empty),
       style = MaterialTheme.typography.bodySmall,
       modifier = Modifier.padding(vertical = 8.dp),
     )
@@ -500,7 +533,7 @@ internal fun MultiCheckList(
     }
     if (!showAll && options.size > initialVisible) {
       TextButton(onClick = { showAll = true }) {
-        Text("Show all (${options.size})")
+        Text(stringResource(R.string.library_filter_multicheck_show_all, options.size))
       }
     }
   }
@@ -525,7 +558,7 @@ private fun ConditionTypeChooser(
   ) {
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
       Text(
-        "Add filter",
+        stringResource(R.string.library_custom_tab_editor_chooser_title),
         style = MaterialTheme.typography.titleMedium,
         modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
       )
@@ -533,7 +566,10 @@ private fun ConditionTypeChooser(
       // FilterCondition variant + registry entry adds it here without
       // changing the chooser code.
       ConditionUiRegistry.all.forEach { ui ->
-        ConditionPickRow(ui.label, ui.addSubtitle) { onPick(ui.defaultInstance()) }
+        ConditionPickRow(
+          stringResource(ui.labelRes),
+          stringResource(ui.addSubtitleRes),
+        ) { onPick(ui.defaultInstance()) }
       }
     }
   }

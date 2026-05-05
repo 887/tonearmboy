@@ -6,9 +6,10 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.eight87.tonearmboy.R
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -83,11 +84,12 @@ class PostNotificationsGateTest {
     // KYIS / plain-language constraint: the snackbar copy explains
     // the consequence factually, no exclamation, no identity, no
     // editorial. Keep the literal string under test so editorial
-    // drift is surfaced.
-    assertNotNull(DENIED_SNACKBAR_MESSAGE)
+    // drift is surfaced. T.A.5 — string lives in
+    // values/strings_permission.xml; the test reads from there.
+    val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
     assertEquals(
       "Notifications disabled — playback controls won't appear in your notification tray.",
-      DENIED_SNACKBAR_MESSAGE,
+      ctx.getString(R.string.permission_notifications_denied_snackbar),
     )
   }
 }

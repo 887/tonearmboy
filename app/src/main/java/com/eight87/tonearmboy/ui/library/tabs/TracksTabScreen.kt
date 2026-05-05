@@ -26,9 +26,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.ui.library.TileItem
@@ -111,13 +113,16 @@ internal fun TracksListContent(
   val sorted = remember(tracks, sort, intelligentSorting) { sortTracks(tracks, sort, intelligentSorting) }
   // R.D.4 — multi-select state hoisted into rememberSelectionState.
   val selection = rememberSelectionState<Long>()
+  // T.A.3 — captured for the snackbar message inside `handleTrackAction`,
+  // which runs outside Composable scope.
+  val deleteComingSoonMessage = stringResource(R.string.library_track_action_delete_coming_soon)
 
   val onAction: (Track, TrackContextAction) -> Unit = { track, action ->
     val idx = sorted.indexOf(track).coerceAtLeast(0)
     if (action == TrackContextAction.Delete && onDeleteTracks != null) {
       onDeleteTracks(listOf(track))
     } else {
-      handleTrackAction(track, sorted, idx, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon)
+      handleTrackAction(track, sorted, idx, action, onTrackClick, onAddToQueue, onAddToPlaylist, onGoToAlbum, onGoToArtist, onComingSoon, deleteComingSoonMessage)
     }
   }
   val spec = remember(albumCoversMode, onAction) { TracksTabSpec(albumCoversMode, onAction) }
@@ -177,7 +182,7 @@ internal class TracksTabSpec(
   private val onAction: (Track, TrackContextAction) -> Unit,
 ) : TabSpec<Track> {
   override val testTag: String = "tracks_tab"
-  override val emptyMessage: String = "No tracks yet."
+  override val emptyMessageRes: Int = com.eight87.tonearmboy.R.string.library_empty_songs
   override val supportsTileMode: Boolean = true
 
   override fun id(item: Track): Long = item.id
@@ -186,7 +191,7 @@ internal class TracksTabSpec(
     if (sort.key == SortKey.Name) initialKey(sortNameKey(item.title, intelligentSorting))
     else null
 
-  override fun toTile(item: Track): TileItem = TileItem(
+  override fun toTile(item: Track, resources: android.content.res.Resources): TileItem = TileItem(
     id = item.id,
     title = item.title,
     subtitle = item.artist?.takeIf(String::isNotBlank),
@@ -224,6 +229,7 @@ private fun handleTrackAction(
   onGoToAlbum: (Track) -> Unit,
   onGoToArtist: (Track) -> Unit,
   onComingSoon: (String) -> Unit,
+  deleteComingSoonMessage: String,
 ) {
   when (action) {
     TrackContextAction.Play -> onPlayQueue(list, index)
@@ -233,7 +239,7 @@ private fun handleTrackAction(
     TrackContextAction.GoToArtist -> onGoToArtist(track)
     // Phase F (file deletion) wires this; the menu item is `enabled = false`
     // in the meantime so the snackbar stays out of the user's way.
-    TrackContextAction.Delete -> onComingSoon("Delete file")
+    TrackContextAction.Delete -> onComingSoon(deleteComingSoonMessage)
   }
 }
 
@@ -269,7 +275,7 @@ private fun TrackRow(
       Text(
         text = listOfNotNull(track.artist?.takeIf { it.isNotBlank() }, track.album?.takeIf { it.isNotBlank() })
           .joinToString(" · ")
-          .ifEmpty { "Unknown" },
+          .ifEmpty { stringResource(R.string.library_unknown) },
         style = MaterialTheme.typography.bodySmall,
         maxLines = 1,
       )
@@ -278,7 +284,7 @@ private fun TrackRow(
       IconButton(
         onClick = { menuOpen = true },
         modifier = Modifier.semantics { testTag = "track_row_overflow" },
-      ) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
+      ) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.library_cd_more_options)) }
       com.eight87.tonearmboy.ui.library.TrackContextMenu(
         expanded = menuOpen,
         onDismiss = { menuOpen = false },

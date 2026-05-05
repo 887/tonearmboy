@@ -37,12 +37,14 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.UnstableApi
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.playback.QueueItem
 import com.eight87.tonearmboy.playback.QueueSnapshot
 import com.eight87.tonearmboy.ui.common.DragReorderColumn
@@ -192,7 +194,7 @@ fun QueueSection(
   ) {
     HorizontalDivider()
     Text(
-      text = "Queue",
+      text = stringResource(R.string.playing_queue_header),
       style = MaterialTheme.typography.labelMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
       modifier = Modifier.semantics { testTag = "queue_up_next_header" },
@@ -209,11 +211,14 @@ fun QueueSection(
             onClick = { filter = "" },
             modifier = Modifier.semantics { testTag = "queue_filter_clear" },
           ) {
-            Icon(Icons.Filled.Close, contentDescription = "Clear filter")
+            Icon(
+              Icons.Filled.Close,
+              contentDescription = stringResource(R.string.playing_cd_queue_filter_clear),
+            )
           }
         }
       },
-      placeholder = { Text("Filter queue") },
+      placeholder = { Text(stringResource(R.string.playing_queue_filter_placeholder)) },
       keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
       modifier = Modifier
         .fillMaxWidth()
@@ -225,7 +230,10 @@ fun QueueSection(
         modifier = Modifier.fillMaxWidth().padding(24.dp),
         contentAlignment = Alignment.Center,
       ) {
-        Text("Nothing in the queue", style = MaterialTheme.typography.bodyMedium)
+        Text(
+          text = stringResource(R.string.playing_queue_empty),
+          style = MaterialTheme.typography.bodyMedium,
+        )
       }
     } else if (!rowsMounted) {
       // D.30.1 — first frame after mini-player tap. Rows mount on the
@@ -268,7 +276,10 @@ fun QueueSection(
         // queue size, leaving the user staring at blank space.
         contentAlignment = Alignment.TopCenter,
       ) {
-        Text("No tracks match your filter", style = MaterialTheme.typography.bodyMedium)
+        Text(
+          text = stringResource(R.string.playing_queue_no_match),
+          style = MaterialTheme.typography.bodyMedium,
+        )
       }
     } else if (filterActive) {
       // D.26.2 (filtered): drag is disabled because the visible subset
@@ -343,7 +354,8 @@ internal fun QueueRow(
   // The dialog uses "queue" wording (not "playlist") because the
   // queue is a runtime list, not a saved playlist.
   var showConfirm by remember { mutableStateOf(false) }
-  val title = item.title.ifEmpty { "Unknown" }
+  val unknownLabel = stringResource(R.string.playing_unknown)
+  val title = item.title.ifEmpty { unknownLabel }
   Row(
     modifier = Modifier
       .fillMaxWidth()
@@ -361,11 +373,16 @@ internal fun QueueRow(
       modifier = Modifier
         .padding(horizontal = 4.dp)
         .semantics { testTag = "queue_remove" },
-    ) { Icon(Icons.Filled.Close, contentDescription = "Remove from queue") }
+    ) {
+      Icon(
+        Icons.Filled.Close,
+        contentDescription = stringResource(R.string.playing_cd_queue_remove),
+      )
+    }
     if (isActive) {
       Icon(
         imageVector = Icons.Filled.GraphicEq,
-        contentDescription = "Now playing",
+        contentDescription = stringResource(R.string.playing_cd_queue_now_playing),
         modifier = Modifier
           .size(20.dp)
           .padding(end = 4.dp)
@@ -383,7 +400,7 @@ internal fun QueueRow(
         maxLines = 1,
       )
       Text(
-        text = item.artist.ifEmpty { "Unknown" },
+        text = item.artist.ifEmpty { unknownLabel },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,
@@ -399,7 +416,10 @@ internal fun QueueRow(
         },
       contentAlignment = Alignment.Center,
     ) {
-      Icon(Icons.Filled.DragHandle, contentDescription = "Reorder")
+      Icon(
+        Icons.Filled.DragHandle,
+        contentDescription = stringResource(R.string.playing_cd_queue_reorder),
+      )
     }
   }
   if (showConfirm) {
@@ -407,11 +427,11 @@ internal fun QueueRow(
       onDismissRequest = { showConfirm = false },
       title = {
         Text(
-          text = "Remove from queue?",
+          text = stringResource(R.string.playing_queue_remove_dialog_title),
           modifier = Modifier.semantics { testTag = "queue_remove_confirm_dialog" },
         )
       },
-      text = { Text(text = "Remove '$title' from the queue?") },
+      text = { Text(text = stringResource(R.string.playing_queue_remove_dialog_text, title)) },
       confirmButton = {
         TextButton(
           onClick = {
@@ -419,13 +439,13 @@ internal fun QueueRow(
             onRemove()
           },
           modifier = Modifier.semantics { testTag = "queue_remove_confirm_button" },
-        ) { Text("Remove") }
+        ) { Text(stringResource(R.string.playing_queue_remove_confirm)) }
       },
       dismissButton = {
         TextButton(
           onClick = { showConfirm = false },
           modifier = Modifier.semantics { testTag = "queue_remove_cancel_button" },
-        ) { Text("Cancel") }
+        ) { Text(stringResource(R.string.playing_queue_remove_cancel)) }
       },
     )
   }

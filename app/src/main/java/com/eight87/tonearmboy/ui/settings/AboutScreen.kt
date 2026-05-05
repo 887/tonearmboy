@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
@@ -84,19 +85,26 @@ fun AboutScreen(
   val easterEgg = remember { EasterEggController() }
   var foxVisible by remember { mutableStateOf(false) }
 
-  val versionName = "tonearmboy ${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_SHA})"
-  val buildDate = "Built ${BuildConfig.BUILD_DATE} (UTC)"
+  val versionName = stringResource(
+    R.string.settings_about_version_subtitle,
+    BuildConfig.VERSION_NAME,
+    BuildConfig.GIT_SHA,
+  )
+  val buildDate = stringResource(R.string.settings_about_build_date_subtitle, BuildConfig.BUILD_DATE)
 
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("About") },
+        title = { Text(stringResource(R.string.settings_about_title)) },
         navigationIcon = {
           IconButton(
             onClick = onBack,
             modifier = Modifier.semantics { testTag = "about_back" },
           ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(
+              Icons.AutoMirrored.Filled.ArrowBack,
+              contentDescription = stringResource(R.string.settings_cd_back),
+            )
           }
         },
       )
@@ -113,31 +121,33 @@ fun AboutScreen(
     ) {
       // ---- Build card ----
       SettingsCard(
-        title = "Build",
+        title = stringResource(R.string.settings_about_card_build),
         modifier = Modifier.padding(horizontal = SettingsDimens.PagePadding),
       ) {
         SettingsRow(
           id = "about.app_name",
           icon = Icons.Outlined.Info,
-          label = "Application",
-          subtitle = "tonearmboy — modern Android music player",
+          label = stringResource(R.string.settings_about_application_label),
+          subtitle = stringResource(R.string.settings_about_application_subtitle),
           onClick = null,
         )
         SettingsRowDivider()
         // D.16.5 — easter-egg target. The whole row is clickable; the
         // controller decides what to surface based on tap count.
+        val easterEggFirst = stringResource(R.string.settings_about_easter_egg_first)
+        val easterEggSecond = stringResource(R.string.settings_about_easter_egg_second)
         SettingsRow(
           id = "about.version",
           icon = Icons.Outlined.Numbers,
-          label = "Version",
+          label = stringResource(R.string.settings_about_version_label),
           subtitle = versionName,
           onClick = {
             when (easterEgg.tap(System.currentTimeMillis())) {
               EasterEggController.Outcome.FirstPromptSnackbar -> scope.launch {
-                snackbarHostState.showSnackbar("Click 2 more times for a treat")
+                snackbarHostState.showSnackbar(easterEggFirst)
               }
               EasterEggController.Outcome.SecondPromptSnackbar -> scope.launch {
-                snackbarHostState.showSnackbar("1 more time")
+                snackbarHostState.showSnackbar(easterEggSecond)
               }
               EasterEggController.Outcome.Reveal -> {
                 foxVisible = true
@@ -149,7 +159,7 @@ fun AboutScreen(
         SettingsRow(
           id = "about.build_date",
           icon = Icons.Outlined.Schedule,
-          label = "Build date",
+          label = stringResource(R.string.settings_about_build_date_label),
           subtitle = buildDate,
           onClick = null,
         )
@@ -157,14 +167,14 @@ fun AboutScreen(
 
       // ---- Source card ----
       SettingsCard(
-        title = "Source",
+        title = stringResource(R.string.settings_about_card_source),
         modifier = Modifier.padding(horizontal = SettingsDimens.PagePadding),
       ) {
         SettingsRow(
           id = "about.github",
           icon = Icons.Outlined.Launch,
-          label = "GitHub repository",
-          subtitle = "github.com/887/tonearmboy",
+          label = stringResource(R.string.settings_about_github_label),
+          subtitle = stringResource(R.string.settings_about_github_subtitle),
           onClick = {
             openExternalBrowser(context, GITHUB_URL)
           },
@@ -173,8 +183,8 @@ fun AboutScreen(
         SettingsRow(
           id = "about.license",
           icon = Icons.Outlined.Article,
-          label = "License",
-          subtitle = "MIT — see LICENSE. All direct deps (AndroidX, Media3, Kotlin, Coil, Robolectric) are Apache-2.0 / MIT — no GPL contamination.",
+          label = stringResource(R.string.settings_about_license_label),
+          subtitle = stringResource(R.string.settings_about_license_subtitle),
           onClick = { openExternalBrowser(context, LICENSE_URL) },
         )
       }
@@ -187,38 +197,38 @@ fun AboutScreen(
       // and tonearmboy is MIT; if any Auxio code were here, our license
       // would be tainted. It isn't.
       SettingsCard(
-        title = "Credits",
+        title = stringResource(R.string.settings_about_card_credits),
         modifier = Modifier.padding(horizontal = SettingsDimens.PagePadding),
       ) {
         SettingsRow(
           id = "about.credits.cleanroom",
           icon = Icons.Outlined.Info,
-          label = "Visual references only",
-          subtitle = "No code copied from the projects below. Clean-room implementation, MIT-licensed throughout.",
+          label = stringResource(R.string.settings_about_credits_cleanroom_label),
+          subtitle = stringResource(R.string.settings_about_credits_cleanroom_subtitle),
           onClick = null,
         )
         SettingsRowDivider()
         SettingsRow(
           id = "about.credits.auxio",
           icon = Icons.Outlined.Favorite,
-          label = "Auxio (GPL-3.0)",
-          subtitle = "Visual reference for the player surface and library chrome. github.com/OxygenCobalt/Auxio",
+          label = stringResource(R.string.settings_about_credits_auxio_label),
+          subtitle = stringResource(R.string.settings_about_credits_auxio_subtitle),
           onClick = { openExternalBrowser(context, AUXIO_URL) },
         )
         SettingsRowDivider()
         SettingsRow(
           id = "about.credits.harmony",
           icon = Icons.Outlined.Favorite,
-          label = "Harmony Music (GPL-3.0)",
-          subtitle = "Chrome reference (rail-and-content boundary, M3 Expressive cards). github.com/anandnet/Harmony-Music",
+          label = stringResource(R.string.settings_about_credits_harmony_label),
+          subtitle = stringResource(R.string.settings_about_credits_harmony_subtitle),
           onClick = { openExternalBrowser(context, HARMONY_URL) },
         )
         SettingsRowDivider()
         SettingsRow(
           id = "about.credits.media3",
           icon = Icons.Outlined.Code,
-          label = "Media3 + Compose + Room",
-          subtitle = "AndroidX libraries: ExoPlayer/MediaSession, Jetpack Compose, Room.",
+          label = stringResource(R.string.settings_about_credits_media3_label),
+          subtitle = stringResource(R.string.settings_about_credits_media3_subtitle),
           onClick = null,
         )
       }
@@ -255,7 +265,7 @@ private fun EasterEggFoxDialog(onDismiss: () -> Unit) {
     ) {
       Image(
         painter = painterResource(id = R.drawable.easter_egg_fox),
-        contentDescription = "Stay pawsitive",
+        contentDescription = stringResource(R.string.settings_about_easter_egg_fox_cd),
         contentScale = ContentScale.Fit,
         modifier = Modifier
           .fillMaxWidth()

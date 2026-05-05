@@ -7,7 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.PlaylistStore
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.ui.library.PlaylistPickerSheet
@@ -47,8 +49,10 @@ fun rememberAddToPlaylistController(
   var pendingIds by remember { mutableStateOf<List<Long>?>(null) }
   val playlistList by playlists.observePlaylists()
     .collectAsStateWithLifecycle(initialValue = emptyList())
+  val context = LocalContext.current
+  val resources = context.resources
 
-  return remember(playlists, snackbar, applicationScope) {
+  return remember(playlists, snackbar, applicationScope, context) {
     object : AddToPlaylistController {
       override fun requestSingle(track: Track) { pendingTrack = track }
       override fun requestBulk(ids: List<Long>) {
@@ -65,7 +69,9 @@ fun rememberAddToPlaylistController(
               pendingTrack = null
               applicationScope.launch {
                 playlists.addTrackToPlaylist(p.id, track.id)
-                snackbar.showSnackbar("Added \"${track.title}\" to ${p.name}")
+                snackbar.showSnackbar(
+                  context.getString(R.string.playlist_added_track, track.title, p.name),
+                )
               }
             },
             onCreateAndPick = { name ->
@@ -73,7 +79,9 @@ fun rememberAddToPlaylistController(
               applicationScope.launch {
                 val id = playlists.createPlaylist(name)
                 playlists.addTrackToPlaylist(id, track.id)
-                snackbar.showSnackbar("Added \"${track.title}\" to $name")
+                snackbar.showSnackbar(
+                  context.getString(R.string.playlist_added_track, track.title, name),
+                )
               }
             },
           )
@@ -86,7 +94,11 @@ fun rememberAddToPlaylistController(
               pendingIds = null
               applicationScope.launch {
                 ids.forEach { tid -> playlists.addTrackToPlaylist(p.id, tid) }
-                snackbar.showSnackbar("Added ${ids.size} tracks to ${p.name}")
+                snackbar.showSnackbar(
+                  resources.getQuantityString(
+                    R.plurals.playlist_added_tracks_count, ids.size, ids.size, p.name,
+                  ),
+                )
               }
             },
             onCreateAndPick = { name ->
@@ -94,7 +106,11 @@ fun rememberAddToPlaylistController(
               applicationScope.launch {
                 val id = playlists.createPlaylist(name)
                 ids.forEach { tid -> playlists.addTrackToPlaylist(id, tid) }
-                snackbar.showSnackbar("Added ${ids.size} tracks to $name")
+                snackbar.showSnackbar(
+                  resources.getQuantityString(
+                    R.plurals.playlist_added_tracks_count, ids.size, ids.size, name,
+                  ),
+                )
               }
             },
           )

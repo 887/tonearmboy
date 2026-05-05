@@ -16,8 +16,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.LibraryScanner
 import com.eight87.tonearmboy.data.delete.DeleteRequest
 import com.eight87.tonearmboy.data.delete.TrackDeleter
@@ -58,6 +61,10 @@ fun rememberDeleteFlow(
 ): (List<Track>) -> Unit {
   val state = remember { DeleteFlowState() }
   val scope = rememberCoroutineScope()
+  val context = LocalContext.current
+  val cancelledMessage = stringResource(R.string.library_delete_cancelled)
+  val consentDefaultReason = stringResource(R.string.library_delete_failed_consent_default)
+  val failedTemplate = stringResource(R.string.library_delete_failed)
 
   val launcher = rememberLauncherForActivityResult(
     ActivityResultContracts.StartIntentSenderForResult(),
@@ -71,21 +78,24 @@ fun rememberDeleteFlow(
         playback = playback,
         snackbarHostState = snackbarHostState,
         applicationScope = applicationScope,
+        doneMessage = doneMessageFor(context, pending),
       )
     } else {
       applicationScope.launch {
-        snackbarHostState.showSnackbar("Deletion cancelled.")
+        snackbarHostState.showSnackbar(cancelledMessage)
       }
     }
   }
 
   state.confirming?.let { tracks ->
-    val title = if (tracks.size == 1) "Delete ${tracks.first().title}?"
-    else "Delete ${tracks.size} tracks?"
-    val body = if (tracks.size == 1)
-      "This will permanently delete the file from your device."
+    val title = if (tracks.size == 1)
+      stringResource(R.string.library_delete_dialog_title_one, tracks.first().title)
     else
-      "This will permanently delete ${tracks.size} files from your device."
+      stringResource(R.string.library_delete_dialog_title_many, tracks.size)
+    val body = if (tracks.size == 1)
+      stringResource(R.string.library_delete_dialog_body_one)
+    else
+      stringResource(R.string.library_delete_dialog_body_many, tracks.size)
     AlertDialog(
       onDismissRequest = { state.confirming = null },
       title = { Text(title, modifier = Modifier.semantics { testTag = "delete_dialog_title" }) },
@@ -106,6 +116,7 @@ fun rememberDeleteFlow(
                     playback = playback,
                     snackbarHostState = snackbarHostState,
                     applicationScope = applicationScope,
+                    doneMessage = doneMessageFor(context, toDelete),
                   )
                 }
                 is DeleteRequest.Consent -> {
@@ -116,24 +127,24 @@ fun rememberDeleteFlow(
                   runCatching { launcher.launch(intentRequest) }.onFailure { t ->
                     state.pendingTracks = emptyList()
                     snackbarHostState.showSnackbar(
-                      "Couldn't delete: ${t.message ?: "unable to start consent dialog"}",
+                      failedTemplate.format(t.message ?: consentDefaultReason),
                     )
                   }
                 }
                 is DeleteRequest.Failure -> {
-                  snackbarHostState.showSnackbar("Couldn't delete: ${request.reason}")
+                  snackbarHostState.showSnackbar(failedTemplate.format(request.reason))
                 }
               }
             }
           },
           modifier = Modifier.semantics { testTag = "delete_dialog_confirm" },
-        ) { Text("Delete") }
+        ) { Text(stringResource(R.string.library_delete_dialog_confirm)) }
       },
       dismissButton = {
         TextButton(
           onClick = { state.confirming = null },
           modifier = Modifier.semantics { testTag = "delete_dialog_cancel" },
-        ) { Text("Cancel") }
+        ) { Text(stringResource(R.string.library_delete_dialog_cancel)) }
       },
       modifier = Modifier.semantics { testTag = "delete_dialog" },
     )
@@ -159,6 +170,7 @@ private fun finalizeDelete(
   playback: PlaybackUiController,
   snackbarHostState: SnackbarHostState,
   applicationScope: CoroutineScope,
+  doneMessage: String,
 ) {
   if (deleted.isEmpty()) return
   val uris = deleted.map { trackUri(it) }
@@ -166,11 +178,13 @@ private fun finalizeDelete(
   applicationScope.launch {
     scanner.onTracksDeleted(uris)
     playback.removeQueueItemsByMediaIds(mediaIds)
-    val message = if (deleted.size == 1) "Deleted ${deleted.first().title}"
-    else "Deleted ${deleted.size} tracks"
-    snackbarHostState.showSnackbar(message)
+    snackbarHostState.showSnackbar(doneMessage)
   }
 }
+
+private fun doneMessageFor(context: android.content.Context, deleted: List<Track>): String =
+  if (deleted.size == 1) context.getString(R.string.library_delete_done_one, deleted.first().title)
+  else context.getString(R.string.library_delete_done_many, deleted.size)
 
 private class DeleteFlowState {
   var confirming: List<Track>? by mutableStateOf(null)

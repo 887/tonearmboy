@@ -8,6 +8,7 @@ import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.SortByAlpha
 import androidx.compose.material.icons.outlined.Sync
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.ui.nav.SettingsContent
 import com.eight87.tonearmboy.ui.settings.catalog.Groups
 import com.eight87.tonearmboy.ui.settings.catalog.RowKind
@@ -21,6 +22,8 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     id = SettingsCatalog.ID_AUTOMATIC_RELOADING,
     label = "Automatic reloading",
     subtitle = "Watch for library changes and rescan automatically. Runs a foreground service.",
+    labelRes = R.string.settings_content_automatic_reloading_label,
+    subtitleRes = R.string.settings_content_automatic_reloading_subtitle,
     keywords = listOf("watch", "reload", "background", "observer", "rescan"),
     icon = Icons.Outlined.Sync,
     section = Section.Content,
@@ -33,6 +36,8 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     id = SettingsCatalog.ID_MULTI_VALUE_SEPARATORS,
     label = "Multi-value separators",
     subtitle = null,
+    labelRes = R.string.settings_content_multi_value_separators_label,
+    subtitleRes = null,
     keywords = listOf("artist", "split", "feat", "comma", "semicolon", "ampersand", "slash"),
     icon = Icons.Outlined.MoreHoriz,
     section = Section.Content,
@@ -45,6 +50,8 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     id = SettingsCatalog.ID_INTELLIGENT_SORTING,
     label = "Intelligent sorting",
     subtitle = "Ignore leading articles (English, French, German, Spanish, Italian, Dutch) when sorting.",
+    labelRes = R.string.settings_content_intelligent_sorting_label,
+    subtitleRes = R.string.settings_content_intelligent_sorting_subtitle,
     keywords = listOf(
       "sort", "alphabetical", "the", "articles",
       "le", "la", "der", "die", "el", "il", "de",
@@ -60,6 +67,8 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     id = SettingsCatalog.ID_HIDE_COLLABORATORS,
     label = "Hide collaborators",
     subtitle = "Show only the primary album artist; collapse featured-artist credits.",
+    labelRes = R.string.settings_content_hide_collaborators_label,
+    subtitleRes = R.string.settings_content_hide_collaborators_subtitle,
     keywords = listOf("artist", "album artist", "feat"),
     icon = Icons.Outlined.PersonOff,
     section = Section.Content,
@@ -72,6 +81,8 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     id = SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
     label = "Auto-discover missing album art",
     subtitle = "Fetch covers from MusicBrainz Cover Art Archive for albums missing local art (Phase H).",
+    labelRes = R.string.settings_content_auto_discover_album_art_label,
+    subtitleRes = R.string.settings_content_auto_discover_album_art_subtitle,
     keywords = listOf("cover", "art", "musicbrainz", "fetch", "download"),
     icon = Icons.Outlined.ImageSearch,
     section = Section.Content,
@@ -84,6 +95,8 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     id = SettingsCatalog.ID_ALBUM_COVERS,
     label = "Album covers",
     subtitle = null,
+    labelRes = R.string.settings_content_album_covers_label,
+    subtitleRes = null,
     keywords = listOf("art", "image", "loading", "balanced", "coil"),
     icon = Icons.Outlined.Photo,
     section = Section.Content,
@@ -96,6 +109,8 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     id = SettingsCatalog.ID_FORCE_SQUARE_COVERS,
     label = "Force square album covers",
     subtitle = "Render covers as squares instead of rounded rectangles.",
+    labelRes = R.string.settings_content_force_square_covers_label,
+    subtitleRes = R.string.settings_content_force_square_covers_subtitle,
     keywords = listOf("rounded", "square", "art"),
     icon = Icons.Outlined.CropSquare,
     section = Section.Content,

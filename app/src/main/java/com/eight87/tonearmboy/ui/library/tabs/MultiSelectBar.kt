@@ -15,9 +15,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.eight87.tonearmboy.R
 
 /**
  * Phase F.3 — contextual top bar for multi-select on the Songs tab.
@@ -41,16 +44,16 @@ internal fun MultiSelectBar(
     IconButton(
       onClick = onClose,
       modifier = Modifier.semantics { testTag = "multi_select_close" },
-    ) { Icon(Icons.Filled.Close, contentDescription = "Exit selection mode") }
+    ) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.library_cd_multiselect_close)) }
     Text(
-      text = "$count selected",
+      text = pluralStringResource(R.plurals.library_multiselect_count, count, count),
       style = MaterialTheme.typography.titleSmall,
       modifier = Modifier
         .weight(1f)
         .padding(start = 4.dp)
         .semantics { testTag = "multi_select_count" },
     )
-    val playlistLabel = "Add $count tracks to playlist"
+    val playlistLabel = pluralStringResource(R.plurals.library_multiselect_add_to_playlist_cd, count, count)
     IconButton(
       onClick = { onAddToPlaylist?.invoke() },
       enabled = onAddToPlaylist != null,
@@ -61,7 +64,7 @@ internal fun MultiSelectBar(
         contentDescription = playlistLabel,
       )
     }
-    val deleteLabel = "Delete $count tracks"
+    val deleteLabel = pluralStringResource(R.plurals.library_multiselect_delete_cd, count, count)
     IconButton(
       onClick = { onDelete?.invoke() },
       enabled = onDelete != null,

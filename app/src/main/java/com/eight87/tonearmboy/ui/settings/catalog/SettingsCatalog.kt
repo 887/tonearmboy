@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.settings.catalog
 
+import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
 import com.eight87.tonearmboy.ui.settings.catalog.sections.AudioEntries
@@ -80,8 +81,27 @@ enum class RowKind {
  */
 data class SettingsCatalogEntry(
   val id: String,
+  /**
+   * Canonical English label. Kept inline alongside [labelRes] because:
+   *
+   *  - the JVM-only `SettingsCatalogTest` exercises catalog shape +
+   *    breadcrumb composition without a Robolectric / Context (the
+   *    last breadcrumb segment must equal the label, etc), and
+   *  - [SettingsCatalog.search] runs a substring match against label
+   *    + subtitle + keywords, again without a Context handle.
+   *
+   * The runtime UI (sub-page rows, Settings root, search overlay)
+   * resolves [labelRes] / [subtitleRes] via Compose `stringResource`
+   * so translations land. T.A.7's audit pass will tighten this up
+   * once the catalog can take a Context for search resolution.
+   */
   val label: String,
+  /** Canonical English subtitle, for the same reason as [label]. */
   val subtitle: String? = null,
+  /** Translated string resource for the row label. */
+  @StringRes val labelRes: Int,
+  /** Translated string resource for the row subtitle, when present. */
+  @StringRes val subtitleRes: Int? = null,
   val keywords: List<String> = emptyList(),
   val icon: ImageVector,
   val section: Section,

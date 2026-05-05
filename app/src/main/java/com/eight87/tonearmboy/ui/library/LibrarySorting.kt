@@ -1,5 +1,7 @@
 package com.eight87.tonearmboy.ui.library
 
+import androidx.annotation.StringRes
+import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.model.Album
 import com.eight87.tonearmboy.data.model.Artist
 import com.eight87.tonearmboy.data.model.Genre
@@ -14,12 +16,19 @@ import com.eight87.tonearmboy.ui.settings.TabSort
  * `LibraryScreen.kt`. All testable without spinning a Compose host.
  */
 
-internal fun tabLabel(tab: LibraryTab): String = when (tab) {
-  LibraryTab.Songs -> "Songs"
-  LibraryTab.Albums -> "Albums"
-  LibraryTab.Artists -> "Artists"
-  LibraryTab.Genres -> "Genres"
-  LibraryTab.Playlists -> "Playlists"
+/**
+ * T.A.3 — string-resource id for the rail label / dynamic top-bar title
+ * of a built-in [LibraryTab]. Resolved by callers via `stringResource`
+ * (Composable scope) or `Context.getString` (e.g. inside
+ * `LaunchedEffect`).
+ */
+@StringRes
+internal fun tabLabelRes(tab: LibraryTab): Int = when (tab) {
+  LibraryTab.Songs -> R.string.library_tab_songs
+  LibraryTab.Albums -> R.string.library_tab_albums
+  LibraryTab.Artists -> R.string.library_tab_artists
+  LibraryTab.Genres -> R.string.library_tab_genres
+  LibraryTab.Playlists -> R.string.library_tab_playlists
 }
 
 internal fun sortNameKey(name: String, intelligentSorting: Boolean): String {
