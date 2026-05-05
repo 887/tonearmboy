@@ -13,6 +13,12 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -154,27 +160,36 @@ fun NowPlayingScreen(
           .padding(innerPadding)
           .padding(24.dp),
       )
-      NowPlayingSubState.ConnectedWithMedia -> NowPlayingMergedSurface(
-        state = state,
-        queueSnapshot = queueSnapshot,
-        listState = listState,
-        albumCoversMode = albumCoversMode,
-        onSeek = transport::seekTo,
-        onTogglePlayPause = transport::togglePlayPause,
-        onSeekBackward = transport::seekBackward,
-        onSeekForward = transport::seekForward,
-        onSeekToPrevious = transport::seekToPrevious,
-        onSeekToNext = transport::seekToNext,
-        onToggleShuffle = transport::toggleShuffle,
-        onCycleRepeat = transport::cycleRepeatMode,
-        onJumpToQueueIndex = queueCommands::seekToQueueIndex,
-        onRemoveQueueItem = queueCommands::removeQueueItem,
-        onMoveQueueItem = queueCommands::moveQueueItem,
-        modifier = Modifier
-          .fillMaxSize()
-          .padding(innerPadding)
-          .semantics { testTag = "now_playing_screen" },
-      )
+      NowPlayingSubState.ConnectedWithMedia -> {
+        // G.2 — over-scroll-down at top of the merged surface accumulates
+        // toward dismissal; if the user releases past the threshold, pop.
+        val swipeThresholdPx = with(LocalDensity.current) { 64.dp.toPx() }
+        val pullDownConnection = remember(onBack, swipeThresholdPx) {
+          pullDownToDismissNestedScroll(onDismiss = onBack, thresholdPx = swipeThresholdPx)
+        }
+        NowPlayingMergedSurface(
+          state = state,
+          queueSnapshot = queueSnapshot,
+          listState = listState,
+          albumCoversMode = albumCoversMode,
+          onSeek = transport::seekTo,
+          onTogglePlayPause = transport::togglePlayPause,
+          onSeekBackward = transport::seekBackward,
+          onSeekForward = transport::seekForward,
+          onSeekToPrevious = transport::seekToPrevious,
+          onSeekToNext = transport::seekToNext,
+          onToggleShuffle = transport::toggleShuffle,
+          onCycleRepeat = transport::cycleRepeatMode,
+          onJumpToQueueIndex = queueCommands::seekToQueueIndex,
+          onRemoveQueueItem = queueCommands::removeQueueItem,
+          onMoveQueueItem = queueCommands::moveQueueItem,
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding)
+            .nestedScroll(pullDownConnection)
+            .semantics { testTag = "now_playing_screen" },
+        )
+      }
     }
   }
 }
@@ -469,4 +484,55 @@ private fun formatMillis(ms: Long): String {
   val minutes = totalSeconds / 60
   val seconds = totalSeconds % 60
   return "%d:%02d".format(minutes, seconds)
+}
+
+/**
+ * G.2 — Auxio-style swipe-down-from-top to dismiss.
+ *
+ * Composes with the inner `LazyColumn` via NestedScroll: when the user
+ * drags downward past the top of the queue and the LazyColumn refuses
+ * the delta (already at offset 0), the unconsumed `available.y` lands
+ * here in `onPostScroll`. We accumulate it; if a drag-back-up arrives
+ * we drain the accumulator first (matching pull-to-refresh ergonomics).
+ * On fling, if the accumulator exceeds [thresholdPx], call [onDismiss].
+ *
+ * Mid-list scrolls don't trigger this — when the LazyColumn is scrolled
+ * mid-content, it consumes downward drags itself, so `available.y` in
+ * `onPostScroll` is 0 and the accumulator stays at 0.
+ */
+private fun pullDownToDismissNestedScroll(
+  onDismiss: () -> Unit,
+  thresholdPx: Float,
+): NestedScrollConnection = object : NestedScrollConnection {
+  private var overscroll = 0f
+
+  override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+    // Drain the over-scroll accumulator before the LazyColumn sees an
+    // upward drag — keeps the dismissal feel symmetric.
+    if (available.y < 0f && overscroll > 0f) {
+      val consumed = minOf(-available.y, overscroll)
+      overscroll -= consumed
+      return Offset(0f, -consumed)
+    }
+    return Offset.Zero
+  }
+
+  override fun onPostScroll(
+    consumed: Offset,
+    available: Offset,
+    source: NestedScrollSource,
+  ): Offset {
+    if (available.y > 0f && source == NestedScrollSource.UserInput) {
+      overscroll += available.y
+      return Offset(0f, available.y)
+    }
+    return Offset.Zero
+  }
+
+  override suspend fun onPreFling(available: Velocity): Velocity {
+    val pulled = overscroll
+    overscroll = 0f
+    if (pulled > thresholdPx) onDismiss()
+    return Velocity.Zero
+  }
 }
