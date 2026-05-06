@@ -14,6 +14,7 @@ import com.eight87.tonearmboy.data.settings.PreferencesSetting
 import com.eight87.tonearmboy.data.settings.Setting
 import com.eight87.tonearmboy.data.settings.booleanSetting
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 // G+ — `enum class ColorScheme` removed. Subsumed by `BaseTheme`
@@ -391,6 +392,22 @@ class SettingsRepository(private val context: Context) :
   override val folderCoverScanEnabled: kotlinx.coroutines.flow.Flow<Boolean>
     get() = scanFoldersForCoverArt.flow
 
+  override suspend fun cachedMediaStoreVersion(): String? =
+    store.data.map { it[KEY_MEDIA_STORE_VERSION] }.first()
+
+  override suspend fun cachedMediaStoreGeneration(): Long =
+    store.data.map { it[KEY_MEDIA_STORE_GENERATION] ?: 0L }.first()
+
+  override suspend fun cachedScanConfigHash(): String =
+    store.data.map { it[KEY_SCAN_CONFIG_HASH] ?: "" }.first()
+
+  override suspend fun setMediaStoreCache(version: String, generation: Long, configHash: String) {
+    store.edit { prefs ->
+      prefs[KEY_MEDIA_STORE_VERSION] = version
+      prefs[KEY_MEDIA_STORE_GENERATION] = generation
+      prefs[KEY_SCAN_CONFIG_HASH] = configHash
+    }
+  }
 
   private val store: DataStore<Preferences> = context.tonearmboyDataStore
 
@@ -662,6 +679,16 @@ class SettingsRepository(private val context: Context) :
     internal val KEY_BASE_THEME = stringPreferencesKey("base_theme")
     internal val KEY_ALBUM_ART_TINT_ENABLED = booleanPreferencesKey("album_art_tint_enabled")
     internal val KEY_CUSTOM_CHROME_TINT = androidx.datastore.preferences.core.longPreferencesKey("custom_chrome_tint")
+
+    // MediaStore scan-skip cache. The version token is opaque per
+    // Android docs (`MediaStore.getVersion`); the generation cursor is
+    // monotonic so long as the version token is stable. We persist
+    // both alongside the rest of the user preferences in the same
+    // DataStore so a clear-data wipes them together with the Room
+    // cache and the next launch re-scans cleanly.
+    internal val KEY_MEDIA_STORE_VERSION = stringPreferencesKey("scan_cache_mediastore_version")
+    internal val KEY_MEDIA_STORE_GENERATION = androidx.datastore.preferences.core.longPreferencesKey("scan_cache_mediastore_generation")
+    internal val KEY_SCAN_CONFIG_HASH = stringPreferencesKey("scan_cache_config_hash")
 
     /** D.9b.2 — pre-amp slider bounds, fixed at [-15, +15] dB. */
     const val REPLAYGAIN_PREAMP_MIN_DB: Float = -15f

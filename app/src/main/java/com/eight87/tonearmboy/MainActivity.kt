@@ -191,13 +191,20 @@ class MainActivity : ComponentActivity() {
 
   companion object {
     /**
-     * D.22.2 — splash safety-net timeout. 600 ms is the canonical
-     * Android guidance for "long enough to hide a fast handshake,
-     * short enough to never feel like a hang." Beyond this, even on
-     * a stuck `MediaController.Builder.buildAsync`, the splash
-     * dismisses and the user lands on the connecting NowPlaying
-     * sub-state (D.22.3) which is its own progress indicator.
+     * Splash safety-net timeout. The original D.22.2 cap was 600 ms,
+     * picked from the Android guidance "long enough to hide a fast
+     * handshake, short enough to never feel like a hang." User
+     * complaint that cold-start splash lingers compared to peer apps
+     * (Auxio etc.) — they don't gate on a Media3 controller handshake
+     * at all. We drop the cap to 150 ms: long enough for the common
+     * case where the service is already warm and `awaitConnected()`
+     * resolves on the first frame, short enough that a cold handshake
+     * lands the user on `NowPlaying`'s own Connecting state (D.22.3)
+     * instead of staring at the launcher icon. The Connecting state
+     * has its own progress indicator and dismisses cleanly when the
+     * controller binds, so there's no UX regression from the shorter
+     * cap — only a perceived-snappiness win.
      */
-    internal const val SPLASH_HOLD_TIMEOUT_MS: Long = 600L
+    internal const val SPLASH_HOLD_TIMEOUT_MS: Long = 150L
   }
 }

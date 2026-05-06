@@ -2,6 +2,7 @@ package com.eight87.tonearmboy.data
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import com.eight87.tonearmboy.data.Mapping.toDomain
@@ -512,14 +513,56 @@ class LibraryRepository(
     // setting at runtime doesn't auto-rescan (surfaced via snackbar
     // copy in the settings UI).
     val separators: Set<String> = scanConfig.multiValueSeparatorTokens.first()
+    val scope = scanConfig.musicSourceScope.first()
+    val currentConfigHash = computeScanConfigHash(separators, scope)
+
+    // Cold-start fast-path: skip the full scanner walk when both
+    // MediaStore tokens AND the scan-config hash match the previous
+    // successful scan AND the Room cache isn't empty.
+    //
+    // Strategy (Android docs — "Detect updates to media files"):
+    //   1. `MediaStore.getVersion(context, VOLUME_EXTERNAL)` returns an
+    //      opaque token that flips on bulk events (factory reset,
+    //      volume mount). Treat any difference as "rescan from scratch."
+    //   2. `MediaStore.getGeneration(context, VOLUME_EXTERNAL)` is a
+    //      monotonic cursor that increments on every audio insert /
+    //      update so long as the version token is stable.
+    //   3. The scan-config hash catches user-toggled changes that
+    //      affect scan output (separators, music-source scope) — these
+    //      don't move MediaStore but DO change what we ingest.
+    //
+    // Skip is gated on `initial` — explicit rescans (Settings > Rescan
+    // music, watcher fires, music-source changes) take the slow path
+    // unconditionally because the user is asking for a real check.
+    // API < 30 (no version/generation API) always takes the slow path
+    // too. The DB-non-empty guard catches the "user cleared app data
+    // but DataStore somehow survived" edge case.
+    if (initial && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      val cachedVersion = scanConfig.cachedMediaStoreVersion()
+      val cachedGeneration = scanConfig.cachedMediaStoreGeneration()
+      val cachedConfigHash = scanConfig.cachedScanConfigHash()
+      val currentVersion = MediaStore.getVersion(context, MediaStore.VOLUME_EXTERNAL)
+      val currentGeneration = MediaStore.getGeneration(context, MediaStore.VOLUME_EXTERNAL)
+      val haveCachedTracks = db.trackDao().allIds().isNotEmpty()
+      if (cachedVersion != null &&
+        cachedVersion == currentVersion &&
+        cachedGeneration == currentGeneration &&
+        cachedConfigHash == currentConfigHash &&
+        haveCachedTracks
+      ) {
+        Log.i(TAG, "scan(initial): SKIP — MediaStore + config unchanged " +
+          "(version=$currentVersion, gen=$currentGeneration)")
+        _scanProgress.value = null
+        return@withLock
+      }
+    }
 
     // D.9d.1 / D.17.3 — when the user has configured one or more music
     // sources AND the mode is FilePicker, restrict the scan to
     // MediaStore rows whose `DATA` path lives under one of the source
     // trees. In System mode we ignore any persisted SAF tree URIs so
     // toggling System wipes the scope without losing the user's saved
-    // folder list.
-    val scope = scanConfig.musicSourceScope.first()
+    // folder list. (`scope` was hoisted to the skip-check above.)
     val scopePrefixes: Set<String> = if (scope.useFilePicker) {
       scope.treeUris
         .mapNotNull { raw -> SafScopeMapping.treeUriToPathPrefix(Uri.parse(raw)) }
@@ -621,6 +664,38 @@ class LibraryRepository(
         }
       }
     }
+
+    // Persist the fingerprint AFTER the DB write completes — if the
+    // scan crashed midway we'd rather rescan next launch than skip on
+    // a stale-but-cached generation cursor. API <30 doesn't expose
+    // the tokens; we just leave the cache empty so next launch falls
+    // through to the slow path.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      val v = MediaStore.getVersion(context, MediaStore.VOLUME_EXTERNAL)
+      val g = MediaStore.getGeneration(context, MediaStore.VOLUME_EXTERNAL)
+      scanConfig.setMediaStoreCache(v, g, currentConfigHash)
+      Log.i(TAG, "scan: cached MediaStore fingerprint (version=$v, gen=$g, cfg=$currentConfigHash)")
+    }
+  }
+
+  /**
+   * Stable hash of the inputs that affect scanner output but DON'T
+   * move MediaStore's version/generation tokens — multi-value
+   * separators (split tags differently) + music-source scope (System
+   * vs FilePicker, and the SAF tree URIs that bound the scan).
+   *
+   * The hash is encoded as a hex digest of `separators + scope` so it
+   * round-trips through DataStore as a String. Sets are sorted before
+   * hashing so the digest is order-independent.
+   */
+  private fun computeScanConfigHash(
+    separators: Set<String>,
+    scope: MusicSourceScope,
+  ): String {
+    val sortedSeparators = separators.toSortedSet().joinToString(",")
+    val sortedTrees = scope.treeUris.toSortedSet().joinToString(",")
+    val payload = "sep=$sortedSeparators|fp=${scope.useFilePicker}|trees=$sortedTrees"
+    return Integer.toHexString(payload.hashCode())
   }
 
   fun shutdown() {
