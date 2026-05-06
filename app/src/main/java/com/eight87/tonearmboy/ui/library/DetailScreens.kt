@@ -259,6 +259,8 @@ fun AlbumDetailScreen(
             mode = albumCoversMode,
             contentDescription = albumName,
             coverUriOverride = resolvedOverride,
+            albumName = albumName,
+            albumArtist = albumArtist,
             modifier = Modifier
               .fillMaxWidth(0.7f)
               .aspectRatio(1f)

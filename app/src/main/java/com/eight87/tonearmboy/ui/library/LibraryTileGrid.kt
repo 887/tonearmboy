@@ -223,6 +223,17 @@ private fun TileCell(
           size = 160.dp,
           mode = albumCoversMode,
           contentDescription = item.title,
+          // The tile's title field IS the album name on the Albums
+          // tab; the subtitle field carries the artist. Threading
+          // both through lights up the fetch-progress indicator
+          // when an `AlbumArtFetcher.fetch` is in flight for this
+          // album (manual "Search online" overflow + bulk worker).
+          // Tracks-tab tiles also pass the track title as `title`,
+          // which is wrong-but-harmless: the album-key derivation
+          // just won't match any in-flight fetch (which would only
+          // ever fire for an album lookup anyway).
+          albumName = item.title,
+          albumArtist = item.subtitle,
           modifier = Modifier.fillMaxSize().alpha(coverAlpha),
         )
         else -> Text(

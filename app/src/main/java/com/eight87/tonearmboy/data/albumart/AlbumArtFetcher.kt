@@ -79,6 +79,19 @@ class AlbumArtFetcher(
         AlbumCoverChoice.NoChoice -> Unit
       }
     }
+    return AlbumArtFetchRegistry.withFetch(key) {
+      doFetch(context, key, albumName, albumArtist, service, musicBrainzMinScore)
+    }
+  }
+
+  private suspend fun doFetch(
+    context: Context,
+    key: String,
+    albumName: String,
+    albumArtist: String?,
+    service: CoverArtService,
+    musicBrainzMinScore: Int,
+  ): FetchResult {
     val coverUrl = when (service) {
       CoverArtService.Disabled -> return FetchResult.ServiceDisabled  // unreachable, satisfies exhaustive when
       CoverArtService.MusicBrainz -> {

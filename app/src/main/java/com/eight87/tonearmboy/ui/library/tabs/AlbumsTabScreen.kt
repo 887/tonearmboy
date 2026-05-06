@@ -286,6 +286,8 @@ internal fun AlbumListRow(
       mode = albumCoversMode,
       contentDescription = album.name,
       coverUriOverride = resolvedOverride,
+      albumName = album.name,
+      albumArtist = album.artist,
       modifier = Modifier
         .size(48.dp)
         .clip(RoundedCornerShape(6.dp)),

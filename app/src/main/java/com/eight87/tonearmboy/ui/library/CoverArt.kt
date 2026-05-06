@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -20,10 +22,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
+import com.eight87.tonearmboy.data.albumKey
+import com.eight87.tonearmboy.data.albumart.AlbumArtFetchRegistry
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 
 /**
@@ -63,16 +69,39 @@ fun CoverArt(
    * from `LibraryRepository.albumCoverUri` upstream.
    */
   coverUriOverride: String? = null,
+  /**
+   * When [albumName] (and optionally [albumArtist]) are supplied,
+   * CoverArt subscribes to [AlbumArtFetchRegistry] for the album
+   * key and renders a "fetching from web" indicator (cloud icon +
+   * spinner) when an `AlbumArtFetcher.fetch` call is in flight for
+   * that album. Without this the user couldn't tell the difference
+   * between "no cover, idle" and "no cover, currently downloading".
+   * Callers that don't know the album metadata (e.g. the playlist
+   * tile that only has a MediaStore id) just leave these null.
+   */
+  albumName: String? = null,
+  albumArtist: String? = null,
 ) {
   Box(
     modifier = modifier
       .background(MaterialTheme.colorScheme.surfaceVariant),
     contentAlignment = Alignment.Center,
   ) {
+    // Web-fetch indicator state — independent of Coil's local load
+    // state. When AlbumArtFetcher is currently fetching for this
+    // album's key, render the cloud-download icon + spinner overlay
+    // so the user can see "we're trying" instead of staring at the
+    // empty placeholder.
+    val fetching = if (albumName != null) {
+      val key = remember(albumName, albumArtist) { albumKey(albumName, albumArtist) }
+      val keys by AlbumArtFetchRegistry.inFlight.collectAsStateWithLifecycle()
+      key in keys
+    } else false
+
     val showPlaceholder = mode == AlbumCoversMode.Off ||
       (albumId == null && coverUriOverride.isNullOrBlank())
     if (showPlaceholder) {
-      Placeholder(size)
+      if (fetching) FetchingIndicator(size) else Placeholder(size)
       return@Box
     }
 
@@ -81,51 +110,92 @@ fun CoverArt(
       coverUriOverride?.takeIf { it.isNotBlank() }
         ?: albumArtUri(albumId ?: 0L)
     }
-    var failed by remember(uri) { mutableStateOf(false) }
-
-    if (failed) {
-      Placeholder(size)
-      return@Box
-    }
+    var coilState by remember(uri) { mutableStateOf<CoilLoadPhase>(CoilLoadPhase.Loading) }
 
     val request = remember(uri, mode) {
       val builder = ImageRequest.Builder(context).data(uri)
       // Sizing matters for perceived load speed. Coil 3's `Size.ORIGINAL`
       // means "decode at the source's intrinsic resolution" — fine for
       // a 200x200 album thumbnail, ruinous for a 1200x1200 JPEG that
-      // gets scaled down to a 160 dp tile. Decoding a 1200×1200 image
-      // is ~36× the work of decoding the 200×200 thumb the cell
-      // actually displays, and 30+ tiles on screen at once stack that
-      // cost into a visible "covers pop in slowly" delay.
-      //
-      // What we want:
-      //   - Balanced (default): let Coil auto-detect the cell's layout
-      //     size and decode straight to that. Don't set `size()` at
-      //     all — Coil reads it from the `AsyncImage` measure pass.
-      //   - On (Always load): user explicitly opted into full-res; set
-      //     `Size.ORIGINAL` so we pull the master.
-      //   - Off (Never load): we never reach this branch — handled
-      //     above by the `showPlaceholder` check.
-      //
-      // Pre-fix shape was inverted (ORIGINAL on Balanced) — the
-      // comment claimed thumbnail-sized but the code said otherwise.
+      // gets scaled down to a 160 dp tile. Balanced mode lets Coil
+      // read the target size from the AsyncImage layout pass.
       if (mode == AlbumCoversMode.On) builder.size(Size.ORIGINAL)
-      // Balanced intentionally does not set size — Coil resolves
-      // it from the layout pass.
       builder.build()
     }
 
+    // Always render the AsyncImage so it can fire load events; render
+    // overlays on top per state.
     AsyncImage(
       model = request,
       contentDescription = contentDescription,
       modifier = Modifier.fillMaxSize(),
       contentScale = ContentScale.Crop,
       onState = { state ->
-        // Coil emits Error / Empty when the album genuinely has no art
-        // — the legacy URI returns a FileNotFoundException through the
-        // ContentResolver. We fall back to the placeholder silently.
-        if (state is AsyncImagePainter.State.Error) failed = true
+        coilState = when (state) {
+          is AsyncImagePainter.State.Loading -> CoilLoadPhase.Loading
+          is AsyncImagePainter.State.Success -> CoilLoadPhase.Success
+          is AsyncImagePainter.State.Error -> CoilLoadPhase.Error
+          AsyncImagePainter.State.Empty -> CoilLoadPhase.Loading
+        }
       },
+    )
+
+    // Overlay rules (later wins; AsyncImage already drew underneath):
+    //   - Success: nothing on top, the image is showing.
+    //   - Loading: small spinner centred, image not yet decoded.
+    //   - Error/Empty: music-note placeholder (replaces any partial
+    //     image with the canonical "no art" symbol).
+    //   - Fetching from web: cloud-download icon + spinner takes
+    //     precedence over Loading/Error for as long as the fetch
+    //     registry shows the key in flight — the user sees the
+    //     network activity even when the local image lookup already
+    //     failed (which is what triggers most fetches anyway).
+    when {
+      fetching -> FetchingIndicator(size)
+      coilState == CoilLoadPhase.Loading -> LoadingSpinner(size)
+      coilState == CoilLoadPhase.Error -> Placeholder(size)
+      else -> Unit
+    }
+  }
+}
+
+/** Local Coil load phase, kept narrow so the overlay `when` is exhaustive. */
+private enum class CoilLoadPhase { Loading, Success, Error }
+
+/**
+ * Coil is decoding from disk / cache. Show a small centred spinner
+ * so the user can see "we're working on it" rather than staring at
+ * an empty placeholder for the duration of the decode.
+ */
+@Composable
+private fun LoadingSpinner(size: Dp) {
+  CircularProgressIndicator(
+    modifier = Modifier.size((size * 0.35f).coerceAtLeast(20.dp)),
+    strokeWidth = 2.dp,
+    color = MaterialTheme.colorScheme.onSurfaceVariant,
+  )
+}
+
+/**
+ * `AlbumArtFetcher` is currently making a web request for this album.
+ * Render a cloud-download icon + small spinner so the user sees the
+ * network-active state distinctly from "empty placeholder, idle".
+ * The icon stacks on top of a small spinner (drawn behind it) — the
+ * spinner is the motion cue, the icon names the *kind* of activity.
+ */
+@Composable
+private fun FetchingIndicator(size: Dp) {
+  Box(contentAlignment = Alignment.Center) {
+    CircularProgressIndicator(
+      modifier = Modifier.size((size * 0.55f).coerceAtLeast(28.dp)),
+      strokeWidth = 2.dp,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Icon(
+      imageVector = Icons.Outlined.CloudDownload,
+      contentDescription = null,
+      tint = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.size((size * 0.32f).coerceAtLeast(18.dp)),
     )
   }
 }
