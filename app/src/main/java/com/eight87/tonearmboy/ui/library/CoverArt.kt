@@ -113,10 +113,20 @@ fun CoverArt(
 
 @Composable
 private fun Placeholder(size: Dp) {
+  // Explicit `onSurfaceVariant` tint — the Icon default is
+  // `LocalContentColor.current`, which is unstable across the chrome-
+  // tint pipeline (the album palette nudges `surfaceVariant`, and a
+  // default-black icon on a tinted-but-still-dark surface lands
+  // invisible). Pinning to the M3 token guarantees the placeholder
+  // always has the canonical-pair contrast against the tile bg.
+  // Size at 60% of the tile so the music-note centres cleanly instead
+  // of expanding edge-to-edge (the previous `size(size)` rendered the
+  // icon at full tile width, which clipped against rounded corners).
   Icon(
     imageVector = Icons.Filled.MusicNote,
     contentDescription = null,
-    modifier = Modifier.size(size),
+    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+    modifier = Modifier.size(size * 0.6f),
   )
 }
 

@@ -85,6 +85,7 @@ fun PlaylistsTabScreen(
           onSetPlaylistCover = onSetPlaylistCover,
           twoColumn = viewMode == ViewMode.TwoColumn,
           showFab = false,
+          selection = selection,
         )
       } else {
         val playlists by repository.observePlaylists().collectAsState(initial = emptyList())

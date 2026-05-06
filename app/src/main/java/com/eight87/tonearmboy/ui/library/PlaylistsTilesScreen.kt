@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,16 +15,22 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import com.eight87.tonearmboy.ui.common.FastScrollbar
+import com.eight87.tonearmboy.ui.library.tabs.SelectionState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -48,6 +55,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -91,6 +99,15 @@ fun PlaylistsTilesScreen(
   onSetPlaylistCover: (Long, String?) -> Unit = { _, _ -> },
   twoColumn: Boolean = false,
   showFab: Boolean = true,
+  /**
+   * When non-null, long-press on a tile starts (or extends) the
+   * multi-select selection — same gesture every other library tab uses
+   * — and tap toggles while in selection mode. The per-tile context
+   * menu (rename / cover / delete) moves to a 3-dot overflow icon on
+   * the tile cover so the long-press gesture is free for selection.
+   * When null, the legacy long-press-for-context-menu behaviour stays.
+   */
+  selection: SelectionState<Long>? = null,
 ) {
   val playlists by repository.observePlaylists().collectAsState(initial = emptyList())
   val context = LocalContext.current
@@ -127,13 +144,34 @@ fun PlaylistsTilesScreen(
           .semantics { testTag = "playlists_grid" },
       ) {
         items(playlists, key = { it.id }) { p ->
+          val selected = selection?.contains(p.id) ?: false
+          val inSelectionMode = selection?.inSelectionMode ?: false
           PlaylistTile(
             playlist = p,
             repository = repository,
-            onClick = { onPlaylistClick(p.id) },
-            onLongPress = { contextMenuFor = p },
+            onClick = {
+              // inSelectionMode is true only when `selection` is non-null
+              // (it derives from `selection?.inSelectionMode ?: false`),
+              // so the !! is safe inside this branch.
+              if (inSelectionMode) selection!!.toggle(p.id)
+              else onPlaylistClick(p.id)
+            },
+            onLongPress = {
+              // Long-press starts (or extends) selection when a
+              // selection state is wired in — matches the gesture
+              // every other library tab uses. The per-tile context
+              // menu moves to the 3-dot overflow icon on the tile so
+              // the long-press doesn't double-bind. With no selection
+              // state hosted (legacy callers), long-press still opens
+              // the context menu.
+              if (selection != null) selection.add(p.id)
+              else contextMenuFor = p
+            },
+            selected = selected,
+            inSelectionMode = inSelectionMode,
             contextMenuAnchorOpen = contextMenuFor?.id == p.id,
             onContextDismiss = { contextMenuFor = null },
+            onOpenContextMenu = { contextMenuFor = p },
             onRenameRequest = { contextMenuFor = null; dialog = PlaylistDialogState.Rename(p) },
             onDeleteRequest = { contextMenuFor = null; dialog = PlaylistDialogState.Delete(p) },
             onChooseCoverRequest = { contextMenuFor = null; dialog = PlaylistDialogState.CoverChooser(p) },
@@ -173,70 +211,122 @@ private fun PlaylistTile(
   onLongPress: () -> Unit,
   contextMenuAnchorOpen: Boolean,
   onContextDismiss: () -> Unit,
+  onOpenContextMenu: () -> Unit = {},
   onRenameRequest: () -> Unit,
   onDeleteRequest: () -> Unit,
   onChooseCoverRequest: () -> Unit,
+  selected: Boolean = false,
+  inSelectionMode: Boolean = false,
 ) {
   val firstAlbumId by repository.observePlaylistFirstAlbumArt(playlist.id)
     .collectAsState(initial = null)
   val resolvedCover = remember(playlist.coverUri, firstAlbumId) {
     resolvePlaylistCover(playlist.coverUri, firstAlbumId)
   }
+  val selectedBorder = MaterialTheme.colorScheme.primary
+  val selectedBadgeBg = MaterialTheme.colorScheme.primary
+  val selectedBadgeFg = MaterialTheme.colorScheme.onPrimary
 
   Column(
     modifier = Modifier
       .fillMaxWidth()
       .combinedClickable(onClick = onClick, onLongClick = onLongPress)
       .padding(4.dp)
-      .semantics { testTag = "playlist_tile" },
+      .semantics { testTag = if (selected) "playlist_tile_selected" else "playlist_tile" },
   ) {
     Box(
       modifier = Modifier
         .fillMaxWidth()
         .aspectRatio(1f)
         .clip(RoundedCornerShape(12.dp))
-        .background(MaterialTheme.colorScheme.surfaceVariant),
+        .background(MaterialTheme.colorScheme.surfaceVariant)
+        .then(
+          if (selected) Modifier.border(3.dp, selectedBorder, RoundedCornerShape(12.dp))
+          else Modifier
+        ),
       contentAlignment = Alignment.Center,
     ) {
+      val coverAlpha = if (selected) 0.55f else 1f
       when (resolvedCover) {
         is PlaylistCoverSource.Custom -> AsyncImage(
           model = resolvedCover.uri,
           contentDescription = null,
-          modifier = Modifier.fillMaxSize(),
+          modifier = Modifier.fillMaxSize().alpha(coverAlpha),
           contentScale = ContentScale.Crop,
         )
         is PlaylistCoverSource.AlbumArt -> CoverArt(
           albumId = resolvedCover.albumId,
           size = 140.dp,
           mode = AlbumCoversMode.Balanced,
-          modifier = Modifier.fillMaxSize(),
+          modifier = Modifier.fillMaxSize().alpha(coverAlpha),
         )
         is PlaylistCoverSource.Letter -> Text(
           text = letterFor(playlist.name),
           style = MaterialTheme.typography.headlineLarge,
-          modifier = Modifier.semantics { testTag = "playlist_letter_avatar" },
+          modifier = Modifier
+            .alpha(coverAlpha)
+            .semantics { testTag = "playlist_letter_avatar" },
         )
       }
-      DropdownMenu(
-        expanded = contextMenuAnchorOpen,
-        onDismissRequest = onContextDismiss,
-        modifier = Modifier.semantics { testTag = "playlist_context_menu" },
-      ) {
-        DropdownMenuItem(
-          text = { Text(stringResource(R.string.playlist_context_rename)) },
-          onClick = onRenameRequest,
-          modifier = Modifier.semantics { testTag = "playlist_context_rename" },
-        )
-        DropdownMenuItem(
-          text = { Text(stringResource(R.string.playlist_context_choose_cover)) },
-          onClick = onChooseCoverRequest,
-          modifier = Modifier.semantics { testTag = "playlist_context_cover" },
-        )
-        DropdownMenuItem(
-          text = { Text(stringResource(R.string.playlist_context_delete)) },
-          onClick = onDeleteRequest,
-          modifier = Modifier.semantics { testTag = "playlist_context_delete" },
-        )
+      // Selection check badge — top-left, mirrors LibraryTileGrid.
+      if (selected) {
+        Box(
+          modifier = Modifier
+            .align(Alignment.TopStart)
+            .padding(8.dp)
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(selectedBadgeBg)
+            .semantics { testTag = "playlist_tile_check" },
+          contentAlignment = Alignment.Center,
+        ) {
+          Icon(
+            imageVector = Icons.Filled.Check,
+            contentDescription = null,
+            tint = selectedBadgeFg,
+            modifier = Modifier.size(18.dp),
+          )
+        }
+      }
+      // 3-dot overflow icon — top-right — opens the per-tile context
+      // menu (Rename / Choose cover / Delete) when not in selection
+      // mode. Mirrors the LibraryTileGrid overflow pattern; replaces
+      // the legacy "long-press the tile to open the context menu"
+      // gesture so long-press is free for selection start.
+      if (!inSelectionMode) {
+        Box(modifier = Modifier.align(Alignment.TopEnd)) {
+          IconButton(
+            onClick = onOpenContextMenu,
+            modifier = Modifier.semantics { testTag = "playlist_tile_overflow" },
+          ) {
+            Icon(
+              Icons.Filled.MoreVert,
+              contentDescription = stringResource(R.string.library_cd_more_options),
+              tint = MaterialTheme.colorScheme.onSurface,
+            )
+          }
+          DropdownMenu(
+            expanded = contextMenuAnchorOpen,
+            onDismissRequest = onContextDismiss,
+            modifier = Modifier.semantics { testTag = "playlist_context_menu" },
+          ) {
+            DropdownMenuItem(
+              text = { Text(stringResource(R.string.playlist_context_rename)) },
+              onClick = onRenameRequest,
+              modifier = Modifier.semantics { testTag = "playlist_context_rename" },
+            )
+            DropdownMenuItem(
+              text = { Text(stringResource(R.string.playlist_context_choose_cover)) },
+              onClick = onChooseCoverRequest,
+              modifier = Modifier.semantics { testTag = "playlist_context_cover" },
+            )
+            DropdownMenuItem(
+              text = { Text(stringResource(R.string.playlist_context_delete)) },
+              onClick = onDeleteRequest,
+              modifier = Modifier.semantics { testTag = "playlist_context_delete" },
+            )
+          }
+        }
       }
     }
     Text(
