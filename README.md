@@ -1,6 +1,6 @@
 # tonearmboy
 
-Modern Android music player. Built on Jetpack Compose + Media3. Targets feature parity with [Auxio](https://github.com/OxygenCobalt/Auxio), plus first-class file deletion from inside the player.
+Modern Android audio player. Built on Jetpack Compose + Media3 + Room. Album-art-tinted chrome, alphabet-aware section bubbles on every tab + view mode, multi-select that works in list / tile / double-column, ReplayGain (track + album), gapless playback, in-app file deletion via SAF, and a fast cold start backed by MediaStore version+generation cursoring.
 
 ## Status
 
