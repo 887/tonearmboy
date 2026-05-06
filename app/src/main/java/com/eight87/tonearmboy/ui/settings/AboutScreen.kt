@@ -96,7 +96,7 @@ fun AboutScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        expandedHeight = 48.dp,
+        expandedHeight = 32.dp,
         title = { Text(stringResource(R.string.settings_about_title)) },
         navigationIcon = {
           IconButton(

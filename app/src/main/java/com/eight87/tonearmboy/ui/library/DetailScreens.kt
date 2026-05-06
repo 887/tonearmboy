@@ -145,7 +145,7 @@ fun AlbumDetailScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        expandedHeight = 48.dp,
+        expandedHeight = 32.dp,
         title = { Text(albumName) },
         navigationIcon = {
           IconButton(onClick = onBack) {
@@ -340,7 +340,7 @@ fun ArtistDetailScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        expandedHeight = 48.dp,
+        expandedHeight = 32.dp,
         title = { Text(artistName) },
         navigationIcon = {
           IconButton(onClick = onBack) {
@@ -471,7 +471,7 @@ fun GenreDetailScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        expandedHeight = 48.dp,
+        expandedHeight = 32.dp,
         title = { Text(genreName) },
         navigationIcon = {
           IconButton(onClick = onBack) {

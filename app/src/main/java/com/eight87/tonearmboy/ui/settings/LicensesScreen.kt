@@ -115,7 +115,7 @@ fun LicensesScreen(onBack: () -> Unit) {
   Scaffold(
     topBar = {
       TopAppBar(
-        expandedHeight = 48.dp,
+        expandedHeight = 32.dp,
         title = { Text(stringResource(R.string.licenses_screen_title)) },
         navigationIcon = {
           IconButton(
