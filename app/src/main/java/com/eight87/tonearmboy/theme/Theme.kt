@@ -72,71 +72,26 @@ fun TonearmboyTheme(
   val tint = customChromeTint
     ?: if (albumArtTintEnabled) palette.surfaceTint else null
 
-  // Animate the surface family to/from the tint smoothly. The duration
-  // matches the default Compose `animateColorAsState` tween (300 ms);
-  // we make it explicit so the value is testable / tunable.
-  val surface by animateColorAsState(
-    targetValue = blendSurface(baseScheme.surface, tint),
-    animationSpec = tween(durationMillis = 300),
-    label = "AlbumPaletteSurface",
-  )
-  val surfaceVariant by animateColorAsState(
-    targetValue = blendSurface(baseScheme.surfaceVariant, tint),
-    animationSpec = tween(durationMillis = 300),
-    label = "AlbumPaletteSurfaceVariant",
-  )
-  val background by animateColorAsState(
-    targetValue = blendSurface(baseScheme.background, tint),
-    animationSpec = tween(durationMillis = 300),
-    label = "AlbumPaletteBackground",
-  )
-  // The M3E surface-tier ladder + secondaryContainer carry the chrome
-  // a user perceives as "the slightly blue/grey elements" — the
-  // multi-select bar, tile placeholders, section headers, sticky
-  // alphabet rail, etc. Bias them toward the tint at the same fraction
-  // so the chrome-tint setting in Settings → Theme actually reaches
-  // them, not just the base surface trio.
-  val surfaceContainerLowest by animateColorAsState(
-    targetValue = blendSurface(baseScheme.surfaceContainerLowest, tint),
-    animationSpec = tween(durationMillis = 300),
-    label = "AlbumPaletteSurfaceContainerLowest",
-  )
-  val surfaceContainerLow by animateColorAsState(
-    targetValue = blendSurface(baseScheme.surfaceContainerLow, tint),
-    animationSpec = tween(durationMillis = 300),
-    label = "AlbumPaletteSurfaceContainerLow",
-  )
-  val surfaceContainer by animateColorAsState(
-    targetValue = blendSurface(baseScheme.surfaceContainer, tint),
-    animationSpec = tween(durationMillis = 300),
-    label = "AlbumPaletteSurfaceContainer",
-  )
-  val surfaceContainerHigh by animateColorAsState(
-    targetValue = blendSurface(baseScheme.surfaceContainerHigh, tint),
-    animationSpec = tween(durationMillis = 300),
-    label = "AlbumPaletteSurfaceContainerHigh",
-  )
-  val surfaceContainerHighest by animateColorAsState(
-    targetValue = blendSurface(baseScheme.surfaceContainerHighest, tint),
-    animationSpec = tween(durationMillis = 300),
-    label = "AlbumPaletteSurfaceContainerHighest",
-  )
-  val secondaryContainer by animateColorAsState(
-    targetValue = blendSurface(baseScheme.secondaryContainer, tint),
-    animationSpec = tween(durationMillis = 300),
-    label = "AlbumPaletteSecondaryContainer",
-  )
-
-  val colorScheme = baseScheme.copy(
-    surface = surface,
-    surfaceVariant = surfaceVariant,
-    background = background,
-    surfaceContainerLowest = surfaceContainerLowest,
-    surfaceContainerLow = surfaceContainerLow,
-    surfaceContainer = surfaceContainer,
-    surfaceContainerHigh = surfaceContainerHigh,
-    surfaceContainerHighest = surfaceContainerHighest,
-    secondaryContainer = secondaryContainer,
+  // Direct `blendSurface` — pure function call, no per-color State
+  // allocation. The earlier implementation wrapped each surface in
+  // `animateColorAsState(..., tween(300))` to crossfade chrome between
+  // tracks; that allocated 9 State<Color>s + 9 LaunchedEffects on
+  // every composition (every cold start, even when no album is
+  // playing and the animation target equals the base value), which
+  // was material for first-frame composition cost. Compose still
+  // recomposes Theme on tint change because `tint` is read above and
+  // any change re-invokes the function — colours just snap rather
+  // than crossfade. Acceptable trade for the startup win.
+  val colorScheme = if (tint == null) baseScheme else baseScheme.copy(
+    surface = blendSurface(baseScheme.surface, tint),
+    surfaceVariant = blendSurface(baseScheme.surfaceVariant, tint),
+    background = blendSurface(baseScheme.background, tint),
+    surfaceContainerLowest = blendSurface(baseScheme.surfaceContainerLowest, tint),
+    surfaceContainerLow = blendSurface(baseScheme.surfaceContainerLow, tint),
+    surfaceContainer = blendSurface(baseScheme.surfaceContainer, tint),
+    surfaceContainerHigh = blendSurface(baseScheme.surfaceContainerHigh, tint),
+    surfaceContainerHighest = blendSurface(baseScheme.surfaceContainerHighest, tint),
+    secondaryContainer = blendSurface(baseScheme.secondaryContainer, tint),
   )
 
   CompositionLocalProvider(

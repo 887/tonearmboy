@@ -150,10 +150,18 @@ fun TonearmboyApp(
     LocalSectionTitle provides sectionTitle,
     LocalHighlightedSettingId provides highlightedSettingId,
   ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-      val screenHeightDp = maxHeight
-      val density = LocalDensity.current
-      val screenHeightPx = with(density) { screenHeightDp.toPx() }.coerceAtLeast(1f)
+    // Avoid `BoxWithConstraints` here — it's a SubcomposeLayout, which
+    // forces a full extra composition pass for the children after
+    // the parent's measure resolves. On cold start that's an expensive
+    // round-trip we don't need: we only consume `maxHeight` to compute
+    // the sheet's drag math + the inner-stack height. `LocalConfiguration`
+    // gives us the same screen height ahead of measurement, no
+    // subcompose required.
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val screenHeightDp = configuration.screenHeightDp.dp
+    val density = LocalDensity.current
+    val screenHeightPx = with(density) { screenHeightDp.toPx() }.coerceAtLeast(1f)
+    Box(modifier = Modifier.fillMaxSize()) {
 
       // Mini-player peek height. Two-row layout — info row (48-dp art
       // + title + close) plus the transport row, with a 2-dp progress

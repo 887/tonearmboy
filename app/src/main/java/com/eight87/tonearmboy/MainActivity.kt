@@ -12,9 +12,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearmboy.playback.PlaybackService
@@ -106,13 +106,13 @@ class MainActivity : ComponentActivity() {
       // narrow stream so toggling, e.g., albumArtTintEnabled doesn't
       // recompose the theme-mode `when` block.
       val theme by graph.settingsRepository.theme.flow
-        .collectAsState(initial = ThemePreference.Default)
+        .collectAsStateWithLifecycle(initialValue = ThemePreference.Default)
       val baseTheme by graph.settingsRepository.baseTheme.flow
-        .collectAsState(initial = BaseTheme.Default)
+        .collectAsStateWithLifecycle(initialValue = BaseTheme.Default)
       val albumArtTintEnabled by graph.settingsRepository.albumArtTintEnabled.flow
-        .collectAsState(initial = true)
+        .collectAsStateWithLifecycle(initialValue = true)
       val customChromeTintRaw by graph.settingsRepository.customChromeTint.flow
-        .collectAsState(initial = 0L)
+        .collectAsStateWithLifecycle(initialValue = 0L)
       val customChromeTint: androidx.compose.ui.graphics.Color? =
         if (customChromeTintRaw == 0L) null
         else androidx.compose.ui.graphics.Color(0xFF000000.toInt() or customChromeTintRaw.toInt())
@@ -125,11 +125,11 @@ class MainActivity : ComponentActivity() {
 
       // D.20.4 — observe the playback state so we can refresh the
       // album palette whenever the playing track changes.
-      val playbackState by graph.playbackUiController.state.collectAsState()
+      val playbackState by graph.playbackUiController.state.collectAsStateWithLifecycle()
       LaunchedEffect(playbackState.mediaStoreAlbumId) {
         graph.albumPaletteSource.setAlbumId(playbackState.mediaStoreAlbumId)
       }
-      val albumPalette by graph.albumPaletteSource.palette.collectAsState()
+      val albumPalette by graph.albumPaletteSource.palette.collectAsStateWithLifecycle()
 
       CompositionLocalProvider(LocalAlbumPalette provides albumPalette) {
         TonearmboyTheme(
