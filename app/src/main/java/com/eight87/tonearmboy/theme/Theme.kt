@@ -90,11 +90,53 @@ fun TonearmboyTheme(
     animationSpec = tween(durationMillis = 300),
     label = "AlbumPaletteBackground",
   )
+  // The M3E surface-tier ladder + secondaryContainer carry the chrome
+  // a user perceives as "the slightly blue/grey elements" — the
+  // multi-select bar, tile placeholders, section headers, sticky
+  // alphabet rail, etc. Bias them toward the tint at the same fraction
+  // so the chrome-tint setting in Settings → Theme actually reaches
+  // them, not just the base surface trio.
+  val surfaceContainerLowest by animateColorAsState(
+    targetValue = blendSurface(baseScheme.surfaceContainerLowest, tint),
+    animationSpec = tween(durationMillis = 300),
+    label = "AlbumPaletteSurfaceContainerLowest",
+  )
+  val surfaceContainerLow by animateColorAsState(
+    targetValue = blendSurface(baseScheme.surfaceContainerLow, tint),
+    animationSpec = tween(durationMillis = 300),
+    label = "AlbumPaletteSurfaceContainerLow",
+  )
+  val surfaceContainer by animateColorAsState(
+    targetValue = blendSurface(baseScheme.surfaceContainer, tint),
+    animationSpec = tween(durationMillis = 300),
+    label = "AlbumPaletteSurfaceContainer",
+  )
+  val surfaceContainerHigh by animateColorAsState(
+    targetValue = blendSurface(baseScheme.surfaceContainerHigh, tint),
+    animationSpec = tween(durationMillis = 300),
+    label = "AlbumPaletteSurfaceContainerHigh",
+  )
+  val surfaceContainerHighest by animateColorAsState(
+    targetValue = blendSurface(baseScheme.surfaceContainerHighest, tint),
+    animationSpec = tween(durationMillis = 300),
+    label = "AlbumPaletteSurfaceContainerHighest",
+  )
+  val secondaryContainer by animateColorAsState(
+    targetValue = blendSurface(baseScheme.secondaryContainer, tint),
+    animationSpec = tween(durationMillis = 300),
+    label = "AlbumPaletteSecondaryContainer",
+  )
 
   val colorScheme = baseScheme.copy(
     surface = surface,
     surfaceVariant = surfaceVariant,
     background = background,
+    surfaceContainerLowest = surfaceContainerLowest,
+    surfaceContainerLow = surfaceContainerLow,
+    surfaceContainer = surfaceContainer,
+    surfaceContainerHigh = surfaceContainerHigh,
+    surfaceContainerHighest = surfaceContainerHighest,
+    secondaryContainer = secondaryContainer,
   )
 
   CompositionLocalProvider(

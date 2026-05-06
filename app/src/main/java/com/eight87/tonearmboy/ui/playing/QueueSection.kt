@@ -37,6 +37,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
@@ -344,8 +345,15 @@ internal fun QueueRow(
   onJumpTo: () -> Unit,
   onRemove: () -> Unit,
 ) {
+  // Stable purple for the active queue row, intentionally NOT pulled
+  // from `colorScheme.primaryContainer` — primary follows the user's
+  // base-theme seed, so a custom orange seed (or a Material You device
+  // wallpaper that resolves to orange) would tint the active queue row
+  // orange, colliding with the primary highlight. Locking to a fixed
+  // purple keeps the active row a recognisable signpost regardless of
+  // the rest of the palette.
   val rowBackground = if (isActive) {
-    MaterialTheme.colorScheme.primaryContainer
+    QueueActivePurple
   } else {
     MaterialTheme.colorScheme.surface
   }
@@ -455,3 +463,11 @@ internal fun QueueRow(
 // `translateVisualToReal` moved to `QueueReorderLogic.kt`.
 
 private const val QUEUE_ROW_HEIGHT_DP = 56
+
+/**
+ * Stable purple for the active row in the queue list. Sampled to land
+ * close to the M3 dark-scheme `primaryContainer` purple shipped with
+ * the v1.0 theme, but pinned so the row stays purple regardless of the
+ * user's base-theme seed.
+ */
+private val QueueActivePurple = Color(0xFF4A4458)

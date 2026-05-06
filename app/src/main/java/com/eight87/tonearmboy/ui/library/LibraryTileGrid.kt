@@ -2,6 +2,7 @@ package com.eight87.tonearmboy.ui.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,14 +12,17 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
@@ -33,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.semantics
@@ -110,6 +115,13 @@ fun LibraryTileGrid(
    */
   tileOverflowMenu: (@Composable (TileItem, () -> Unit) -> Unit)? = null,
   inSelectionMode: Boolean = false,
+  /**
+   * When non-null, predicate is consulted per-tile to decide whether
+   * the tile is selected; matching tiles render a coloured border + a
+   * filled-check overlay. Null = no selection rendering (back-compat
+   * for tabs that don't expose selection — Albums, Artists, Genres).
+   */
+  isSelected: ((TileItem) -> Boolean)? = null,
 ) {
   // Build the (header letter, runStartIndex, runLength) tuples once so
   // both the renderer and the alphabet helpers can reason about the
@@ -130,7 +142,7 @@ fun LibraryTileGrid(
   ) {
     if (groups.isEmpty()) {
       items(items = tiles, key = { it.id }) { tile ->
-        TileCell(tile, onTileClick, onTileLongClick, albumCoversMode, tileOverflowMenu, inSelectionMode)
+        TileCell(tile, onTileClick, onTileLongClick, albumCoversMode, tileOverflowMenu, inSelectionMode, isSelected?.invoke(tile) ?: false)
       }
     } else {
       groups.forEach { group ->
@@ -142,7 +154,7 @@ fun LibraryTileGrid(
         }
         val slice = tiles.subList(group.start, group.start + group.length)
         items(items = slice, key = { it.id }) { tile ->
-          TileCell(tile, onTileClick, onTileLongClick, albumCoversMode, tileOverflowMenu, inSelectionMode)
+          TileCell(tile, onTileClick, onTileLongClick, albumCoversMode, tileOverflowMenu, inSelectionMode, isSelected?.invoke(tile) ?: false)
         }
       }
     }
@@ -158,8 +170,17 @@ private fun TileCell(
   albumCoversMode: AlbumCoversMode,
   overflowMenu: (@Composable (TileItem, () -> Unit) -> Unit)? = null,
   inSelectionMode: Boolean = false,
+  selected: Boolean = false,
 ) {
   var menuOpen by remember { mutableStateOf(false) }
+  // Selection visual: dim the cover slightly + paint a 3-dp primary
+  // border + drop a filled check badge in the top-right. List rows use
+  // a `secondaryContainer` background tint, which doesn't translate to
+  // the cover-art tile (the cover fills the box), so the border + badge
+  // do the same job here.
+  val selectedBorder = MaterialTheme.colorScheme.primary
+  val selectedBadgeBg = MaterialTheme.colorScheme.primary
+  val selectedBadgeFg = MaterialTheme.colorScheme.onPrimary
   Column(
     modifier = Modifier
       .fillMaxWidth()
@@ -168,21 +189,28 @@ private fun TileCell(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
       )
-      .semantics { testTag = "library_tile_${item.id}" },
+      .semantics {
+        testTag = if (selected) "library_tile_selected_${item.id}" else "library_tile_${item.id}"
+      },
   ) {
     Box(
       modifier = Modifier
         .fillMaxWidth()
         .aspectRatio(1f)
         .clip(RoundedCornerShape(12.dp))
-        .background(MaterialTheme.colorScheme.surfaceVariant),
+        .background(MaterialTheme.colorScheme.surfaceVariant)
+        .then(
+          if (selected) Modifier.border(3.dp, selectedBorder, RoundedCornerShape(12.dp))
+          else Modifier
+        ),
       contentAlignment = Alignment.Center,
     ) {
+      val coverAlpha = if (selected) 0.55f else 1f
       when {
         item.artUri != null -> AsyncImage(
           model = item.artUri,
           contentDescription = item.title,
-          modifier = Modifier.fillMaxSize(),
+          modifier = Modifier.fillMaxSize().alpha(coverAlpha),
           contentScale = ContentScale.Crop,
         )
         item.albumArtId != null -> CoverArt(
@@ -190,13 +218,33 @@ private fun TileCell(
           size = 160.dp,
           mode = albumCoversMode,
           contentDescription = item.title,
-          modifier = Modifier.fillMaxSize(),
+          modifier = Modifier.fillMaxSize().alpha(coverAlpha),
         )
         else -> Text(
           text = letterFor(item.title),
           style = MaterialTheme.typography.headlineLarge,
           fontWeight = FontWeight.Bold,
+          modifier = Modifier.alpha(coverAlpha),
         )
+      }
+      if (selected) {
+        Box(
+          modifier = Modifier
+            .align(Alignment.TopStart)
+            .padding(8.dp)
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(selectedBadgeBg)
+            .semantics { testTag = "library_tile_check_${item.id}" },
+          contentAlignment = Alignment.Center,
+        ) {
+          Icon(
+            imageVector = Icons.Filled.Check,
+            contentDescription = null,
+            tint = selectedBadgeFg,
+            modifier = Modifier.size(18.dp),
+          )
+        }
       }
       // R4 — anchor the overflow icon + menu inside the cover Box so
       // it sits on top of the artwork without affecting the title row

@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -166,6 +167,12 @@ internal fun TracksListContent(
       },
     )
   }
+  // System back press in selection mode collapses the selection (and
+  // dismisses the MultiSelectBar) instead of leaving the screen — this
+  // matches Auxio / Files / most M3 contextual-action-bar surfaces.
+  // Only enabled while a selection exists, so a back press on an empty
+  // selection still routes to the navigator.
+  BackHandler(enabled = selection.inSelectionMode) { selection.clear() }
   Column(modifier = Modifier.fillMaxSize().semantics { testTag = "tracks_screen" }) {
     if (selection.inSelectionMode) {
       MultiSelectBar(

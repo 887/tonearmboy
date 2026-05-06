@@ -117,6 +117,7 @@ fun <T : Any> LibraryTabRenderer(
         },
         tileOverflowMenu = tileOverflowMenu,
         inSelectionMode = selection?.inSelectionMode ?: false,
+        isSelected = selection?.let { sel -> { tile -> sel.contains(tile.id) } },
         modifier = Modifier.fillMaxSize().padding(horizontal = SettingsDimens.PagePadding),
       )
     } else {
