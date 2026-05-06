@@ -140,12 +140,16 @@ fun SettingsRow(
   onClick: (() -> Unit)? = null,
   // m3-expressive Phase C — when non-null, render the leading icon
   // as a 40-dp coloured circle avatar holding a 24-dp filled glyph
-  // tinted with `accent.onContainer`, instead of the legacy thin
-  // outlined glyph in `onSurfaceVariant`. Defaults to null so call
-  // sites that haven't been swept (sub-pages still on the legacy
-  // shape) fall back gracefully.
+  // tinted with `accent.onContainer`. When null AND [id] is non-null,
+  // we auto-derive the accent via `accentFor(id)` so every settings
+  // row across the app gets the avatar without each call site having
+  // to pass the parameter explicitly. Pass `accent = null` AND a
+  // null `id` to opt out (e.g. a row with no stable id).
   accent: com.eight87.tonearmboy.theme.CategoryAccent? = null,
 ) {
+  // Auto-derive accent when caller didn't pass one but the row has
+  // a stable id. Hash-based, so every row gets a stable colour.
+  val resolvedAccent = accent ?: id?.let { com.eight87.tonearmboy.theme.accentFor(it) }
   val highlightState = LocalHighlightedSettingId.current
   val highlighted = id != null && highlightState.value == id
   val target =
@@ -179,18 +183,18 @@ fun SettingsRow(
       .semantics { testTag = "settings_row_${id ?: label}" },
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    if (accent != null) {
+    if (resolvedAccent != null) {
       Box(
         modifier = Modifier
           .size(40.dp)
           .clip(CircleShape)
-          .background(accent.container),
+          .background(resolvedAccent.container),
         contentAlignment = Alignment.Center,
       ) {
         Icon(
           imageVector = icon,
           contentDescription = null,
-          tint = accent.onContainer,
+          tint = resolvedAccent.onContainer,
           modifier = Modifier.size(SettingsDimens.IconSize),
         )
       }

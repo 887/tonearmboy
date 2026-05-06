@@ -1,6 +1,65 @@
 # tonearmboy — Material 3 Expressive (M3E) migration
 
-## Status: PLANNED
+## Status: IN PROGRESS — Phases A–C shipped, splash retuned, all-views sweep next
+
+## Findings from the first ship (read this before continuing)
+
+Five gotchas surfaced when actually wiring this up. Capture for
+future-me and any sub-agents picking up Phase E.
+
+1. **`material3:1.4.0` keeps `MaterialExpressiveTheme` /
+   `expressive*ColorScheme` `internal`.** The Compose BOM
+   `2026.03.01` resolves to `material3:1.4.0` but you can't actually
+   call the expressive APIs from there — the Kotlin metadata marks
+   them `internal`, even though the JVM bytecode is public. We
+   override the BOM in `gradle/libs.versions.toml` with
+   `composeMaterial3 = "1.5.0-alpha18"`, the alpha that promoted the
+   APIs to public. `expressiveDarkColorScheme()` does NOT exist in
+   1.5.0-alpha18 — only the `light` factory ships. Dark mode stays
+   on `darkColorScheme(...)` and inherits the surface-tier ladder.
+   Drop the override once 1.5.0 stable lands (Phase F).
+2. **`surfaceContainer` is too quiet on AMOLED-leaning dark
+   palettes.** Phase B started with `containerColor =
+   surfaceContainer` and it was barely a step above `surface`. The
+   ship uses `surfaceContainerHigh`. Light mode with
+   `expressiveLightColorScheme()` reads better at `surfaceContainer`,
+   so revisit if/when light mode gets a polish pass.
+3. **Auto-derive accent from `id` at the `SettingsRow` layer, not
+   per call site.** Initially we passed `accent = accentFor(entry.id)`
+   from every `SettingsRowBinding.Render` impl + from
+   `SettingsScreen.kt`. That left direct `SettingsRow(...)` callers
+   like `AboutScreen` / `LicensesScreen` (which don't go through
+   bindings) monochrome. The fix is one-liner: `SettingsRow` falls
+   back to `accentFor(id)` internally when caller passes
+   `accent = null` and a non-null `id`. Every direct caller now
+   gets the avatar without changes.
+4. **Android 12+ splash icon is hard circle-clipped, period.** The
+   layer-list `android:windowBackground` workaround does NOT work —
+   the system splash paints `windowSplashScreenBackground` over the
+   whole window during launch, covering anything you set on
+   `windowBackground`. The working approach: ship a dedicated splash
+   mipmap (`ic_launcher_splash.png`) where the design is shrunk so
+   it inscribes inside the system circle. **70.7 % (1/√2) is too
+   tight** — corners still graze the mask. **60 %** gave proper
+   headroom on the user's device. Set
+   `windowSplashScreenIconBackgroundColor = launcher_background` so
+   the bigger 240-dp icon area kicks in.
+5. **Album-art tint in `Theme.kt` blends `surface`/`surfaceVariant`/
+   `background` but NOT the `surfaceContainer*` ladder.** That's
+   why the library list / detail cards look uniformly tinted with
+   the album palette while the page surface drifts. Long-term we
+   should blend the whole ladder; for the ship it was acceptable.
+   Phase E or a follow-up.
+
+## Scope expansion: "all the views"
+
+User feedback after seeing About + Licenses still monochrome:
+> "we want all the views updated/modernized"
+
+Phase E now sweeps the WHOLE app, not just Settings. The
+auto-accent change (finding 3) gets us most of the settings world
+for free; the rest of the app (Library, Now Playing, sheets,
+dialogs) needs explicit work.
 
 ## Why
 
