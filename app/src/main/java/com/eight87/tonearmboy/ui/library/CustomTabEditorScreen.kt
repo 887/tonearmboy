@@ -110,6 +110,7 @@ fun CustomTabEditorScreen(
       .semantics { testTag = "custom_tab_editor" },
     topBar = {
       TopAppBar(
+        expandedHeight = 48.dp,
         title = {
           Text(
             stringResource(

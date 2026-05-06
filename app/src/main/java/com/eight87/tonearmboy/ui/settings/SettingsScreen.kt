@@ -91,6 +91,7 @@ fun SettingsScreen(
   Scaffold(
     topBar = {
       TopAppBar(
+        expandedHeight = 48.dp,
         title = { Text(stringResource(R.string.settings_title)) },
         navigationIcon = {
           IconButton(onClick = onBack) {
