@@ -31,9 +31,10 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -200,48 +201,26 @@ fun MiniPlayer(
         .semantics { testTag = "mini_player_transport_row" },
     )
 
-    // -- Slider row ----------------------------------------------------
-    // D.26.1: full draggable Material 3 Slider (replaces the old 2-dp
-    // LinearProgressIndicator). Local drag value buffers the slider
-    // position while the user is dragging so the controller doesn't
-    // overwrite it from `pushState` ticks; on release we commit via
-    // [onSeekTo].
+    // -- Thin progress line --------------------------------------------
+    // Replaced the draggable Slider + timestamp row (D.26.1) with an
+    // Auxio-style 2-dp LinearProgressIndicator pinned to the bottom of
+    // the mini-player slot. Seeking from the mini-player is gone; users
+    // expand to NowPlaying for the full slider. The buttons remain in
+    // the transport row above.
     val total = state.durationMs.coerceAtLeast(0L)
     val pos = state.positionMs.coerceIn(0L, total.coerceAtLeast(state.positionMs))
-    var dragValue by remember(state.positionMs) { mutableStateOf<Float?>(null) }
-    val sliderValue = dragValue ?: pos.toFloat()
-    val sliderMax = total.toFloat().coerceAtLeast(1f)
-
-    Slider(
-      value = sliderValue.coerceIn(0f, sliderMax),
-      onValueChange = { dragValue = it },
-      onValueChangeFinished = {
-        dragValue?.let { onSeekTo(it.toLong()) }
-        dragValue = null
-      },
-      valueRange = 0f..sliderMax,
+    val progress = if (total > 0L) (pos.toFloat() / total.toFloat()).coerceIn(0f, 1f) else 0f
+    LinearProgressIndicator(
+      progress = { progress },
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 12.dp)
-        .semantics { testTag = "mini_player_slider" },
+        .height(2.dp)
+        .semantics { testTag = "mini_player_progress" },
+      color = MaterialTheme.colorScheme.primary,
+      trackColor = MaterialTheme.colorScheme.surfaceContainer,
+      gapSize = 0.dp,
+      drawStopIndicator = {},
     )
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 2.dp),
-      horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      Text(
-        text = formatMiniPlayerMillis(sliderValue.toLong()),
-        style = MaterialTheme.typography.labelSmall,
-        modifier = Modifier.semantics { testTag = "mini_player_position_label" },
-      )
-      Text(
-        text = formatMiniPlayerMillis(total),
-        style = MaterialTheme.typography.labelSmall,
-        modifier = Modifier.semantics { testTag = "mini_player_duration_label" },
-      )
-    }
   }
 }
 

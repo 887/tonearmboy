@@ -58,12 +58,19 @@ fun TonearmboyTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
   baseTheme: BaseTheme = BaseTheme.Default,
   albumArtTintEnabled: Boolean = true,
+  // Custom-chrome-tint override. When non-null, this colour replaces
+  // the album-art-derived palette tint regardless of
+  // [albumArtTintEnabled] — picking a colour is the explicit "I want
+  // this colour" gesture. When null, we fall through to the album
+  // palette path.
+  customChromeTint: Color? = null,
   content: @Composable () -> Unit,
 ) {
   val baseScheme = resolveBaseScheme(darkTheme, baseTheme)
 
   val palette = LocalAlbumPalette.current
-  val tint = if (albumArtTintEnabled) palette.surfaceTint else null
+  val tint = customChromeTint
+    ?: if (albumArtTintEnabled) palette.surfaceTint else null
 
   // Animate the surface family to/from the tint smoothly. The duration
   // matches the default Compose `animateColorAsState` tween (300 ms);

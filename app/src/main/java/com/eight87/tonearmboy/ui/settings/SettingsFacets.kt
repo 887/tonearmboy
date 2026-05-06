@@ -25,6 +25,15 @@ interface ThemeSettings {
   val theme: Setting<ThemePreference>
   val baseTheme: Setting<BaseTheme>
   val albumArtTintEnabled: Setting<Boolean>
+  /**
+   * Custom chrome tint colour. Stored as a 24-bit RGB packed `Long`
+   * (0..0xFFFFFF), or `0` for "unset" (fall back to album-art tint
+   * when [albumArtTintEnabled], or no tint otherwise). When non-zero,
+   * the value overrides the album-art-derived tint regardless of the
+   * `albumArtTintEnabled` toggle — picking a colour is the explicit
+   * "I want this colour" gesture.
+   */
+  val customChromeTint: Setting<Long>
 }
 
 /**

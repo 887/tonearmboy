@@ -2,6 +2,7 @@ package com.eight87.tonearmboy.ui.settings.catalog.sections
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ColorLens
+import androidx.compose.material.icons.outlined.Colorize
 import androidx.compose.material.icons.outlined.Palette
 import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.ui.nav.SettingsLookAndFeel
@@ -60,5 +61,19 @@ internal val LookAndFeelEntries: List<SettingsCatalogEntry> = listOf(
     kind = RowKind.Toggle,
     destination = SettingsLookAndFeel,
     breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Tint chrome by album art"),
+  ),
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_CUSTOM_CHROME_TINT,
+    label = "Custom tint color",
+    subtitle = "Pick a colour to override the album-art tint.",
+    labelRes = R.string.settings_lookandfeel_custom_chrome_tint_label,
+    subtitleRes = R.string.settings_lookandfeel_custom_chrome_tint_subtitle,
+    keywords = listOf("custom", "tint", "color", "colour", "picker", "chrome", "manual"),
+    icon = Icons.Outlined.Colorize,
+    section = Section.LookAndFeel,
+    group = Groups.Theme,
+    kind = RowKind.Picker,
+    destination = SettingsLookAndFeel,
+    breadcrumb = listOf(SECTION_LOOK_AND_FEEL, "Theme", "Custom tint color"),
   ),
 )

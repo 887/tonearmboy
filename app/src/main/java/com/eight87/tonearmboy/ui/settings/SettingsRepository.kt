@@ -420,6 +420,15 @@ class SettingsRepository(private val context: Context) :
   override val albumArtTintEnabled: Setting<Boolean> = booleanSetting(
     store, KEY_ALBUM_ART_TINT_ENABLED, true,
   )
+  // Custom chrome tint colour. Stored as a 24-bit RGB packed `Long`
+  // (0..0xFFFFFF); `0` is the unset sentinel because DataStore Long
+  // is non-nullable. When non-zero the value overrides any
+  // album-art-derived tint.
+  override val customChromeTint: Setting<Long> = PreferencesSetting(
+    store, KEY_CUSTOM_CHROME_TINT,
+    read = { it ?: 0L },
+    write = { it.coerceIn(0L, 0xFFFFFFL) },
+  )
 
   // --- PlaybackSettings ---
   override val pauseOnRepeat: Setting<Boolean> = booleanSetting(
@@ -652,6 +661,7 @@ class SettingsRepository(private val context: Context) :
     internal val KEY_AUTOMATIC_RELOADING = booleanPreferencesKey("automatic_reloading")
     internal val KEY_BASE_THEME = stringPreferencesKey("base_theme")
     internal val KEY_ALBUM_ART_TINT_ENABLED = booleanPreferencesKey("album_art_tint_enabled")
+    internal val KEY_CUSTOM_CHROME_TINT = androidx.datastore.preferences.core.longPreferencesKey("custom_chrome_tint")
 
     /** D.9b.2 — pre-amp slider bounds, fixed at [-15, +15] dB. */
     const val REPLAYGAIN_PREAMP_MIN_DB: Float = -15f

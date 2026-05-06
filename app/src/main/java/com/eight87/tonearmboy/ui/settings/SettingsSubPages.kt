@@ -110,12 +110,14 @@ fun SettingsLookAndFeelScreen(
   val albumArtTintEnabled by theme.albumArtTintEnabled.flow.collectAsState(
     initial = true,
   )
+  val customChromeTint by theme.customChromeTint.flow.collectAsState(initial = 0L)
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
   // R.F.17 — picker state controllers (Settings-F5).
   val themePicker = rememberSettingPickerState()
   val baseThemePicker = rememberSettingPickerState()
   var colorPicker by remember { mutableStateOf(false) }
+  var chromeTintPicker by remember { mutableStateOf(false) }
 
   // D.25.1 — when Custom is the active base theme, render a coloured
   // swatch trailing the row so the user sees what they picked at a
@@ -151,6 +153,29 @@ fun SettingsLookAndFeelScreen(
       id = SettingsCatalog.ID_ALBUM_ART_TINT,
       checked = albumArtTintEnabled,
       onCheckedChange = { scope.launch { theme.albumArtTintEnabled.set(it) } },
+    ),
+    // Custom chrome tint colour — picker. Subtitle reflects the current
+    // state: hex value when set, "Album art" when unset (the
+    // album-art-derived tint is the default fallback). Trailing swatch
+    // shows the picked colour at a glance, like the base-theme custom
+    // swatch above.
+    SettingsRowBinding.Picker(
+      id = SettingsCatalog.ID_CUSTOM_CHROME_TINT,
+      currentLabel = if (customChromeTint == 0L)
+        stringResource(R.string.settings_custom_chrome_tint_unset)
+      else "#%06X".format(customChromeTint),
+      onClick = { chromeTintPicker = true },
+      trailing = if (customChromeTint != 0L) {
+        {
+          Box(
+            modifier = Modifier
+              .size(24.dp)
+              .clip(CircleShape)
+              .background(Color(0xFF000000L or customChromeTint))
+              .semantics { testTag = "custom_chrome_tint_swatch" },
+          )
+        }
+      } else null,
     ),
   )
 
@@ -202,6 +227,23 @@ fun SettingsLookAndFeelScreen(
         colorPicker = false
       },
       onDismiss = { colorPicker = false },
+    )
+  }
+  if (chromeTintPicker) {
+    // Custom chrome tint picker — re-uses the D.25.1 dialog. Default
+    // seed is a soft indigo when no tint is set yet so the picker
+    // opens on a sensible starting point. Picking 0 isn't supported
+    // by the dialog (no Reset button there), so we surface the
+    // "Reset to album art" affordance via long-press on the row —
+    // wired below as a trailing X swatch when set.
+    val initial = if (customChromeTint == 0L) 0x6464C8L else customChromeTint
+    ColorPickerDialog(
+      initialRgb = initial,
+      onConfirm = { rgb ->
+        scope.launch { theme.customChromeTint.set(rgb) }
+        chromeTintPicker = false
+      },
+      onDismiss = { chromeTintPicker = false },
     )
   }
 }

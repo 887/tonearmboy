@@ -113,6 +113,11 @@ class MainActivity : ComponentActivity() {
         .collectAsState(initial = BaseTheme.Default)
       val albumArtTintEnabled by graph.settingsRepository.albumArtTintEnabled.flow
         .collectAsState(initial = true)
+      val customChromeTintRaw by graph.settingsRepository.customChromeTint.flow
+        .collectAsState(initial = 0L)
+      val customChromeTint: androidx.compose.ui.graphics.Color? =
+        if (customChromeTintRaw == 0L) null
+        else androidx.compose.ui.graphics.Color(0xFF000000.toInt() or customChromeTintRaw.toInt())
       val systemDark = isSystemInDarkTheme()
       val resolvedDark = when (theme) {
         ThemePreference.System -> systemDark
@@ -133,6 +138,7 @@ class MainActivity : ComponentActivity() {
           darkTheme = resolvedDark,
           baseTheme = baseTheme,
           albumArtTintEnabled = albumArtTintEnabled,
+          customChromeTint = customChromeTint,
         ) {
           Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             // m3-expressive splash — two-stage. Frame one (system
