@@ -39,6 +39,7 @@ import com.eight87.tonearmboy.data.ArtistSource
 import com.eight87.tonearmboy.data.model.Artist
 import com.eight87.tonearmboy.ui.library.CoverActionsMenuItems
 import com.eight87.tonearmboy.ui.library.TileItem
+import com.eight87.tonearmboy.ui.library.countBucket
 import com.eight87.tonearmboy.ui.library.initialKey
 import com.eight87.tonearmboy.ui.library.rememberArtistCoverActions
 import com.eight87.tonearmboy.ui.library.sortArtists
@@ -134,9 +135,17 @@ internal object ArtistsTabSpec : TabSpec<Artist> {
   override fun id(item: Artist): Long = item.id
 
   override fun sectionKey(item: Artist, sort: TabSort, intelligentSorting: Boolean): String? =
-    if (sort.key == SortKey.Name || sort.key == SortKey.Artist)
-      initialKey(sortNameKey(item.name, intelligentSorting))
-    else null
+    when (sort.key) {
+      SortKey.Name, SortKey.Artist -> initialKey(sortNameKey(item.name, intelligentSorting))
+      // Artists' Album sort actually sorts by albumCount; Duration by
+      // trackCount. Bucket the count so headers track the sort.
+      SortKey.Album -> countBucket(item.albumCount)
+      SortKey.Duration -> countBucket(item.trackCount)
+      // Date / DateAdded fall back to the artist letter — Artist
+      // entities don't carry a date column.
+      SortKey.Date, SortKey.DateAdded ->
+        initialKey(sortNameKey(item.name, intelligentSorting))
+    }
 
   override fun toTile(item: Artist, resources: Resources): TileItem = TileItem(
     id = item.id,

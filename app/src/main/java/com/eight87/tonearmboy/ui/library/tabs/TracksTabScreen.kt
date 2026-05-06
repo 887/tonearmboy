@@ -38,9 +38,12 @@ import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.ui.library.TileItem
 import com.eight87.tonearmboy.ui.library.TrackContextAction
+import com.eight87.tonearmboy.ui.library.durationBucket
 import com.eight87.tonearmboy.ui.library.initialKey
 import com.eight87.tonearmboy.ui.library.sortNameKey
 import com.eight87.tonearmboy.ui.library.sortTracks
+import com.eight87.tonearmboy.ui.library.yearSectionKey
+import com.eight87.tonearmboy.ui.library.yearSectionKeyForEpochSeconds
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 import com.eight87.tonearmboy.ui.settings.SortKey
 import com.eight87.tonearmboy.ui.settings.TabSort
@@ -237,8 +240,14 @@ internal class TracksTabSpec(
   override fun id(item: Track): Long = item.id
 
   override fun sectionKey(item: Track, sort: TabSort, intelligentSorting: Boolean): String? =
-    if (sort.key == SortKey.Name) initialKey(sortNameKey(item.title, intelligentSorting))
-    else null
+    when (sort.key) {
+      SortKey.Name -> initialKey(sortNameKey(item.title, intelligentSorting))
+      SortKey.Artist -> initialKey(sortNameKey(item.artist.orEmpty(), intelligentSorting))
+      SortKey.Album -> initialKey(sortNameKey(item.album.orEmpty(), intelligentSorting))
+      SortKey.Date -> yearSectionKey(item.year)
+      SortKey.DateAdded -> yearSectionKeyForEpochSeconds(item.dateAddedSeconds)
+      SortKey.Duration -> durationBucket(item.durationMs)
+    }
 
   override fun toTile(item: Track, resources: android.content.res.Resources): TileItem = TileItem(
     id = item.id,

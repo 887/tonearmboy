@@ -46,6 +46,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -291,10 +292,23 @@ fun LibraryScreen(
           IconButton(onClick = onOpenSearch, modifier = Modifier.semantics { testTag = "topbar_search" }) {
             Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.library_cd_search))
           }
-          IconButton(
-            onClick = { showSortSheet = true },
-            modifier = Modifier.semantics { testTag = "topbar_sort" },
-          ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.library_cd_sort)) }
+          // Sort icon: filled-tonal style when a non-default sort is
+          // active, plain icon when at TabSort.Default. Gives the user
+          // an at-a-glance signal that "this list is sorted by something
+          // other than the default" — fixes the user complaint that
+          // they couldn't tell whether a sort was applied.
+          val sortIsCustom = activeSort != TabSort.Default
+          if (sortIsCustom) {
+            FilledIconButton(
+              onClick = { showSortSheet = true },
+              modifier = Modifier.semantics { testTag = "topbar_sort_active" },
+            ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.library_cd_sort)) }
+          } else {
+            IconButton(
+              onClick = { showSortSheet = true },
+              modifier = Modifier.semantics { testTag = "topbar_sort" },
+            ) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.library_cd_sort)) }
+          }
           // D.28.2 — view-mode toggle. Sits between sort and filter so
           // the row reads search → sort → view → filter → settings. The
           // icon shows the *target* mode (tap to switch), not the

@@ -17,6 +17,7 @@ import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.GenreSource
 import com.eight87.tonearmboy.data.model.Genre
 import com.eight87.tonearmboy.ui.library.TileItem
+import com.eight87.tonearmboy.ui.library.countBucket
 import com.eight87.tonearmboy.ui.library.initialKey
 import com.eight87.tonearmboy.ui.library.sortGenres
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
@@ -95,7 +96,12 @@ internal object GenresTabSpec : TabSpec<Genre> {
   override fun id(item: Genre): Long = item.id
 
   override fun sectionKey(item: Genre, sort: TabSort, intelligentSorting: Boolean): String? =
-    if (sort.key != SortKey.Duration) initialKey(item.name.uppercase()) else null
+    when (sort.key) {
+      // Genres' Duration sort actually sorts by trackCount (see
+      // `sortGenres`); bucket the count so headers track the sort.
+      SortKey.Duration -> countBucket(item.trackCount)
+      else -> initialKey(item.name.uppercase())
+    }
 
   override fun toTile(item: Genre, resources: Resources): TileItem = TileItem(
     id = item.id,

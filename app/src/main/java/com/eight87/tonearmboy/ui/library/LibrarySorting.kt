@@ -102,6 +102,54 @@ internal fun initialKey(name: String): String {
 }
 
 /**
+ * Section key when items are sorted by a year-bearing column. Plain
+ * year as a string ("2024", "1999"); items with a missing year roll
+ * up under "?" so they cluster together at the end of the list.
+ */
+internal fun yearSectionKey(year: Int?): String =
+  year?.takeIf { it > 0 }?.toString() ?: "?"
+
+/**
+ * Section key when items are sorted by an epoch-seconds column
+ * (typically `date_added` from MediaStore). Unlike [yearSectionKey]
+ * the epoch needs decoding to a calendar year.
+ */
+internal fun yearSectionKeyForEpochSeconds(seconds: Long): String =
+  if (seconds <= 0) "?"
+  else java.time.Instant.ofEpochSecond(seconds)
+    .atZone(java.time.ZoneId.systemDefault())
+    .year
+    .toString()
+
+/**
+ * Section key when items are sorted by track duration. Buckets in
+ * minute ranges so the sort produces visible groupings on the
+ * scrollbar bubble + section banners.
+ */
+internal fun durationBucket(durationMs: Long): String {
+  val minutes = durationMs / 60_000L
+  return when {
+    minutes < 2 -> "< 2 min"
+    minutes < 5 -> "2–5 min"
+    minutes < 10 -> "5–10 min"
+    else -> "10+ min"
+  }
+}
+
+/**
+ * Section key when items are sorted by a count column (track count,
+ * album count). The sort comparator on these is descending; the
+ * bucket layout matches.
+ */
+internal fun countBucket(count: Int): String = when {
+  count >= 100 -> "100+"
+  count >= 50 -> "50–99"
+  count >= 10 -> "10–49"
+  count >= 1 -> "1–9"
+  else -> "0"
+}
+
+/**
  * R.A.Q — given a flat LazyColumn index, return the section letter
  * that contains it (or null if no sections exist). Used by the
  * FastScrollbar bubble.

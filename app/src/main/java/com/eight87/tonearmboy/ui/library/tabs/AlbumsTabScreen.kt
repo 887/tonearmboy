@@ -45,10 +45,12 @@ import com.eight87.tonearmboy.data.model.Album
 import com.eight87.tonearmboy.ui.library.CoverActionsMenuItems
 import com.eight87.tonearmboy.ui.library.CoverArt
 import com.eight87.tonearmboy.ui.library.TileItem
+import com.eight87.tonearmboy.ui.library.countBucket
 import com.eight87.tonearmboy.ui.library.initialKey
 import com.eight87.tonearmboy.ui.library.rememberAlbumCoverActions
 import com.eight87.tonearmboy.ui.library.sortAlbums
 import com.eight87.tonearmboy.ui.library.sortNameKey
+import com.eight87.tonearmboy.ui.library.yearSectionKey
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 import com.eight87.tonearmboy.ui.settings.SortKey
 import com.eight87.tonearmboy.ui.settings.TabSort
@@ -150,8 +152,17 @@ internal class AlbumsTabSpec(
   override fun id(item: Album): Long = item.id
 
   override fun sectionKey(item: Album, sort: TabSort, intelligentSorting: Boolean): String? =
-    if (sort.key == SortKey.Name) initialKey(sortNameKey(item.name, intelligentSorting))
-    else null
+    when (sort.key) {
+      SortKey.Name, SortKey.Album -> initialKey(sortNameKey(item.name, intelligentSorting))
+      SortKey.Artist -> initialKey(sortNameKey(item.artist.orEmpty(), intelligentSorting))
+      SortKey.Date -> yearSectionKey(item.year)
+      // Albums sort by `Duration` actually sorts by track count (see
+      // `sortAlbums`); the bucket reflects that.
+      SortKey.Duration -> countBucket(item.trackCount)
+      // Albums don't carry a date_added column directly — fall through
+      // to the album-name letter so headers are still consistent.
+      SortKey.DateAdded -> initialKey(sortNameKey(item.name, intelligentSorting))
+    }
 
   override fun toTile(item: Album, resources: Resources): TileItem = TileItem(
     id = item.id,
