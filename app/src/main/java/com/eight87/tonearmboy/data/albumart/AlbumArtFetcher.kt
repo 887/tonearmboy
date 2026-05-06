@@ -4,6 +4,7 @@ import android.content.Context
 import com.eight87.tonearmboy.data.AlbumCoverChoice
 import com.eight87.tonearmboy.data.AlbumSource
 import com.eight87.tonearmboy.data.albumKey
+import com.eight87.tonearmboy.ui.settings.CoverArtService
 import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -32,6 +33,7 @@ import java.util.concurrent.TimeUnit
 class AlbumArtFetcher(
   private val albumSource: AlbumSource,
   private val musicBrainz: MusicBrainzClient = MusicBrainzClient(),
+  private val iTunes: ITunesClient = ITunesClient(),
 ) {
   private val downloader: OkHttpClient = OkHttpClient.Builder()
     .connectTimeout(10, TimeUnit.SECONDS)
@@ -40,24 +42,34 @@ class AlbumArtFetcher(
     .build()
 
   /**
-   * Look up [albumName] / [albumArtist] on MusicBrainz, fetch the
-   * Cover Art Archive front image, save it to the app's private
+   * Resolve [albumName] / [albumArtist] to a cover image via the
+   * caller-selected [service], download it to the app's private
    * cache, and pin it as the album's cover.
    *
+   * **Privacy contract:** when [service] is [CoverArtService.Disabled]
+   * this function makes ZERO web requests and returns
+   * [FetchResult.ServiceDisabled]. Both the bulk auto-fetch worker
+   * and the per-album manual "Search online" overflow funnel through
+   * here, so the Disabled setting is the single switch that gates
+   * every cover-art network round-trip.
+   *
    * Returns:
-   *   - [Result.Saved] when a new cover was pinned.
-   *   - [Result.AlreadyPinned] / [Result.IntentionallyEmpty] when the
-   *     user has spoken and we left the album alone.
-   *   - [Result.NotFound] when MB has no matching release or CAA
-   *     has no front image.
-   *   - [Result.Failed] on network / IO errors.
+   *   - [FetchResult.Saved] when a new cover was pinned.
+   *   - [FetchResult.AlreadyPinned] / [FetchResult.IntentionallyEmpty]
+   *     when the user has spoken and we left the album alone.
+   *   - [FetchResult.NotFound] when the chosen service has no match.
+   *   - [FetchResult.ServiceDisabled] when [service] is
+   *     [CoverArtService.Disabled] — no requests fired.
+   *   - [FetchResult.Failed] on network / IO errors.
    */
   suspend fun fetch(
     context: Context,
     albumName: String,
     albumArtist: String?,
+    service: CoverArtService,
     overwriteUserChoice: Boolean = false,
   ): FetchResult {
+    if (service == CoverArtService.Disabled) return FetchResult.ServiceDisabled
     val key = albumKey(albumName, albumArtist)
     if (!overwriteUserChoice) {
       when (albumSource.albumCoverChoice(key).first()) {
@@ -66,11 +78,20 @@ class AlbumArtFetcher(
         AlbumCoverChoice.NoChoice -> Unit
       }
     }
-    val artist = albumArtist?.takeIf { it.isNotBlank() }
-      ?: return FetchResult.NotFound
-    val mbid = musicBrainz.findReleaseId(artist, albumName)
-      ?: return FetchResult.NotFound
-    val coverUrl = musicBrainz.coverArtUrl(mbid) ?: return FetchResult.NotFound
+    val coverUrl = when (service) {
+      CoverArtService.Disabled -> return FetchResult.ServiceDisabled  // unreachable, satisfies exhaustive when
+      CoverArtService.MusicBrainz -> {
+        // MusicBrainz' release search wants both artist + album to
+        // produce a useful score; without album-artist we'd be
+        // searching against every release in the catalogue.
+        val artist = albumArtist?.takeIf { it.isNotBlank() }
+          ?: return FetchResult.NotFound
+        val mbid = musicBrainz.findReleaseId(artist, albumName)
+          ?: return FetchResult.NotFound
+        musicBrainz.coverArtUrl(mbid)
+      }
+      CoverArtService.ITunes -> iTunes.findCoverUrl(albumArtist, albumName)
+    } ?: return FetchResult.NotFound
 
     val cacheDir = File(context.cacheDir, "album_art").also { it.mkdirs() }
     val target = File(cacheDir, "${key.hashCode().toUInt()}.jpg")
@@ -94,6 +115,7 @@ class AlbumArtFetcher(
     data object AlreadyPinned : FetchResult
     data object IntentionallyEmpty : FetchResult
     data object NotFound : FetchResult
+    data object ServiceDisabled : FetchResult
     data class Failed(val reason: String) : FetchResult
   }
 }

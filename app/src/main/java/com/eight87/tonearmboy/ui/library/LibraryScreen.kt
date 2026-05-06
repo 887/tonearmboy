@@ -106,6 +106,7 @@ import com.eight87.tonearmboy.ui.settings.SortKey
 import com.eight87.tonearmboy.ui.settings.TabSort
 import com.eight87.tonearmboy.ui.settings.ViewMode
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsDimens
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 // D.16.1 — shared chrome contract for library lists / grids / details.
@@ -447,11 +448,16 @@ fun LibraryScreen(
               val name = t.album
               if (name != null) {
                 searchScope.launch {
+                  val service = com.eight87.tonearmboy.AppGraph
+                    .get(ctx.applicationContext)
+                    .settingsRepository.coverArtService.flow
+                    .first()
                   com.eight87.tonearmboy.data.albumart.AlbumArtFetcher(albums)
                     .fetch(
                       context = ctx,
                       albumName = name,
                       albumArtist = t.albumArtist ?: t.artist,
+                      service = service,
                       overwriteUserChoice = true,
                     )
                 }

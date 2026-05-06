@@ -55,6 +55,7 @@ import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 import com.eight87.tonearmboy.ui.settings.SortKey
 import com.eight87.tonearmboy.ui.settings.TabSort
 import com.eight87.tonearmboy.ui.settings.ViewMode
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -200,10 +201,15 @@ internal class AlbumsTabSpec(
       albumKey = key,
       onSearchOnline = {
         scope.launch {
+          val service = com.eight87.tonearmboy.AppGraph
+            .get(ctx.applicationContext)
+            .settingsRepository.coverArtService.flow
+            .first()
           com.eight87.tonearmboy.data.albumart.AlbumArtFetcher(src).fetch(
             context = ctx,
             albumName = item.name,
             albumArtist = item.artist,
+            service = service,
             overwriteUserChoice = true,
           )
         }
@@ -245,10 +251,15 @@ internal fun AlbumListRow(
       albumKey = coverChoiceKey,
       onSearchOnline = {
         scope.launch {
+          val service = com.eight87.tonearmboy.AppGraph
+            .get(context.applicationContext)
+            .settingsRepository.coverArtService.flow
+            .first()
           com.eight87.tonearmboy.data.albumart.AlbumArtFetcher(albumSource).fetch(
             context = context,
             albumName = album.name,
             albumArtist = album.artist,
+            service = service,
             overwriteUserChoice = true,
           )
         }

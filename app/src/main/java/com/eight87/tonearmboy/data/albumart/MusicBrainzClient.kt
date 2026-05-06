@@ -70,8 +70,14 @@ class MusicBrainzClient(
           if (!resp.isSuccessful) return@use null
           val body = resp.body?.string() ?: return@use null
           val parsed = json.decodeFromString<MbReleaseSearch>(body)
+          // Loosened from ≥ 95 to ≥ 70. The original threshold was so
+          // strict that fuzzy text matches almost never qualified
+          // (user reported "0 hits across 2000 songs"). 70 still
+          // filters obvious garbage but accepts the typical tag-vs-
+          // canonical delta — punctuation, article drift, "(Deluxe
+          // Edition)" suffixes.
           parsed.releases
-            .firstOrNull { (it.score ?: 0) >= 95 }
+            .firstOrNull { (it.score ?: 0) >= 70 }
             ?.id
         }
       }.getOrNull()

@@ -63,10 +63,12 @@ interface LibrarySettings {
   val forceSquareCovers: Setting<Boolean>
   val albumCoversMode: Setting<AlbumCoversMode>
   val multiValueSeparators: Setting<Set<MultiValueSeparator>>
-  /** album-art Phase D — toggle the MusicBrainz auto-fetch worker. */
+  /** album-art Phase D — toggle the auto-fetch worker (cover-art service must also be != Disabled). */
   val autoDiscoverAlbumArt: Setting<Boolean>
-  /** album-art Phase B — toggle the SAF folder cover-art scanner. */
+  /** album-art Phase B — toggle the SAF folder cover-art scanner during library scan. Default OFF as of 2026-05; lazy per-display lookup is the better pattern. */
   val scanFoldersForCoverArt: Setting<Boolean>
+  /** Online cover-art lookup service — `Disabled` (default), `MusicBrainz`, or `iTunes`. Opt-in. */
+  val coverArtService: Setting<CoverArtService>
 }
 
 /**

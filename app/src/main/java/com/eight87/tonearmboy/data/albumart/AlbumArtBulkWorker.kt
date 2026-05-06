@@ -36,6 +36,14 @@ class AlbumArtBulkWorker(
 
   override suspend fun doWork(): Result {
     val graph = AppGraph.get(applicationContext)
+    // Honour the user's cover-art-service choice. When `Disabled`
+    // the bulk worker exits immediately with no web requests — the
+    // setting is the single switch that gates every cover-art
+    // round-trip.
+    val service = graph.settingsRepository.coverArtService.flow.first()
+    if (service == com.eight87.tonearmboy.ui.settings.CoverArtService.Disabled) {
+      return Result.success()
+    }
     val fetcher = AlbumArtFetcher(graph.albums)
     val albums = graph.albums.observeAlbums().first()
 
@@ -43,11 +51,7 @@ class AlbumArtBulkWorker(
     var skipped = 0
     var failed = 0
     for (album in albums) {
-      // Stop early if the user cancelled the worker.
       if (isStopped) break
-      // Skip albums that already have MediaStore embedded art — the
-      // user already sees a cover there. Auto-fetch is for the
-      // "no cover at all" case.
       if (album.mediaStoreAlbumId != null) {
         skipped++
         continue
@@ -58,10 +62,11 @@ class AlbumArtBulkWorker(
         skipped++
         continue
       }
-      val result = fetcher.fetch(applicationContext, album.name, album.artist)
+      val result = fetcher.fetch(applicationContext, album.name, album.artist, service)
       when (result) {
         is AlbumArtFetcher.FetchResult.Saved -> saved++
         AlbumArtFetcher.FetchResult.NotFound,
+        AlbumArtFetcher.FetchResult.ServiceDisabled,
         is AlbumArtFetcher.FetchResult.Failed -> failed++
         AlbumArtFetcher.FetchResult.AlreadyPinned,
         AlbumArtFetcher.FetchResult.IntentionallyEmpty -> skipped++

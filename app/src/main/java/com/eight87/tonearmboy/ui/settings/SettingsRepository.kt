@@ -208,6 +208,35 @@ enum class AlbumCoversMode {
 }
 
 /**
+ * Online cover-art lookup service. Picked from Settings → Content
+ * → Cover art service. Default is `Disabled` — the app sends zero
+ * web requests for cover art unless the user explicitly opts in.
+ *
+ * - [Disabled] — no online lookups. Manual "Search online" overflow
+ *   actions return immediately with a "service disabled" snackbar.
+ * - [MusicBrainz] — MusicBrainz release search → Cover Art Archive
+ *   front image. Free, no auth, rate-limited to 1 req/sec by their
+ *   TOS. Hit rate skews indie / less-popular catalogue.
+ * - [ITunes] — Apple's iTunes Search API
+ *   (`https://itunes.apple.com/search`). Free, no auth, no rate
+ *   limit beyond standard fair-use. Hit rate skews mainstream
+ *   catalogue; usually higher coverage on popular albums.
+ */
+enum class CoverArtService {
+  Disabled,
+  MusicBrainz,
+  ITunes,
+  ;
+
+  companion object {
+    val Default: CoverArtService = Disabled
+
+    fun fromStored(raw: String?): CoverArtService =
+      entries.firstOrNull { it.name == raw } ?: Default
+  }
+}
+
+/**
  * D.9c.1 — separator characters / strings used to split multi-valued
  * artist / album_artist / genre tags during scan. The user picks any
  * subset; the splitter applies the selected ones with longest-match
@@ -459,8 +488,22 @@ class SettingsRepository(private val context: Context) :
   )
   // album-art Phase B — folder cover-art scanner. Default ON since
   // it only walks SAF trees the user already granted access to.
+  // Folder cover-art bulk scan during library scan: default OFF.
+  // The bulk pass walks every album directory in the user's SAF tree
+  // looking for cover.jpg / folder.jpg / albumart.jpg / front.jpg
+  // — fine for small libraries, painful at 2000+ songs. Lazy
+  // per-display lookup is the better pattern; the bulk path stays
+  // for users who explicitly want a one-shot index.
   override val scanFoldersForCoverArt: Setting<Boolean> = booleanSetting(
-    store, KEY_SCAN_FOLDERS_FOR_COVER_ART, true,
+    store, KEY_SCAN_FOLDERS_FOR_COVER_ART, false,
+  )
+
+  // Default = Disabled — the app sends zero web requests for cover
+  // art unless the user explicitly opts in via this picker. Privacy
+  // story: when Disabled, both the bulk auto-fetch worker and the
+  // per-album "Search online" overflow are inert.
+  override val coverArtService: Setting<CoverArtService> = EnumSetting(
+    store, KEY_COVER_ART_SERVICE, CoverArtService.Companion::fromStored,
   )
   override val customBarAction: Setting<CustomBarAction> = EnumSetting(
     store, KEY_CUSTOM_BAR_ACTION, CustomBarAction.Companion::fromStored,
@@ -689,6 +732,7 @@ class SettingsRepository(private val context: Context) :
     internal val KEY_MEDIA_STORE_VERSION = stringPreferencesKey("scan_cache_mediastore_version")
     internal val KEY_MEDIA_STORE_GENERATION = androidx.datastore.preferences.core.longPreferencesKey("scan_cache_mediastore_generation")
     internal val KEY_SCAN_CONFIG_HASH = stringPreferencesKey("scan_cache_config_hash")
+    internal val KEY_COVER_ART_SERVICE = stringPreferencesKey("cover_art_service")
 
     /** D.9b.2 — pre-amp slider bounds, fixed at [-15, +15] dB. */
     const val REPLAYGAIN_PREAMP_MIN_DB: Float = -15f

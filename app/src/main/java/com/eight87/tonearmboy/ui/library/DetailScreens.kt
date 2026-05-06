@@ -59,6 +59,7 @@ import com.eight87.tonearmboy.data.AlbumCoverChoice
 import com.eight87.tonearmboy.data.AlbumSource
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.albumKey
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.eight87.tonearmboy.data.model.Album
 import com.eight87.tonearmboy.data.model.Track
@@ -178,11 +179,16 @@ fun AlbumDetailScreen(
               onClick = {
                 coverMenuOpen = false
                 coverScope.launch {
+                  val service = com.eight87.tonearmboy.AppGraph
+                    .get(context.applicationContext)
+                    .settingsRepository.coverArtService.flow
+                    .first()
                   val fetcher = com.eight87.tonearmboy.data.albumart.AlbumArtFetcher(albumSource)
                   fetcher.fetch(
                     context = context,
                     albumName = albumName,
                     albumArtist = albumArtist,
+                    service = service,
                     overwriteUserChoice = true,
                   )
                 }
