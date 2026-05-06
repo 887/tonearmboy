@@ -4,7 +4,7 @@ Modern Android audio player. Built on Jetpack Compose + Media3 + Room. Album-art
 
 ## Status
 
-Phases 0 → E shipped. See [`docs/plans/main.md`](docs/plans/main.md) for the phased build plan.
+✅ **Plan complete.** See [`docs/plans/main.md`](docs/plans/main.md) for the phased build log. New work tracked as standalone plans under [`docs/plans/`](docs/plans/) (cold-start perf, M3 Expressive sweep, OSS licenses, translations, …).
 
 ## Goals
 
