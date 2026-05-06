@@ -64,7 +64,6 @@ fun SearchScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        expandedHeight = 32.dp,
         title = { Text(stringResource(R.string.search_title)) },
         navigationIcon = {
           IconButton(onClick = onBack) {

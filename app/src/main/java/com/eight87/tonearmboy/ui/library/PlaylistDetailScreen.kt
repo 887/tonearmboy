@@ -63,7 +63,6 @@ fun PlaylistDetailScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        expandedHeight = 32.dp,
         title = { Text(playlist?.name ?: playlistFallback) },
         navigationIcon = {
           IconButton(onClick = onBack) {

@@ -83,7 +83,6 @@ fun TrackPickerScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        expandedHeight = 32.dp,
         title = {
           val newCount = (selected - initialIds).size
           val removedCount = (initialIds - selected).size

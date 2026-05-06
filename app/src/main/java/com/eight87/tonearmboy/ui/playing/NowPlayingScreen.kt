@@ -145,7 +145,6 @@ fun NowPlayingScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        expandedHeight = 32.dp,
         title = { Text(stringResource(R.string.playing_top_bar_title)) },
         navigationIcon = {
           IconButton(onClick = onBack) {

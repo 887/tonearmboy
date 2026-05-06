@@ -281,7 +281,6 @@ fun LibraryScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        expandedHeight = 32.dp,
         title = {
           Text(
             text = sectionTitle.value,
