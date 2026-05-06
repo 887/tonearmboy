@@ -2,30 +2,24 @@
 <resources>
 
     <!--
-        Tonearmboy launch theme. The Android 12+ SplashScreen API
-        hard-clips `windowSplashScreenAnimatedIcon` to a circle and
-        there is no system attribute to disable that. Earlier
-        attempts (full-canvas foreground / layer-list windowBackground
-        / 70 % then 60 % shrunk icon) all kept the circular shape on
-        screen.
+        D.17.2 — Tonearmboy runs the SplashScreen API as the launch theme.
+        The system circle-clips the splash icon and we accept that — the
+        round-cropped fox icon reads fine and earlier "make it square"
+        attempts were not worth the moving parts. Activity body draws
+        under Compose; the splash theme exists so the cold-boot frame the
+        system shows before onCreate hands off cleanly to Compose without
+        a white flash.
 
-        Working approach (researched May 2026): point
-        `windowSplashScreenAnimatedIcon` at an empty
-        AnimatedVectorDrawable so the system's circle slot paints
-        nothing — the cold-start frame is just the solid
-        `windowSplashScreenBackground` colour, no visible circle on
-        stock Pixel. `MainActivity` then renders a `SplashOverlay`
-        composable showing the full square launcher artwork for
-        ~700 ms before fading into the main UI. Two-stage splash:
-        the system frame is empty, the Compose frame is square.
-
-        Caveat: some OEM skins (notably Xiaomi) draw a black circle
-        mask under the empty icon — best-effort.
+        - windowSplashScreenBackground: dark grey matching the launcher.
+        - windowSplashScreenAnimatedIcon: launcher foreground (fox + vinyl).
+        - windowSplashScreenIconBackgroundColor: matching the splash bg
+          so Android sizes the icon at 160 dp instead of 80 dp.
+        - postSplashScreenTheme: the regular Tonearmboy theme.
     -->
     <style name="Theme.Tonearmboy" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/launcher_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/empty_splash_anim</item>
-        <item name="windowSplashScreenAnimationDuration">50</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/launcher_background</item>
         <item name="postSplashScreenTheme">@style/Theme.Tonearmboy.Main</item>
     </style>
 

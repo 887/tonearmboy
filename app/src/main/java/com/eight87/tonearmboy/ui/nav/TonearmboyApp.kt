@@ -155,10 +155,12 @@ fun TonearmboyApp(
       val density = LocalDensity.current
       val screenHeightPx = with(density) { screenHeightDp.toPx() }.coerceAtLeast(1f)
 
-      // Mini-player peek height. The three-row layout (info /
-      // transport / slider + duration labels) measures ~ 180 dp on the
-      // running AVD; less than that clips the timestamp row.
-      val peekDp = 180.dp
+      // Mini-player peek height. Two-row layout — info row (48-dp art
+      // + title + close) plus the transport row, with a 2-dp progress
+      // line pinned to the bottom edge. Auxio-style; the draggable
+      // slider + timestamps were removed so the slot dropped from
+      // 180 dp to ~118 dp without clipping anything.
+      val peekDp = 118.dp
       val peekPx = with(density) { peekDp.toPx() }
       val effectivePeekPx = if (showMiniPlayer) peekPx else 0f
 

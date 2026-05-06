@@ -7,7 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,7 +16,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
-import com.eight87.tonearmboy.theme.SplashOverlay
 import androidx.media3.common.util.UnstableApi
 import com.eight87.tonearmboy.playback.PlaybackService
 import com.eight87.tonearmboy.theme.LocalAlbumPalette
@@ -141,42 +139,31 @@ class MainActivity : ComponentActivity() {
           customChromeTint = customChromeTint,
         ) {
           Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            // m3-expressive splash — two-stage. Frame one (system
-            // splash) is the empty AnimatedVectorDrawable wired in
-            // themes.xml, so the cold-start frame is a flat
-            // launcher_background colour with no system circle. Frame
-            // two is `SplashOverlay`, which paints the FULL square
-            // launcher artwork on top of the activity content for
-            // ~700 ms, then fades. Result: user sees a square design
-            // during cold start, never a circle.
-            Box(modifier = Modifier.fillMaxSize()) {
-              // D.19 — wrap the app in the runtime-permission gate so a
-              // fresh install on a real phone walks the system grant flow
-              // for READ_MEDIA_AUDIO. On grant we trigger a full library
-              // rescan immediately so the user doesn't need to find a
-              // "Rescan music" button in Settings to populate the library.
-              RequireAudioPermission(
-                onGranted = {
-                  graph.applicationScope.launch {
-                    graph.scanner.rescanNow()
-                  }
-                },
-              ) {
-                // D.23.3 — POST_NOTIFICATIONS runtime gate. API 33+ only;
-                // pass-through on earlier versions. Denial does not block
-                // playback; only the in-tray notification ribbon is
-                // affected (Quick Settings + lock screen are
-                // MediaSession-driven and don't need POST_NOTIFICATIONS).
-                RequirePostNotifications {
-                  TonearmboyApp(
-                    graph = graph,
-                    deeplinkNonce = deeplinkNonce.value,
-                    pendingDeeplink = pendingDeeplink.value,
-                    onDeeplinkConsumed = { pendingDeeplink.value = null },
-                  )
+            // D.19 — wrap the app in the runtime-permission gate so a
+            // fresh install on a real phone walks the system grant flow
+            // for READ_MEDIA_AUDIO. On grant we trigger a full library
+            // rescan immediately so the user doesn't need to find a
+            // "Rescan music" button in Settings to populate the library.
+            RequireAudioPermission(
+              onGranted = {
+                graph.applicationScope.launch {
+                  graph.scanner.rescanNow()
                 }
+              },
+            ) {
+              // D.23.3 — POST_NOTIFICATIONS runtime gate. API 33+ only;
+              // pass-through on earlier versions. Denial does not block
+              // playback; only the in-tray notification ribbon is
+              // affected (Quick Settings + lock screen are
+              // MediaSession-driven and don't need POST_NOTIFICATIONS).
+              RequirePostNotifications {
+                TonearmboyApp(
+                  graph = graph,
+                  deeplinkNonce = deeplinkNonce.value,
+                  pendingDeeplink = pendingDeeplink.value,
+                  onDeeplinkConsumed = { pendingDeeplink.value = null },
+                )
               }
-              SplashOverlay()
             }
           }
         }
