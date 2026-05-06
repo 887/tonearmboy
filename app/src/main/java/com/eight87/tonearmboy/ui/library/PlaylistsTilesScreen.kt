@@ -90,6 +90,7 @@ fun PlaylistsTilesScreen(
   onDeletePlaylist: (Long) -> Unit = {},
   onSetPlaylistCover: (Long, String?) -> Unit = { _, _ -> },
   twoColumn: Boolean = false,
+  showFab: Boolean = true,
 ) {
   val playlists by repository.observePlaylists().collectAsState(initial = emptyList())
   val context = LocalContext.current
@@ -141,12 +142,14 @@ fun PlaylistsTilesScreen(
       }
       FastScrollbar(state = gridState, modifier = Modifier.align(Alignment.CenterEnd))
     }
-    ExtendedFloatingActionButton(
-      onClick = { dialog = PlaylistDialogState.Create },
-      icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-      text = { Text(stringResource(R.string.playlist_tiles_new_fab)) },
-      modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).semantics { testTag = "new_playlist_fab" },
-    )
+    if (showFab) {
+      ExtendedFloatingActionButton(
+        onClick = { dialog = PlaylistDialogState.Create },
+        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+        text = { Text(stringResource(R.string.playlist_tiles_new_fab)) },
+        modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).semantics { testTag = "new_playlist_fab" },
+      )
+    }
   }
 
   PlaylistDialogHost(
