@@ -52,6 +52,7 @@ sealed class SettingsRowBinding {
         label = stringResource(entry.labelRes),
         subtitle = subtitleOverride ?: entry.subtitleRes?.let { stringResource(it) },
         onClick = onClick,
+        accent = com.eight87.tonearmboy.theme.accentFor(entry.id),
       )
     }
   }
@@ -71,6 +72,7 @@ sealed class SettingsRowBinding {
         subtitle = entry.subtitleRes?.let { stringResource(it) },
         checked = checked,
         onCheckedChange = onCheckedChange,
+        accent = com.eight87.tonearmboy.theme.accentFor(entry.id),
       )
     }
   }
@@ -96,6 +98,7 @@ sealed class SettingsRowBinding {
         subtitle = currentLabel,
         onClick = onClick,
         trailing = trailing,
+        accent = com.eight87.tonearmboy.theme.accentFor(entry.id),
       )
     }
   }
@@ -116,6 +119,7 @@ sealed class SettingsRowBinding {
         label = stringResource(entry.labelRes),
         subtitle = entry.subtitleRes?.let { stringResource(it) },
         onClick = null,
+        accent = com.eight87.tonearmboy.theme.accentFor(entry.id),
       )
     }
   }

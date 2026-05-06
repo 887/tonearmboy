@@ -210,7 +210,7 @@
     {
         "groupId": "androidx.compose.animation",
         "artifactId": "animation",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Animation",
         "spdxLicenses": [
             {
@@ -226,7 +226,7 @@
     {
         "groupId": "androidx.compose.animation",
         "artifactId": "animation-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Animation",
         "spdxLicenses": [
             {
@@ -242,7 +242,7 @@
     {
         "groupId": "androidx.compose.animation",
         "artifactId": "animation-core",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Animation Core",
         "spdxLicenses": [
             {
@@ -258,7 +258,7 @@
     {
         "groupId": "androidx.compose.animation",
         "artifactId": "animation-core-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Animation Core",
         "spdxLicenses": [
             {
@@ -274,7 +274,7 @@
     {
         "groupId": "androidx.compose.foundation",
         "artifactId": "foundation",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Foundation",
         "spdxLicenses": [
             {
@@ -290,7 +290,7 @@
     {
         "groupId": "androidx.compose.foundation",
         "artifactId": "foundation-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Foundation",
         "spdxLicenses": [
             {
@@ -306,7 +306,7 @@
     {
         "groupId": "androidx.compose.foundation",
         "artifactId": "foundation-layout",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Layouts",
         "spdxLicenses": [
             {
@@ -322,40 +322,8 @@
     {
         "groupId": "androidx.compose.foundation",
         "artifactId": "foundation-layout-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Layouts",
-        "spdxLicenses": [
-            {
-                "identifier": "Apache-2.0",
-                "name": "Apache License 2.0",
-                "url": "https://www.apache.org/licenses/LICENSE-2.0"
-            }
-        ],
-        "scm": {
-            "url": "https://cs.android.com/androidx/platform/frameworks/support"
-        }
-    },
-    {
-        "groupId": "androidx.compose.material",
-        "artifactId": "material",
-        "version": "1.10.6",
-        "name": "Compose Material Components",
-        "spdxLicenses": [
-            {
-                "identifier": "Apache-2.0",
-                "name": "Apache License 2.0",
-                "url": "https://www.apache.org/licenses/LICENSE-2.0"
-            }
-        ],
-        "scm": {
-            "url": "https://cs.android.com/androidx/platform/frameworks/support"
-        }
-    },
-    {
-        "groupId": "androidx.compose.material",
-        "artifactId": "material-android",
-        "version": "1.10.6",
-        "name": "Compose Material Components",
         "spdxLicenses": [
             {
                 "identifier": "Apache-2.0",
@@ -434,7 +402,7 @@
     {
         "groupId": "androidx.compose.material",
         "artifactId": "material-ripple",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Material Ripple",
         "spdxLicenses": [
             {
@@ -450,7 +418,7 @@
     {
         "groupId": "androidx.compose.material",
         "artifactId": "material-ripple-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Material Ripple",
         "spdxLicenses": [
             {
@@ -466,7 +434,7 @@
     {
         "groupId": "androidx.compose.material3",
         "artifactId": "material3",
-        "version": "1.4.0",
+        "version": "1.5.0-alpha18",
         "name": "Compose Material3 Components",
         "spdxLicenses": [
             {
@@ -482,7 +450,7 @@
     {
         "groupId": "androidx.compose.material3",
         "artifactId": "material3-android",
-        "version": "1.4.0",
+        "version": "1.5.0-alpha18",
         "name": "Compose Material3 Components",
         "spdxLicenses": [
             {
@@ -498,7 +466,7 @@
     {
         "groupId": "androidx.compose.runtime",
         "artifactId": "runtime",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Runtime",
         "spdxLicenses": [
             {
@@ -514,7 +482,7 @@
     {
         "groupId": "androidx.compose.runtime",
         "artifactId": "runtime-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Runtime",
         "spdxLicenses": [
             {
@@ -530,7 +498,7 @@
     {
         "groupId": "androidx.compose.runtime",
         "artifactId": "runtime-annotation",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Runtime Annotation",
         "spdxLicenses": [
             {
@@ -546,7 +514,7 @@
     {
         "groupId": "androidx.compose.runtime",
         "artifactId": "runtime-annotation-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Runtime Annotation",
         "spdxLicenses": [
             {
@@ -562,7 +530,7 @@
     {
         "groupId": "androidx.compose.runtime",
         "artifactId": "runtime-retain",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Runtime Retain",
         "spdxLicenses": [
             {
@@ -578,7 +546,7 @@
     {
         "groupId": "androidx.compose.runtime",
         "artifactId": "runtime-retain-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Runtime Retain",
         "spdxLicenses": [
             {
@@ -594,7 +562,7 @@
     {
         "groupId": "androidx.compose.runtime",
         "artifactId": "runtime-saveable",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Saveable",
         "spdxLicenses": [
             {
@@ -610,7 +578,7 @@
     {
         "groupId": "androidx.compose.runtime",
         "artifactId": "runtime-saveable-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Saveable",
         "spdxLicenses": [
             {
@@ -626,7 +594,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose UI",
         "spdxLicenses": [
             {
@@ -642,7 +610,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose UI",
         "spdxLicenses": [
             {
@@ -658,7 +626,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-geometry",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Geometry",
         "spdxLicenses": [
             {
@@ -674,7 +642,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-geometry-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Geometry",
         "spdxLicenses": [
             {
@@ -690,7 +658,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-graphics",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Graphics",
         "spdxLicenses": [
             {
@@ -706,7 +674,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-graphics-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Graphics",
         "spdxLicenses": [
             {
@@ -722,7 +690,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-test-manifest",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Testing manifest dependency",
         "spdxLicenses": [
             {
@@ -738,7 +706,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-text",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose UI Text",
         "spdxLicenses": [
             {
@@ -754,7 +722,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-text-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose UI Text",
         "spdxLicenses": [
             {
@@ -770,7 +738,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-tooling",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Tooling",
         "spdxLicenses": [
             {
@@ -786,7 +754,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-tooling-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Tooling",
         "spdxLicenses": [
             {
@@ -802,7 +770,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-tooling-data",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Tooling Data",
         "spdxLicenses": [
             {
@@ -818,7 +786,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-tooling-data-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Tooling Data",
         "spdxLicenses": [
             {
@@ -834,7 +802,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-tooling-preview",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose UI Preview Tooling",
         "spdxLicenses": [
             {
@@ -850,7 +818,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-tooling-preview-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose UI Preview Tooling",
         "spdxLicenses": [
             {
@@ -866,7 +834,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-unit",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Unit",
         "spdxLicenses": [
             {
@@ -882,7 +850,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-unit-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Unit",
         "spdxLicenses": [
             {
@@ -898,7 +866,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-util",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Util",
         "spdxLicenses": [
             {
@@ -914,7 +882,7 @@
     {
         "groupId": "androidx.compose.ui",
         "artifactId": "ui-util-android",
-        "version": "1.10.6",
+        "version": "1.11.0-beta02",
         "name": "Compose Util",
         "spdxLicenses": [
             {
@@ -1316,6 +1284,38 @@
         "artifactId": "graphics-path",
         "version": "1.0.1",
         "name": "Android Graphics Path",
+        "spdxLicenses": [
+            {
+                "identifier": "Apache-2.0",
+                "name": "Apache License 2.0",
+                "url": "https://www.apache.org/licenses/LICENSE-2.0"
+            }
+        ],
+        "scm": {
+            "url": "https://cs.android.com/androidx/platform/frameworks/support"
+        }
+    },
+    {
+        "groupId": "androidx.graphics",
+        "artifactId": "graphics-shapes",
+        "version": "1.0.1",
+        "name": "Graphics Shapes",
+        "spdxLicenses": [
+            {
+                "identifier": "Apache-2.0",
+                "name": "Apache License 2.0",
+                "url": "https://www.apache.org/licenses/LICENSE-2.0"
+            }
+        ],
+        "scm": {
+            "url": "https://cs.android.com/androidx/platform/frameworks/support"
+        }
+    },
+    {
+        "groupId": "androidx.graphics",
+        "artifactId": "graphics-shapes-android",
+        "version": "1.0.1",
+        "name": "Graphics Shapes",
         "spdxLicenses": [
             {
                 "identifier": "Apache-2.0",

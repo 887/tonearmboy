@@ -137,6 +137,8 @@ fun SettingsScreen(
             val binding = bindingsById[entry.id]
             val resolvedLabel = stringResource(entry.labelRes)
             val resolvedSubtitle = entry.subtitleRes?.let { stringResource(it) }
+            // m3-expressive Phase C — pick a stable accent per row.
+            val accent = com.eight87.tonearmboy.theme.accentFor(entry.id)
             when (binding) {
               is SettingsRowBinding.Action -> SettingsRow(
                 id = entry.id,
@@ -144,6 +146,7 @@ fun SettingsScreen(
                 label = resolvedLabel,
                 subtitle = binding.subtitleOverride ?: resolvedSubtitle,
                 onClick = binding.onClick,
+                accent = accent,
               )
               else -> SettingsRow(
                 id = entry.id,
@@ -151,6 +154,7 @@ fun SettingsScreen(
                 label = resolvedLabel,
                 subtitle = resolvedSubtitle,
                 onClick = null,
+                accent = accent,
               )
             }
             if (index < items.size - 1) SettingsRowDivider()

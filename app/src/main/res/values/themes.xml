@@ -2,25 +2,32 @@
 <resources>
 
     <!--
-        Tonearmboy launch theme. Originally (D.17.2) used the
-        SplashScreen API's `windowSplashScreenAnimatedIcon` path for
-        the cold-boot icon, but that path force-clips the icon to a
-        circle on Android 12+, hiding everything outside the inscribed
-        circle of the square launcher artwork (fox + vinyl + tonearm).
-        The user wanted the full square visible.
+        Tonearmboy launch theme. Android 12+'s SplashScreen API hard-
+        clips `windowSplashScreenAnimatedIcon` to a circle — there is
+        no system attribute to opt out. Earlier versions of this theme
+        tried two dead ends: the legacy `ic_launcher_foreground` (got
+        cropped — corners + tonearm hidden), and a layer-list
+        `android:windowBackground` (got covered by the system splash
+        which paints `windowSplashScreenBackground` over the full
+        window).
 
-        We keep the `Theme.SplashScreen` parent (mandatory for the
-        SplashScreen 1.x compat library to wire `installSplashScreen`
-        properly on older APIs), drop the `windowSplashScreenAnimatedIcon`
-        + `windowSplashScreenIconBackgroundColor` so the system stops
-        drawing the circle-clipped icon, and set `android:windowBackground`
-        to a layer-list that paints the full launcher foreground
-        centred. The splash background colour stays for continuity
-        with the launcher icon backdrop.
+        Working approach: ship a dedicated splash icon
+        (`@mipmap/ic_launcher_splash`) that pre-shrinks the design to
+        ~70.7 % (1/√2) inside a transparent canvas. The system circle
+        with diameter equal to the canvas inscribes the full shrunk
+        design, so the user sees the complete vinyl player + fox
+        composition during cold start instead of a centre-cropped
+        circle. `windowSplashScreenIconBackgroundColor` is set so the
+        system uses its larger 240-dp icon area (bigger visible
+        circle = bigger visible design).
+
+        Drop the splash-icon path and the system reverts to the
+        launcher tile, which gets cropped again. Don't drop it.
     -->
     <style name="Theme.Tonearmboy" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/launcher_background</item>
-        <item name="android:windowBackground">@drawable/splash_window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_splash</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/launcher_background</item>
         <item name="postSplashScreenTheme">@style/Theme.Tonearmboy.Main</item>
     </style>
 

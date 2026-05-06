@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
@@ -98,10 +100,15 @@ fun SettingsCard(
         ),
       )
     }
+    // m3-expressive B.3 — `surfaceContainerHigh` lifts the card a
+    // measurable step above the page (`surface`), matching the
+    // Android 16 Settings two-tone look. Default `cardElevation` (0
+    // dp tonal, 0 dp shadow) keeps the lift purely tonal — same as
+    // the system Settings does it.
     Card(
       shape = RoundedCornerShape(SettingsDimens.CardCornerRadius),
       colors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
       ),
       modifier = Modifier
         .fillMaxWidth()
@@ -131,6 +138,13 @@ fun SettingsRow(
   subtitle: String? = null,
   trailing: @Composable (() -> Unit)? = null,
   onClick: (() -> Unit)? = null,
+  // m3-expressive Phase C — when non-null, render the leading icon
+  // as a 40-dp coloured circle avatar holding a 24-dp filled glyph
+  // tinted with `accent.onContainer`, instead of the legacy thin
+  // outlined glyph in `onSurfaceVariant`. Defaults to null so call
+  // sites that haven't been swept (sub-pages still on the legacy
+  // shape) fall back gracefully.
+  accent: com.eight87.tonearmboy.theme.CategoryAccent? = null,
 ) {
   val highlightState = LocalHighlightedSettingId.current
   val highlighted = id != null && highlightState.value == id
@@ -165,12 +179,29 @@ fun SettingsRow(
       .semantics { testTag = "settings_row_${id ?: label}" },
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Icon(
-      imageVector = icon,
-      contentDescription = null,
-      tint = MaterialTheme.colorScheme.onSurfaceVariant,
-      modifier = Modifier.size(SettingsDimens.IconSize),
-    )
+    if (accent != null) {
+      Box(
+        modifier = Modifier
+          .size(40.dp)
+          .clip(CircleShape)
+          .background(accent.container),
+        contentAlignment = Alignment.Center,
+      ) {
+        Icon(
+          imageVector = icon,
+          contentDescription = null,
+          tint = accent.onContainer,
+          modifier = Modifier.size(SettingsDimens.IconSize),
+        )
+      }
+    } else {
+      Icon(
+        imageVector = icon,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(SettingsDimens.IconSize),
+      )
+    }
     Spacer(Modifier.size(SettingsDimens.IconLabelGap))
     Column(
       modifier = Modifier.weight(1f),
@@ -209,6 +240,7 @@ fun SettingsToggleRow(
   modifier: Modifier = Modifier,
   id: String? = null,
   subtitle: String? = null,
+  accent: com.eight87.tonearmboy.theme.CategoryAccent? = null,
 ) {
   SettingsRow(
     id = id,
@@ -218,6 +250,7 @@ fun SettingsToggleRow(
     onClick = { onCheckedChange(!checked) },
     trailing = { Switch(checked = checked, onCheckedChange = onCheckedChange) },
     modifier = modifier,
+    accent = accent,
   )
 }
 
