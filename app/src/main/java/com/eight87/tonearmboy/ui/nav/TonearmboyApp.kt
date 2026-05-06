@@ -376,12 +376,14 @@ fun TonearmboyApp(
         ) {
           // Inner stack: anchored to the TOP of the sheet, fixed at full
           // screen height so the layout doesn't reflow as the sheet grows.
-          // BOTH children are ALWAYS composed — gating with `if (alpha
-          // > 0f)` would drop the MiniPlayer composable mid-drag (its
-          // pointerInput is the gesture's owner), which canceled the
-          // drag without firing onDragEnd → sheet stuck mid-progress.
-          // Alpha-only gating keeps the gesture alive across the full
-          // 0..1 range; alpha=0 already skips draw work.
+          // The MiniPlayer is ALWAYS composed when [showMiniPlayer] —
+          // gating it with `if (alpha > 0f)` dropped the MiniPlayer
+          // composable mid-drag (its pointerInput owns the drag), which
+          // canceled the drag without firing onDragEnd → sheet stuck
+          // mid-progress. The full NowPlayingScreen behind it is NOT
+          // the gesture owner, so it's safe to gate on visibility —
+          // and that's a real cold-start win since NowPlayingScreen is
+          // a heavy composable (queue list, transport, cover load).
           Box(
             modifier = Modifier
               .align(Alignment.TopCenter)
@@ -389,7 +391,12 @@ fun TonearmboyApp(
               .height(screenHeightDp),
           ) {
             // NowPlaying full surface (back of stack). Visible at expanded.
-            Box(modifier = Modifier.fillMaxSize().alpha(nowPlayingAlpha)) {
+            // Lazy-mount: only compose when actually about to be visible
+            // (`progress > 0.45` ≈ where alpha leaves zero per the
+            // staggered-crossfade math). Defer the heavy composition
+            // off the first frame — sheet collapsed at progress=0 means
+            // first frame just paints MiniPlayer.
+            if (progress > 0.45f) Box(modifier = Modifier.fillMaxSize().alpha(nowPlayingAlpha)) {
               NowPlayingScreen(
                 nowPlayingState = playback,
                 transport = playback,

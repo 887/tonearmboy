@@ -184,9 +184,19 @@ class MainActivity : ComponentActivity() {
    * lives.
    */
   internal fun handleIntent(intent: Intent?) {
-    val deeplink = intent?.getStringExtra(PlaybackService.EXTRA_DEEPLINK) ?: return
+    if (intent == null) return
+    val deeplink = intent.getStringExtra(PlaybackService.EXTRA_DEEPLINK) ?: return
     pendingDeeplink.value = deeplink
     deeplinkNonce.value = deeplinkNonce.value + 1
+    // Clear EXTRA_DEEPLINK from the activity's stored intent immediately
+    // so a later recreation (process kill from memory pressure, config
+    // change, task-switcher resurrection) doesn't re-read this same
+    // notification deeplink and re-open the NowPlaying sheet on top of
+    // wherever the user navigated since. The deeplink semantically
+    // belongs to the *one* notification tap that set it; stripping it
+    // here makes the intent idempotent for re-reads.
+    intent.removeExtra(PlaybackService.EXTRA_DEEPLINK)
+    setIntent(intent)
   }
 
   companion object {
