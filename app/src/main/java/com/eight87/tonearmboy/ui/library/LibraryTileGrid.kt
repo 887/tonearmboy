@@ -147,8 +147,13 @@ fun LibraryTileGrid(
     } else {
       groups.forEach { group ->
         item(
+          // Include the run-start index in the key so non-contiguous
+          // runs of the same section letter (e.g. "M" appearing in
+          // two separate runs when sort and sectionKey disagree) get
+          // unique LazyGrid keys. Without this, the LazyGrid throws
+          // "Key header_M was already used".
           span = { GridItemSpan(maxLineSpan) },
-          key = "header_${group.letter}",
+          key = "header_${group.letter}_${group.start}",
         ) {
           TileSectionHeader(group.letter)
         }

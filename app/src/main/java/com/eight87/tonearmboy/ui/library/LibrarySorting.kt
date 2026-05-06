@@ -68,7 +68,13 @@ internal fun sortAlbums(albums: List<Album>, sort: TabSort, intelligentSorting: 
     SortKey.Artist -> compareBy { sortNameKey(it.artist ?: "", intelligentSorting) }
     SortKey.Album -> compareBy { sortNameKey(it.name, intelligentSorting) }
     SortKey.Date -> compareBy { it.year ?: Int.MIN_VALUE }
-    SortKey.DateAdded -> compareBy { it.id }
+    // Albums don't carry a date_added column on the domain model.
+    // Fall back to the name comparator so the sort agrees with the
+    // sectionKey fallback (which uses the name letter); without this
+    // a `compareBy { it.id }` sort produced non-contiguous letter
+    // runs against alphabetic section keys, crashing the LazyGrid
+    // with "Key header_M was already used".
+    SortKey.DateAdded -> compareBy { sortNameKey(it.name, intelligentSorting) }
     SortKey.Duration -> compareBy { -it.trackCount }
   }
   return applyDirection(albums, sort.direction, comparator)
@@ -79,7 +85,12 @@ internal fun sortArtists(artists: List<Artist>, sort: TabSort, intelligentSortin
     SortKey.Artist, SortKey.Name -> compareBy { sortNameKey(it.name, intelligentSorting) }
     SortKey.Album -> compareBy { -it.albumCount }
     SortKey.Duration -> compareBy { -it.trackCount }
-    SortKey.Date, SortKey.DateAdded -> compareBy { it.id }
+    // Artists don't carry a release-year or date-added column. Fall
+    // back to the name comparator so the sort agrees with the
+    // sectionKey fallback (which uses the name letter). The earlier
+    // `compareBy { it.id }` sort produced non-contiguous letter runs
+    // against alphabetic section keys → LazyGrid crash.
+    SortKey.Date, SortKey.DateAdded -> compareBy { sortNameKey(it.name, intelligentSorting) }
   }
   return applyDirection(artists, sort.direction, comparator)
 }
