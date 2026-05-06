@@ -46,62 +46,36 @@ class MainActivity : ComponentActivity() {
   private val pendingDeeplink = mutableStateOf<String?>(null)
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    // D.17.2 — install the SplashScreen-API hand-off BEFORE
-    // super.onCreate. The 1.x compat library wires the Theme.SplashScreen
-    // parent → postSplashScreenTheme transition; calling it any later
-    // produces a brief white flash on Android 12+ as the activity
-    // window swaps backgrounds.
-    val splash = installSplashScreen()
+    installSplashScreen()
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
 
     val graph = AppGraph.get(applicationContext)
 
-    // D.22.2 — hold the system splash on screen until either the
-    // Media3 controller has bound to the running PlaybackService or a
-    // 600 ms safety-net timeout fires. This is the cold-start
-    // coordination that prevents the "blank black activity" frame
-    // race the user reported when the activity is killed but the
-    // foreground service is still alive — without this hold, the
-    // splash dismisses, NowPlaying mounts with `connectionPhase ==
-    // Connecting`, and the user briefly sees a Compose tree that has
-    // not yet learned about the playing track. The 600 ms cap is the
-    // failsafe so a stuck `buildAsync` future cannot pin the splash.
-    val splashHold = java.util.concurrent.atomic.AtomicBoolean(true)
-    splash.setKeepOnScreenCondition { splashHold.get() }
-    graph.applicationScope.launch {
-      withTimeoutOrNull(SPLASH_HOLD_TIMEOUT_MS) {
-        // The connect() call is also kicked off by TonearmboyApp's
-        // LaunchedEffect, but we trigger it here too so the splash
-        // hold doesn't depend on the Compose tree mounting first.
-        // Both invocations are idempotent.
-        graph.applicationScope.launch { graph.playbackUiController.connect() }
-        graph.playbackUiController.awaitConnected()
-      }
-      splashHold.set(false)
-    }
-
-    // D.9d.2 — re-arm the watcher service if Automatic reloading was
-    // on across a process restart. The service is the only owner of
-    // the sticky notification + observers; toggling the setting in
-    // the UI also start/stops it directly, this branch covers cold
-    // start / boot.
-    graph.applicationScope.launch {
-      val on = graph.settingsRepository.automaticReloading.flow.first()
-      if (on) LibraryWatcherService.start(applicationContext)
-    }
-
-    // D.17.3.6 — write the default music-source mode on a fresh
-    // install so the first launch scans MediaStore (and therefore
-    // populates the library) without the user opening a settings page.
-    graph.applicationScope.launch {
-      graph.settingsRepository.firstLaunchInitialise()
-    }
-
     // D.20.1 — read the launch intent for the notification deeplink.
     handleIntent(intent)
 
     setContent {
+      // Cold-start side jobs that don't gate the first frame — fire
+      // them post-composition on the main scope so they don't run on
+      // the critical path the way the original `applicationScope.launch
+      // { ... }` chain in onCreate did. shutterboy ships nothing of
+      // the sort in MainActivity and cold-starts ~400 ms faster, so
+      // the goal here is "look like shutterboy."
+      LaunchedEffect(Unit) {
+        // D.9d.2 — re-arm the watcher service if Automatic reloading
+        // was on across a process restart. Idempotent against the
+        // service's own start logic.
+        val on = graph.settingsRepository.automaticReloading.flow.first()
+        if (on) LibraryWatcherService.start(applicationContext)
+      }
+      LaunchedEffect(Unit) {
+        // D.17.3.6 — write the default music-source mode on fresh
+        // install so the first launch scans MediaStore without
+        // opening a settings page. Also idempotent.
+        graph.settingsRepository.firstLaunchInitialise()
+      }
+
       // R.B.5 — per-key Flow reads. Each subscription is its own
       // narrow stream so toggling, e.g., albumArtTintEnabled doesn't
       // recompose the theme-mode `when` block.
