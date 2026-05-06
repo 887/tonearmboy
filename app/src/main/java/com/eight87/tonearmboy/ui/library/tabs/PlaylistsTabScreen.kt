@@ -1,6 +1,8 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -57,36 +59,57 @@ fun PlaylistsTabScreen(
 ) {
   val scope = rememberCoroutineScope()
   var showCreate by remember { mutableStateOf(false) }
+  // List-mode selection. Tile-mode selection is owned by
+  // PlaylistsTilesScreen via its own bespoke grid; the user can still
+  // long-press tiles there but the unified selection state lives here
+  // for the list path. Followup will lift this into the tile path too.
+  val selection = rememberSelectionState<Long>()
+  BackHandler(enabled = selection.inSelectionMode) { selection.clear() }
 
-  Box(modifier = Modifier.fillMaxSize()) {
-    if (viewMode == ViewMode.Tile || viewMode == ViewMode.TwoColumn) {
-      PlaylistsTilesScreen(
-        repository = repository,
-        onPlaylistClick = onPlaylistClick,
-        onRenamePlaylist = onRenamePlaylist,
-        onDeletePlaylist = onDeletePlaylist,
-        onSetPlaylistCover = onSetPlaylistCover,
-        twoColumn = viewMode == ViewMode.TwoColumn,
-        showFab = false,
-      )
-    } else {
-      val playlists by repository.observePlaylists().collectAsState(initial = emptyList())
-      LibraryTabRenderer(
-        spec = PlaylistsTabSpec,
-        items = playlists,
-        sort = TabSort.Default,
-        viewMode = ViewMode.List,
-        intelligentSorting = false,
-        albumCoversMode = AlbumCoversMode.Default,
-        onItemClick = { onPlaylistClick(it.id) },
+  Column(modifier = Modifier.fillMaxSize()) {
+    if (selection.inSelectionMode) {
+      MultiSelectBar(
+        count = selection.size,
+        onClose = { selection.clear() },
+        onAddToPlaylist = null,
+        onDelete = null,
       )
     }
-    ExtendedFloatingActionButton(
-      onClick = { showCreate = true },
-      icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-      text = { Text(stringResource(R.string.playlist_tiles_new_fab)) },
-      modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).semantics { testTag = "new_playlist_fab" },
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+      if (viewMode == ViewMode.Tile || viewMode == ViewMode.TwoColumn) {
+        PlaylistsTilesScreen(
+          repository = repository,
+          onPlaylistClick = onPlaylistClick,
+          onRenamePlaylist = onRenamePlaylist,
+          onDeletePlaylist = onDeletePlaylist,
+          onSetPlaylistCover = onSetPlaylistCover,
+          twoColumn = viewMode == ViewMode.TwoColumn,
+          showFab = false,
+        )
+      } else {
+        val playlists by repository.observePlaylists().collectAsState(initial = emptyList())
+        LibraryTabRenderer(
+          spec = PlaylistsTabSpec,
+          items = playlists,
+          sort = TabSort.Default,
+          viewMode = ViewMode.List,
+          intelligentSorting = false,
+          albumCoversMode = AlbumCoversMode.Default,
+          onItemClick = { p ->
+            if (selection.inSelectionMode) selection.toggle(p.id)
+            else onPlaylistClick(p.id)
+          },
+          onItemLongClick = { p -> selection.add(p.id) },
+          selection = selection,
+        )
+      }
+      ExtendedFloatingActionButton(
+        onClick = { showCreate = true },
+        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+        text = { Text(stringResource(R.string.playlist_tiles_new_fab)) },
+        modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).semantics { testTag = "new_playlist_fab" },
+      )
+    }
   }
 
   if (showCreate) {
@@ -147,6 +170,7 @@ internal object PlaylistsTabSpec : TabSpec<Playlist> {
       primary = item.name,
       secondary = pluralStringResource(R.plurals.library_playlist_subtitle_tracks, item.trackCount, item.trackCount),
       onClick = onClick,
+      onLongClick = onLongClick,
     )
   }
 }

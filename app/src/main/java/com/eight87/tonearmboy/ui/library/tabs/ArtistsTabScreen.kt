@@ -1,12 +1,14 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
 import android.content.res.Resources
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -75,15 +77,33 @@ fun ArtistsTabScreen(
   // R3 — pass the live ArtistSource down so the row's overflow menu
   // can mutate the per-artist cover override.
   val spec = remember(repository) { ArtistsTabSpecWithCovers(repository) }
-  LibraryTabRenderer(
-    spec = spec,
-    items = sorted,
-    sort = sort,
-    viewMode = viewMode,
-    intelligentSorting = intelligentSorting,
-    albumCoversMode = AlbumCoversMode.Default,
-    onItemClick = onArtistClick,
-  )
+  val selection = rememberSelectionState<Long>()
+  BackHandler(enabled = selection.inSelectionMode) { selection.clear() }
+  Column(modifier = Modifier.fillMaxSize().semantics { testTag = "artists_screen" }) {
+    if (selection.inSelectionMode) {
+      MultiSelectBar(
+        count = selection.size,
+        onClose = { selection.clear() },
+        onAddToPlaylist = null,
+        onDelete = null,
+      )
+    }
+    Box(modifier = Modifier.weight(1f)) {
+      LibraryTabRenderer(
+        spec = spec,
+        items = sorted,
+        sort = sort,
+        viewMode = viewMode,
+        intelligentSorting = intelligentSorting,
+        albumCoversMode = AlbumCoversMode.Default,
+        onItemClick = { artist ->
+          if (selection.inSelectionMode) selection.toggle(artist.id) else onArtistClick(artist)
+        },
+        onItemLongClick = { artist -> selection.add(artist.id) },
+        selection = selection,
+      )
+    }
+  }
 }
 
 /** Pre-D.28 wrapper retained so existing callers / tests still compile. */
@@ -140,6 +160,7 @@ internal object ArtistsTabSpec : TabSpec<Artist> {
       primary = item.name,
       secondary = "$albums · $tracks",
       onClick = onClick,
+      onLongClick = onLongClick,
     )
   }
 }
@@ -181,6 +202,7 @@ internal class ArtistsTabSpecWithCovers(
         primary = item.name,
         secondary = "$albums · $tracks",
         onClick = onClick,
+        onLongClick = onLongClick,
       )
     } else {
       ArtistOverflowRow(
@@ -189,6 +211,7 @@ internal class ArtistsTabSpecWithCovers(
         artistName = item.name,
         artistSource = artistSource,
         onClick = onClick,
+        onLongClick = onLongClick,
       )
     }
   }
@@ -218,6 +241,7 @@ private fun ArtistOverflowRow(
   artistName: String,
   artistSource: ArtistSource,
   onClick: () -> Unit,
+  onLongClick: () -> Unit = {},
 ) {
   var menuOpen by remember { mutableStateOf(false) }
   val coverChoice by artistSource.artistCoverChoice(artistName)
@@ -234,7 +258,7 @@ private fun ArtistOverflowRow(
   Row(
     modifier = Modifier
       .fillMaxWidth()
-      .combinedClickable(onClick = onClick, onLongClick = {})
+      .combinedClickable(onClick = onClick, onLongClick = onLongClick)
       .padding(horizontal = 16.dp, vertical = 10.dp)
       .semantics { testTag = "artist_list_row" },
     verticalAlignment = Alignment.CenterVertically,

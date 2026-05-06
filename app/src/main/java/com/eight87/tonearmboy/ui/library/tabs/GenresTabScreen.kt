@@ -1,11 +1,18 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
 import android.content.res.Resources
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.GenreSource
 import com.eight87.tonearmboy.data.model.Genre
@@ -35,15 +42,33 @@ fun GenresTabScreen(
     if (filter.isEmpty()) repository.observeGenres() else repository.genresMatching(filter)
   }.collectAsState(initial = emptyList())
   val sorted = remember(genres, sort) { sortGenres(genres, sort) }
-  LibraryTabRenderer(
-    spec = GenresTabSpec,
-    items = sorted,
-    sort = sort,
-    viewMode = viewMode,
-    intelligentSorting = false,
-    albumCoversMode = AlbumCoversMode.Default,
-    onItemClick = onGenreClick,
-  )
+  val selection = rememberSelectionState<Long>()
+  BackHandler(enabled = selection.inSelectionMode) { selection.clear() }
+  Column(modifier = Modifier.fillMaxSize().semantics { testTag = "genres_screen" }) {
+    if (selection.inSelectionMode) {
+      MultiSelectBar(
+        count = selection.size,
+        onClose = { selection.clear() },
+        onAddToPlaylist = null,
+        onDelete = null,
+      )
+    }
+    Box(modifier = Modifier.weight(1f)) {
+      LibraryTabRenderer(
+        spec = GenresTabSpec,
+        items = sorted,
+        sort = sort,
+        viewMode = viewMode,
+        intelligentSorting = false,
+        albumCoversMode = AlbumCoversMode.Default,
+        onItemClick = { genre ->
+          if (selection.inSelectionMode) selection.toggle(genre.id) else onGenreClick(genre)
+        },
+        onItemLongClick = { genre -> selection.add(genre.id) },
+        selection = selection,
+      )
+    }
+  }
 }
 
 /** Pre-D.28 wrapper retained for callers / tests. */
@@ -96,6 +121,7 @@ internal object GenresTabSpec : TabSpec<Genre> {
       primary = item.name,
       secondary = pluralStringResource(R.plurals.library_genre_subtitle_tracks, item.trackCount, item.trackCount),
       onClick = onClick,
+      onLongClick = onLongClick,
     )
   }
 }

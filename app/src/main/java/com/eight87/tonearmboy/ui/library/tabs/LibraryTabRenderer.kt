@@ -1,18 +1,22 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
@@ -126,24 +130,12 @@ fun <T : Any> LibraryTabRenderer(
           orderedKeys.forEach { key ->
             stickyHeader { SectionHeader(key) }
             items(grouped.getValue(key), key = { spec.id(it) }) { item ->
-              spec.ListRow(
-                item = item,
-                selected = selection?.contains(spec.id(item)) ?: false,
-                inSelectionMode = selection?.inSelectionMode ?: false,
-                onClick = { onItemClick(item) },
-                onLongClick = { onItemLongClick?.invoke(item) },
-              )
+              SelectableListRow(spec, item, selection, onItemClick, onItemLongClick)
             }
           }
         } else {
           items(items, key = { spec.id(it) }) { item ->
-            spec.ListRow(
-              item = item,
-              selected = selection?.contains(spec.id(item)) ?: false,
-              inSelectionMode = selection?.inSelectionMode ?: false,
-              onClick = { onItemClick(item) },
-              onLongClick = { onItemLongClick?.invoke(item) },
-            )
+            SelectableListRow(spec, item, selection, onItemClick, onItemLongClick)
           }
         }
       }
@@ -165,5 +157,34 @@ fun <T : Any> LibraryTabRenderer(
         } else null,
       )
     }
+  }
+}
+
+/**
+ * Wraps a [TabSpec.ListRow] call in a Box that paints the
+ * `secondaryContainer` selection background when the row is selected.
+ * Each TabSpec's row implementation focuses on its own content; the
+ * uniform selection visual is owned here so every tab (Albums, Artists,
+ * Genres, Playlists, Tracks via the same renderer) gets the same
+ * highlight without re-implementing the bg painting per row.
+ */
+@Composable
+private fun <T : Any> SelectableListRow(
+  spec: TabSpec<T>,
+  item: T,
+  selection: SelectionState<Long>?,
+  onItemClick: (T) -> Unit,
+  onItemLongClick: ((T) -> Unit)?,
+) {
+  val selected = selection?.contains(spec.id(item)) ?: false
+  val bg = if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+  Box(modifier = Modifier.fillMaxWidth().background(bg)) {
+    spec.ListRow(
+      item = item,
+      selected = selected,
+      inSelectionMode = selection?.inSelectionMode ?: false,
+      onClick = { onItemClick(item) },
+      onLongClick = { onItemLongClick?.invoke(item) },
+    )
   }
 }

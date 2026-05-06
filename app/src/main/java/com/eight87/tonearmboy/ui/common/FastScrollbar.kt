@@ -1,5 +1,8 @@
 package com.eight87.tonearmboy.ui.common
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -28,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -118,6 +122,7 @@ fun FastScrollbar(
     avgItemSizePx = avgItemSizePx,
     sizesByIndex = sizesByIndex,
     explicitViewportPx = viewportPx,
+    isScrollInProgress = state.isScrollInProgress,
     thumbWidth = thumbWidth,
     thumbMinHeight = thumbMinHeight,
     thumbColor = thumbColor,
@@ -167,6 +172,7 @@ fun FastScrollbar(
     firstIndex = firstIndex,
     firstOffsetPx = firstOffset.toFloat(),
     avgItemSizePx = avgItemSizePx,
+    isScrollInProgress = state.isScrollInProgress,
     thumbWidth = thumbWidth,
     thumbMinHeight = thumbMinHeight,
     thumbColor = thumbColor,
@@ -179,6 +185,9 @@ fun FastScrollbar(
     },
   )
 }
+
+/** Linger window after a scroll stops — bubble fades out [LINGER_MS] later. */
+private const val LINGER_MS = 600L
 
 /**
  * Shared thumb-rendering + drag-handling. Two public overloads
@@ -193,6 +202,7 @@ private fun ScrollbarThumb(
   avgItemSizePx: Float,
   sizesByIndex: Map<Int, Int> = emptyMap(),
   explicitViewportPx: Float? = null,
+  isScrollInProgress: Boolean = false,
   thumbWidth: Dp,
   thumbMinHeight: Dp,
   thumbColor: Color,
@@ -208,6 +218,24 @@ private fun ScrollbarThumb(
   // (re)created — `rememberUpdatedState` keeps a fresh handle.
   var dragTopPxOverride by remember { mutableStateOf<Float?>(null) }
   var isDragging by remember { mutableStateOf(false) }
+
+  // Linger pattern (mirrors shutterboy's `YearScrubber.kt`): the
+  // section bubble is visible while the user actively scrolls or
+  // drags, and stays visible for [LINGER_MS] after that input stops
+  // before fading out — gives the eye time to read the letter without
+  // strobing the bubble on every quick flick. When neither input is
+  // active for the linger window, `lingering` flips false and
+  // AnimatedVisibility fades the bubble out.
+  var lingering by remember { mutableStateOf(false) }
+  LaunchedEffect(isScrollInProgress, isDragging) {
+    if (isScrollInProgress || isDragging) {
+      lingering = true
+    } else {
+      delay(LINGER_MS)
+      lingering = false
+    }
+  }
+  val bubbleVisible = isScrollInProgress || isDragging || lingering
 
   BoxWithConstraints(
     modifier = modifier
@@ -289,16 +317,22 @@ private fun ScrollbarThumb(
       )
     }
 
-    // Section-letter bubble — appears to the LEFT of the thumb
-    // while dragging, showing the current section letter.
+    // Section-letter bubble — appears to the LEFT of the thumb during
+    // active scroll, drag, or while lingering after either stops.
+    // AnimatedVisibility handles the fade so the bubble doesn't strobe
+    // when the user does quick repeated flicks.
     val label = sectionLabelFor?.invoke(firstIndex)
-    if (isDragging && label != null) {
+    AnimatedVisibility(
+      visible = bubbleVisible && label != null,
+      enter = fadeIn(),
+      exit = fadeOut(),
+      modifier = Modifier.offset(
+        x = -hitTargetWidth - 8.dp,
+        y = thumbTopDp + (thumbHeightDp - 56.dp) / 2,
+      ),
+    ) {
       Box(
         modifier = Modifier
-          .offset(
-            x = -hitTargetWidth - 8.dp,
-            y = thumbTopDp + (thumbHeightDp - 56.dp) / 2,
-          )
           .size(56.dp)
           .clip(CircleShape)
           .background(MaterialTheme.colorScheme.secondaryContainer)
@@ -306,7 +340,7 @@ private fun ScrollbarThumb(
         contentAlignment = Alignment.Center,
       ) {
         Text(
-          text = label,
+          text = label.orEmpty(),
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.Bold,
           color = MaterialTheme.colorScheme.onSecondaryContainer,

@@ -1,11 +1,15 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
 import android.content.res.Resources
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -101,15 +105,34 @@ internal fun AlbumsTabContent(
 ) {
   val sorted = remember(albums, sort, intelligentSorting) { sortAlbums(albums, sort, intelligentSorting) }
   val spec = remember(albumCoversMode, albumSource) { AlbumsTabSpec(albumCoversMode, albumSource) }
-  LibraryTabRenderer(
-    spec = spec,
-    items = sorted,
-    sort = sort,
-    viewMode = viewMode,
-    intelligentSorting = intelligentSorting,
-    albumCoversMode = albumCoversMode,
-    onItemClick = onAlbumClick,
-  )
+  val selection = rememberSelectionState<Long>()
+  // Back press collapses the multi-select instead of leaving the screen.
+  BackHandler(enabled = selection.inSelectionMode) { selection.clear() }
+  Column(modifier = Modifier.fillMaxSize().semantics { testTag = "albums_screen" }) {
+    if (selection.inSelectionMode) {
+      MultiSelectBar(
+        count = selection.size,
+        onClose = { selection.clear() },
+        onAddToPlaylist = null,
+        onDelete = null,
+      )
+    }
+    Box(modifier = Modifier.weight(1f)) {
+      LibraryTabRenderer(
+        spec = spec,
+        items = sorted,
+        sort = sort,
+        viewMode = viewMode,
+        intelligentSorting = intelligentSorting,
+        albumCoversMode = albumCoversMode,
+        onItemClick = { album ->
+          if (selection.inSelectionMode) selection.toggle(album.id) else onAlbumClick(album)
+        },
+        onItemLongClick = { album -> selection.add(album.id) },
+        selection = selection,
+      )
+    }
+  }
 }
 
 /**
@@ -146,7 +169,7 @@ internal class AlbumsTabSpec(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
   ) {
-    AlbumListRow(item, albumCoversMode, onClick, albumSource = albumSource.takeIf { !inSelectionMode })
+    AlbumListRow(item, albumCoversMode, onClick, onLongClick, albumSource = albumSource.takeIf { !inSelectionMode })
   }
 
   // R4 — tile-mode overflow with the four cover actions per album.
@@ -187,11 +210,13 @@ internal class AlbumsTabSpec(
  * Set empty / Reset). The cover-art override is also applied to the
  * leading thumbnail so the row reflects the user's choice immediately.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun AlbumListRow(
   album: Album,
   albumCoversMode: AlbumCoversMode,
   onClick: () -> Unit,
+  onLongClick: () -> Unit = {},
   albumSource: AlbumSource? = null,
 ) {
   val coverChoiceKey = remember(album.name, album.artist) { albumKey(album.name, album.artist) }
@@ -226,7 +251,7 @@ internal fun AlbumListRow(
   Row(
     modifier = Modifier
       .fillMaxWidth()
-      .clickable(onClick = onClick)
+      .combinedClickable(onClick = onClick, onLongClick = onLongClick)
       .padding(horizontal = 16.dp, vertical = 8.dp)
       .semantics { testTag = "album_list_row" },
     verticalAlignment = Alignment.CenterVertically,
