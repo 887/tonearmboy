@@ -214,14 +214,15 @@ fun TonearmboyApp(
       // physical bottom, ignoring the nav-bar inset).
       val libraryBottomPad = if (showMiniPlayer) peekDp else 0.dp
       val layoutDir = androidx.compose.ui.platform.LocalLayoutDirection.current
-      Scaffold { innerPadding ->
+      Scaffold(
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
+      ) { innerPadding ->
         NavDisplay(
           backStack = backStack.backStack,
           onBack = { backStack.pop() },
           modifier = Modifier
             .fillMaxSize()
             .padding(
-              top = innerPadding.calculateTopPadding(),
               start = innerPadding.calculateStartPadding(layoutDir),
               end = innerPadding.calculateEndPadding(layoutDir),
               bottom = libraryBottomPad,
