@@ -157,6 +157,8 @@ object SettingsCatalog {
   const val ID_HIDE_COLLABORATORS = "content.hide_collaborators"
   const val ID_ALBUM_COVERS = "content.album_covers"
   const val ID_AUTO_DISCOVER_ALBUM_ART = "content.auto_discover_album_art"
+  const val ID_COVER_ART_SERVICE = "content.cover_art_service"
+  const val ID_COVER_ART_MATCH_SCORE = "content.cover_art_match_score"
   const val ID_SCAN_FOLDERS_FOR_COVER_ART = "content.scan_folders_for_cover_art"
   const val ID_FILL_MISSING_COVERS = "content.fill_missing_covers"
   const val ID_REFRESH_ALBUM_ART = "content.refresh_album_art"

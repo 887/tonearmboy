@@ -44,6 +44,7 @@ class AlbumArtBulkWorker(
     if (service == com.eight87.tonearmboy.ui.settings.CoverArtService.Disabled) {
       return Result.success()
     }
+    val mbMinScore = graph.settingsRepository.coverArtMatchScore.flow.first()
     val fetcher = AlbumArtFetcher(graph.albums)
     val albums = graph.albums.observeAlbums().first()
 
@@ -62,7 +63,13 @@ class AlbumArtBulkWorker(
         skipped++
         continue
       }
-      val result = fetcher.fetch(applicationContext, album.name, album.artist, service)
+      val result = fetcher.fetch(
+        applicationContext,
+        album.name,
+        album.artist,
+        service,
+        musicBrainzMinScore = mbMinScore,
+      )
       when (result) {
         is AlbumArtFetcher.FetchResult.Saved -> saved++
         AlbumArtFetcher.FetchResult.NotFound,

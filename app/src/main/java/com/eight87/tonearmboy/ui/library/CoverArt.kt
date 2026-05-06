@@ -90,9 +90,28 @@ fun CoverArt(
 
     val request = remember(uri, mode) {
       val builder = ImageRequest.Builder(context).data(uri)
-      // Balanced: ask Coil for a thumbnail-sized result. We pass
-      // ORIGINAL only when the user explicitly opts in to "On".
-      if (mode == AlbumCoversMode.Balanced) builder.size(Size.ORIGINAL)
+      // Sizing matters for perceived load speed. Coil 3's `Size.ORIGINAL`
+      // means "decode at the source's intrinsic resolution" — fine for
+      // a 200x200 album thumbnail, ruinous for a 1200x1200 JPEG that
+      // gets scaled down to a 160 dp tile. Decoding a 1200×1200 image
+      // is ~36× the work of decoding the 200×200 thumb the cell
+      // actually displays, and 30+ tiles on screen at once stack that
+      // cost into a visible "covers pop in slowly" delay.
+      //
+      // What we want:
+      //   - Balanced (default): let Coil auto-detect the cell's layout
+      //     size and decode straight to that. Don't set `size()` at
+      //     all — Coil reads it from the `AsyncImage` measure pass.
+      //   - On (Always load): user explicitly opted into full-res; set
+      //     `Size.ORIGINAL` so we pull the master.
+      //   - Off (Never load): we never reach this branch — handled
+      //     above by the `showPlaceholder` check.
+      //
+      // Pre-fix shape was inverted (ORIGINAL on Balanced) — the
+      // comment claimed thumbnail-sized but the code said otherwise.
+      if (mode == AlbumCoversMode.On) builder.size(Size.ORIGINAL)
+      // Balanced intentionally does not set size — Coil resolves
+      // it from the layout pass.
       builder.build()
     }
 

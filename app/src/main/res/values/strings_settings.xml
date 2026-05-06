@@ -119,7 +119,11 @@
   <string name="settings_content_hide_collaborators_label">Hide collaborators</string>
   <string name="settings_content_hide_collaborators_subtitle">Show only the primary album artist; collapse featured-artist credits.</string>
   <string name="settings_content_auto_discover_album_art_label">Auto-discover missing album art</string>
-  <string name="settings_content_auto_discover_album_art_subtitle">Fetch covers from MusicBrainz Cover Art Archive for albums missing local art. Sends artist + album text to a third-party service.</string>
+  <string name="settings_content_auto_discover_album_art_subtitle">Schedule a one-shot bulk pass for albums missing local art. Uses the cover-art service picked below; does nothing while the service is set to None.</string>
+  <string name="settings_content_cover_art_service_label">Cover art service</string>
+  <string name="settings_content_cover_art_service_subtitle">None (default) makes no web requests. MusicBrainz hits Cover Art Archive (better for indie / niche). iTunes hits Apple\'s public search (better for popular catalogue).</string>
+  <string name="settings_content_cover_art_match_score_label">MusicBrainz match threshold</string>
+  <string name="settings_content_cover_art_match_score_subtitle">How picky to be about MusicBrainz hits. 100 = perfect match only; 50 = accept fuzzy matches. Default 70. Only used when the service above is MusicBrainz.</string>
   <string name="settings_content_scan_folders_for_cover_art_label">Scan folders for cover art</string>
   <string name="settings_content_scan_folders_for_cover_art_subtitle">Pick up cover.jpg / folder.jpg / albumart.jpg files next to album folders during library scan. FilePicker mode only.</string>
   <string name="settings_content_fill_missing_covers_label">Fill in missing covers now</string>

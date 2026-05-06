@@ -179,16 +179,17 @@ fun AlbumDetailScreen(
               onClick = {
                 coverMenuOpen = false
                 coverScope.launch {
-                  val service = com.eight87.tonearmboy.AppGraph
-                    .get(context.applicationContext)
-                    .settingsRepository.coverArtService.flow
-                    .first()
+                  val settings = com.eight87.tonearmboy.AppGraph
+                    .get(context.applicationContext).settingsRepository
+                  val service = settings.coverArtService.flow.first()
+                  val mbScore = settings.coverArtMatchScore.flow.first()
                   val fetcher = com.eight87.tonearmboy.data.albumart.AlbumArtFetcher(albumSource)
                   fetcher.fetch(
                     context = context,
                     albumName = albumName,
                     albumArtist = albumArtist,
                     service = service,
+                    musicBrainzMinScore = mbScore,
                     overwriteUserChoice = true,
                   )
                 }

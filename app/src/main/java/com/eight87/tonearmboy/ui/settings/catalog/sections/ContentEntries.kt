@@ -9,8 +9,10 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.Photo
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.SortByAlpha
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.Tune
 import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.ui.nav.SettingsContent
 import com.eight87.tonearmboy.ui.settings.catalog.Groups
@@ -99,22 +101,57 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
     destination = SettingsContent,
     breadcrumb = listOf(SECTION_CONTENT, "Album art sources", "Scan folders for cover art"),
   ),
-  // album-art Phase D — re-introduced as a real toggle. Now backed
-  // by AlbumArtBulkWorker + MusicBrainzClient. Default OFF (privacy:
-  // enabling sends artist + album text to a third-party service).
+  // album-art Phase D — re-introduced as a real toggle. Backed by
+  // AlbumArtBulkWorker. The cover-art *service* picker (below) is
+  // the privacy gate; this toggle just controls whether the bulk
+  // worker is scheduled. Default OFF.
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_AUTO_DISCOVER_ALBUM_ART,
     label = "Auto-discover missing album art",
-    subtitle = "Fetch covers from MusicBrainz Cover Art Archive for albums missing local art. Sends artist + album text to a third-party service.",
+    subtitle = "Schedule a one-shot bulk pass for albums missing local art. Uses the cover-art service picked below; does nothing while the service is set to None.",
     labelRes = R.string.settings_content_auto_discover_album_art_label,
     subtitleRes = R.string.settings_content_auto_discover_album_art_subtitle,
-    keywords = listOf("cover", "art", "musicbrainz", "fetch", "download"),
+    keywords = listOf("cover", "art", "fetch", "download", "bulk"),
     icon = Icons.Outlined.CloudDownload,
     section = Section.Content,
     group = Groups.AlbumArtSources,
     kind = RowKind.Toggle,
     destination = SettingsContent,
     breadcrumb = listOf(SECTION_CONTENT, "Album art sources", "Auto-discover missing album art"),
+  ),
+  // Cover-art lookup service picker — the single privacy gate. When
+  // None (default) the app makes ZERO outbound HTTP requests for
+  // cover art. MusicBrainz / iTunes are opt-in.
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_COVER_ART_SERVICE,
+    label = "Cover art service",
+    subtitle = "None (default) makes no web requests. MusicBrainz hits Cover Art Archive (better for indie / niche). iTunes hits Apple's public search (better for popular catalogue).",
+    labelRes = R.string.settings_content_cover_art_service_label,
+    subtitleRes = R.string.settings_content_cover_art_service_subtitle,
+    keywords = listOf("cover", "art", "service", "musicbrainz", "itunes", "apple", "online", "web", "privacy"),
+    icon = Icons.Outlined.Public,
+    section = Section.Content,
+    group = Groups.AlbumArtSources,
+    kind = RowKind.Picker,
+    destination = SettingsContent,
+    breadcrumb = listOf(SECTION_CONTENT, "Album art sources", "Cover art service"),
+  ),
+  // MusicBrainz match-score slider. Only meaningful when service is
+  // MusicBrainz; the row stays visible regardless so the user can
+  // see and tune their threshold without first switching service.
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_COVER_ART_MATCH_SCORE,
+    label = "MusicBrainz match threshold",
+    subtitle = "How picky to be about MusicBrainz hits. 100 = perfect match only; 50 = accept fuzzy matches. Default 70. Only used when the service above is MusicBrainz.",
+    labelRes = R.string.settings_content_cover_art_match_score_label,
+    subtitleRes = R.string.settings_content_cover_art_match_score_subtitle,
+    keywords = listOf("cover", "art", "musicbrainz", "score", "threshold", "match", "fuzzy"),
+    icon = Icons.Outlined.Tune,
+    section = Section.Content,
+    group = Groups.AlbumArtSources,
+    kind = RowKind.Picker,
+    destination = SettingsContent,
+    breadcrumb = listOf(SECTION_CONTENT, "Album art sources", "MusicBrainz match threshold"),
   ),
   // album-art — one-shot "fill missing covers now" action. The
   // Auto-discover toggle persists a preference; this action is
@@ -153,7 +190,7 @@ internal val ContentEntries: List<SettingsCatalogEntry> = listOf(
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_ALBUM_COVERS,
     label = "Album covers",
-    subtitle = null,
+    subtitle = "Balanced (default) decodes covers at the cell's display size — fastest. Always load decodes at full resolution (slower, sharper on high-DPI). Never load skips covers entirely.",
     labelRes = R.string.settings_content_album_covers_label,
     subtitleRes = null,
     keywords = listOf("art", "image", "loading", "balanced", "coil"),

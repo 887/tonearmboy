@@ -50,9 +50,11 @@ class MusicBrainzClient(
 
   /**
    * Search MusicBrainz for a release matching [artist] + [album].
-   * Returns the top-scoring MBID (≥ 95) or null on no match.
+   * Returns the top-scoring MBID at or above [minScore] (default 70)
+   * or null on no match. The user can dial [minScore] up or down via
+   * Settings → Content → MusicBrainz match threshold.
    */
-  suspend fun findReleaseId(artist: String, album: String): String? = withContext(Dispatchers.IO) {
+  suspend fun findReleaseId(artist: String, album: String, minScore: Int = 70): String? = withContext(Dispatchers.IO) {
     if (artist.isBlank() || album.isBlank()) return@withContext null
     rateLimit.withLock {
       // Mandatory inter-request delay per MB TOS.
@@ -70,14 +72,16 @@ class MusicBrainzClient(
           if (!resp.isSuccessful) return@use null
           val body = resp.body?.string() ?: return@use null
           val parsed = json.decodeFromString<MbReleaseSearch>(body)
-          // Loosened from ≥ 95 to ≥ 70. The original threshold was so
-          // strict that fuzzy text matches almost never qualified
-          // (user reported "0 hits across 2000 songs"). 70 still
-          // filters obvious garbage but accepts the typical tag-vs-
-          // canonical delta — punctuation, article drift, "(Deluxe
-          // Edition)" suffixes.
+          // Threshold is user-configurable via Settings → Content
+          // (default 70). The original hard-coded ≥ 95 was so strict
+          // that fuzzy text matches almost never qualified (user
+          // reported "0 hits across 2000 songs"). 70 still filters
+          // obvious garbage but accepts typical tag-vs-canonical
+          // delta — punctuation, article drift, "(Deluxe Edition)"
+          // suffixes. The user can pull the slider up to be picky
+          // or down to be permissive.
           parsed.releases
-            .firstOrNull { (it.score ?: 0) >= 70 }
+            .firstOrNull { (it.score ?: 0) >= minScore }
             ?.id
         }
       }.getOrNull()

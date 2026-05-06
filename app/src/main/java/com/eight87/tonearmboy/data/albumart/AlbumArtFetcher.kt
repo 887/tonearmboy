@@ -67,6 +67,7 @@ class AlbumArtFetcher(
     albumName: String,
     albumArtist: String?,
     service: CoverArtService,
+    musicBrainzMinScore: Int = 70,
     overwriteUserChoice: Boolean = false,
   ): FetchResult {
     if (service == CoverArtService.Disabled) return FetchResult.ServiceDisabled
@@ -86,7 +87,7 @@ class AlbumArtFetcher(
         // searching against every release in the catalogue.
         val artist = albumArtist?.takeIf { it.isNotBlank() }
           ?: return FetchResult.NotFound
-        val mbid = musicBrainz.findReleaseId(artist, albumName)
+        val mbid = musicBrainz.findReleaseId(artist, albumName, musicBrainzMinScore)
           ?: return FetchResult.NotFound
         musicBrainz.coverArtUrl(mbid)
       }

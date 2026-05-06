@@ -448,16 +448,17 @@ fun LibraryScreen(
               val name = t.album
               if (name != null) {
                 searchScope.launch {
-                  val service = com.eight87.tonearmboy.AppGraph
-                    .get(ctx.applicationContext)
-                    .settingsRepository.coverArtService.flow
-                    .first()
+                  val settings = com.eight87.tonearmboy.AppGraph
+                    .get(ctx.applicationContext).settingsRepository
+                  val service = settings.coverArtService.flow.first()
+                  val mbScore = settings.coverArtMatchScore.flow.first()
                   com.eight87.tonearmboy.data.albumart.AlbumArtFetcher(albums)
                     .fetch(
                       context = ctx,
                       albumName = name,
                       albumArtist = t.albumArtist ?: t.artist,
                       service = service,
+                      musicBrainzMinScore = mbScore,
                       overwriteUserChoice = true,
                     )
                 }

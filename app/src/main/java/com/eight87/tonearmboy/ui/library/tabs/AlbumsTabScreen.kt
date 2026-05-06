@@ -201,15 +201,16 @@ internal class AlbumsTabSpec(
       albumKey = key,
       onSearchOnline = {
         scope.launch {
-          val service = com.eight87.tonearmboy.AppGraph
-            .get(ctx.applicationContext)
-            .settingsRepository.coverArtService.flow
-            .first()
+          val settings = com.eight87.tonearmboy.AppGraph
+            .get(ctx.applicationContext).settingsRepository
+          val service = settings.coverArtService.flow.first()
+          val mbScore = settings.coverArtMatchScore.flow.first()
           com.eight87.tonearmboy.data.albumart.AlbumArtFetcher(src).fetch(
             context = ctx,
             albumName = item.name,
             albumArtist = item.artist,
             service = service,
+            musicBrainzMinScore = mbScore,
             overwriteUserChoice = true,
           )
         }
@@ -251,15 +252,16 @@ internal fun AlbumListRow(
       albumKey = coverChoiceKey,
       onSearchOnline = {
         scope.launch {
-          val service = com.eight87.tonearmboy.AppGraph
-            .get(context.applicationContext)
-            .settingsRepository.coverArtService.flow
-            .first()
+          val settings = com.eight87.tonearmboy.AppGraph
+            .get(context.applicationContext).settingsRepository
+          val service = settings.coverArtService.flow.first()
+          val mbScore = settings.coverArtMatchScore.flow.first()
           com.eight87.tonearmboy.data.albumart.AlbumArtFetcher(albumSource).fetch(
             context = context,
             albumName = album.name,
             albumArtist = album.artist,
             service = service,
+            musicBrainzMinScore = mbScore,
             overwriteUserChoice = true,
           )
         }

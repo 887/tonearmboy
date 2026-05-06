@@ -69,6 +69,16 @@ interface LibrarySettings {
   val scanFoldersForCoverArt: Setting<Boolean>
   /** Online cover-art lookup service — `Disabled` (default), `MusicBrainz`, or `iTunes`. Opt-in. */
   val coverArtService: Setting<CoverArtService>
+  /**
+   * Minimum match score (0–100) for accepting a MusicBrainz release
+   * search hit as the right album. Default 70 — strict enough to
+   * reject obvious noise, loose enough to accept the typical
+   * tag-vs-canonical delta. The user can pull this up to be picky
+   * (only near-perfect matches) or down to be permissive (accept
+   * fuzzy matches that the canonical 95-only threshold would drop).
+   * Only applies when [coverArtService] is `MusicBrainz`.
+   */
+  val coverArtMatchScore: Setting<Int>
 }
 
 /**

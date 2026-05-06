@@ -505,6 +505,16 @@ class SettingsRepository(private val context: Context) :
   override val coverArtService: Setting<CoverArtService> = EnumSetting(
     store, KEY_COVER_ART_SERVICE, CoverArtService.Companion::fromStored,
   )
+
+  // Default 70: loose enough to accept typical tag-vs-canonical drift
+  // (punctuation, "(Deluxe Edition)" suffixes, article variants) but
+  // strict enough to reject obvious noise. Slider in Settings →
+  // Content lets the user dial it. Bounded to [0, 100].
+  override val coverArtMatchScore: Setting<Int> = PreferencesSetting(
+    store, KEY_COVER_ART_MATCH_SCORE,
+    read = { (it ?: 70).coerceIn(0, 100) },
+    write = { it.coerceIn(0, 100) },
+  )
   override val customBarAction: Setting<CustomBarAction> = EnumSetting(
     store, KEY_CUSTOM_BAR_ACTION, CustomBarAction.Companion::fromStored,
   )
@@ -733,6 +743,7 @@ class SettingsRepository(private val context: Context) :
     internal val KEY_MEDIA_STORE_GENERATION = androidx.datastore.preferences.core.longPreferencesKey("scan_cache_mediastore_generation")
     internal val KEY_SCAN_CONFIG_HASH = stringPreferencesKey("scan_cache_config_hash")
     internal val KEY_COVER_ART_SERVICE = stringPreferencesKey("cover_art_service")
+    internal val KEY_COVER_ART_MATCH_SCORE = androidx.datastore.preferences.core.intPreferencesKey("cover_art_match_score")
 
     /** D.9b.2 — pre-amp slider bounds, fixed at [-15, +15] dB. */
     const val REPLAYGAIN_PREAMP_MIN_DB: Float = -15f

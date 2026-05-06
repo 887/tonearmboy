@@ -513,9 +513,17 @@ fun SettingsContentScreen(
   val scanFoldersForCoverArt by library.scanFoldersForCoverArt.flow.collectAsState(
     initial = true,
   )
+  val coverArtService by library.coverArtService.flow.collectAsState(
+    initial = CoverArtService.Default,
+  )
+  val coverArtMatchScore by library.coverArtMatchScore.flow.collectAsState(
+    initial = 70,
+  )
   val scope = rememberCoroutineScope()
   // R.F.17 — picker state controllers (Settings-F5).
   val albumCoversPicker = rememberSettingPickerState()
+  val coverArtServicePicker = rememberSettingPickerState()
+  var matchScoreDialog by remember { mutableStateOf(false) }
   var separatorsPicker by remember { mutableStateOf(false) }
   val context = LocalContext.current
 
@@ -611,6 +619,16 @@ fun SettingsContentScreen(
       onClick = onRefreshAlbumArt,
     ),
     SettingsRowBinding.Picker(
+      id = SettingsCatalog.ID_COVER_ART_SERVICE,
+      currentLabel = coverArtServiceLabel(coverArtService),
+      onClick = coverArtServicePicker::show,
+    ),
+    SettingsRowBinding.Picker(
+      id = SettingsCatalog.ID_COVER_ART_MATCH_SCORE,
+      currentLabel = "$coverArtMatchScore",
+      onClick = { matchScoreDialog = true },
+    ),
+    SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_ALBUM_COVERS,
       currentLabel = albumCoversLabel(context, albumCoversMode),
       onClick = albumCoversPicker::show,
@@ -643,6 +661,25 @@ fun SettingsContentScreen(
     current = albumCoversMode,
     onPick = { scope.launch { library.albumCoversMode.set(it) } },
   )
+
+  coverArtServicePicker.Render(
+    title = "Cover art service",
+    options = CoverArtService.entries,
+    label = { coverArtServiceLabel(it) },
+    current = coverArtService,
+    onPick = { scope.launch { library.coverArtService.set(it) } },
+  )
+
+  if (matchScoreDialog) {
+    MusicBrainzMatchScoreDialog(
+      currentScore = coverArtMatchScore,
+      onConfirm = { newScore ->
+        scope.launch { library.coverArtMatchScore.set(newScore) }
+        matchScoreDialog = false
+      },
+      onDismiss = { matchScoreDialog = false },
+    )
+  }
 
   if (separatorsPicker) {
     MultiSelectPicker(
@@ -917,6 +954,73 @@ private fun ReplayGainPreampDialog(
     },
     confirmButton = {
       TextButton(onClick = { onConfirm(value) }) {
+        Text(stringResource(R.string.settings_dialog_save))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text(stringResource(R.string.settings_dialog_cancel))
+      }
+    },
+  )
+}
+
+/**
+ * Label for the [CoverArtService] picker — terse, user-readable.
+ */
+internal fun coverArtServiceLabel(s: CoverArtService): String = when (s) {
+  CoverArtService.Disabled -> "None (no web requests)"
+  CoverArtService.MusicBrainz -> "MusicBrainz / Cover Art Archive"
+  CoverArtService.ITunes -> "Apple iTunes Search"
+}
+
+/**
+ * Slider dialog for the MusicBrainz match-score threshold. 0–100 in
+ * 1-point increments. The page's row already shows the current value
+ * inline; the dialog shows the live value as the user drags + a
+ * "Reset to 70 (default)" button.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MusicBrainzMatchScoreDialog(
+  currentScore: Int,
+  onConfirm: (Int) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  var value by remember(currentScore) { mutableStateOf(currentScore.toFloat()) }
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("MusicBrainz match threshold") },
+    text = {
+      Column(modifier = Modifier.semantics { testTag = "mb_match_score_dialog" }) {
+        Text(
+          text = "${value.toInt()}",
+          style = androidx.compose.material3.MaterialTheme.typography.headlineSmall,
+        )
+        Text(
+          text = "0 = accept anything, 100 = perfect match only. Default 70 — strict enough to reject obvious noise, loose enough to accept tag-vs-canonical drift.",
+          style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+          modifier = Modifier.padding(top = 4.dp),
+        )
+        Slider(
+          value = value,
+          onValueChange = { value = it },
+          valueRange = 0f..100f,
+          steps = 99, // 100 distinct stops
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .semantics { testTag = "mb_match_score_slider" },
+        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+          TextButton(onClick = { value = 70f }) {
+            Text("Reset to 70")
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = { onConfirm(value.toInt()) }) {
         Text(stringResource(R.string.settings_dialog_save))
       }
     },
