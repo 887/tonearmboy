@@ -199,10 +199,13 @@ fun AboutScreen(
       }
 
       // ---- Credits card ----
-      // Visual references only. NO code from Auxio or Harmony Music
-      // was copied into tonearmboy. This is a clean-room implementation —
-      // we looked at their UIs to inform our own, but every line in
-      // this app is original Kotlin. Critical because Auxio is GPL-3.0
+      // Clean-room implementation. Inspiration drawn from UI screenshots
+      // of Auxio and Harmony Music only — NO code was copied. The
+      // clean-room claim is reinforced by the fact that we run on a
+      // wholly different tech stack from either: Auxio is Kotlin on the
+      // pre-Compose Android View system (XML layouts), Harmony is
+      // Flutter / Dart, tonearmboy is Kotlin + Jetpack Compose. Every
+      // line in this app is original. Critical because Auxio is GPL-3.0
       // and tonearmboy is MIT; if any Auxio code were here, our license
       // would be tainted. It isn't.
       SettingsCard(

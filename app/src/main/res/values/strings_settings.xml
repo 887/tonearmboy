@@ -197,12 +197,12 @@
   <string name="licenses_unknown_spdx">Unknown license — see project URL.</string>
   <string name="licenses_empty">No license inventory found. Rebuild to regenerate.</string>
   <string name="licenses_dialog_close">Close</string>
-  <string name="settings_about_credits_cleanroom_label">Visual references only</string>
-  <string name="settings_about_credits_cleanroom_subtitle">No code copied from the projects below. Clean-room implementation, MIT-licensed throughout.</string>
+  <string name="settings_about_credits_cleanroom_label">Clean-room implementation</string>
+  <string name="settings_about_credits_cleanroom_subtitle">Inspiration drawn from UI screenshots only. No code copied from the projects below. Reinforced by entirely different tech stacks. MIT-licensed throughout.</string>
   <string name="settings_about_credits_auxio_label">Auxio (GPL-3.0)</string>
-  <string name="settings_about_credits_auxio_subtitle">Visual reference for the player surface and library chrome. github.com/OxygenCobalt/Auxio</string>
+  <string name="settings_about_credits_auxio_subtitle">Visual reference for the player surface and library chrome. Different stack: Kotlin + Android Views (pre-Compose). github.com/OxygenCobalt/Auxio</string>
   <string name="settings_about_credits_harmony_label">Harmony Music (GPL-3.0)</string>
-  <string name="settings_about_credits_harmony_subtitle">Chrome reference (rail-and-content boundary, M3 Expressive cards). github.com/anandnet/Harmony-Music</string>
+  <string name="settings_about_credits_harmony_subtitle">Chrome reference (rail-and-content boundary, M3 Expressive cards). Different stack: Flutter / Dart, not native Android. github.com/anandnet/Harmony-Music</string>
   <string name="settings_about_credits_media3_label">Media3 + Compose + Room</string>
   <string name="settings_about_credits_media3_subtitle">AndroidX libraries: ExoPlayer/MediaSession, Jetpack Compose, Room.</string>
 

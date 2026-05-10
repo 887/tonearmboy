@@ -183,12 +183,12 @@
   <string name="settings_about_github_subtitle">github.com/887/tonearmboy</string>
   <string name="settings_about_license_label">Lizenz</string>
   <string name="settings_about_license_subtitle">MIT — siehe LICENSE. Alle direkten Abhängigkeiten (AndroidX, Media3, Kotlin, Coil, Robolectric) sind Apache-2.0 / MIT — keine GPL-Kontamination.</string>
-  <string name="settings_about_credits_cleanroom_label">Nur visuelle Referenzen</string>
-  <string name="settings_about_credits_cleanroom_subtitle">Kein Code aus den unten genannten Projekten übernommen. Clean-Room-Implementierung, durchgängig MIT-lizenziert.</string>
+  <string name="settings_about_credits_cleanroom_label">Clean-Room-Implementierung</string>
+  <string name="settings_about_credits_cleanroom_subtitle">Inspiration ausschließlich aus UI-Screenshots. Kein Code aus den unten genannten Projekten übernommen. Verstärkt durch grundlegend unterschiedliche Tech-Stacks. Durchgängig MIT-lizenziert.</string>
   <string name="settings_about_credits_auxio_label">Auxio (GPL-3.0)</string>
-  <string name="settings_about_credits_auxio_subtitle">Visuelle Referenz für die Player-Oberfläche und Bibliotheks-Chrome. github.com/OxygenCobalt/Auxio</string>
+  <string name="settings_about_credits_auxio_subtitle">Visuelle Referenz für die Player-Oberfläche und Bibliotheks-Chrome. Anderer Stack: Kotlin + Android Views (vor Compose). github.com/OxygenCobalt/Auxio</string>
   <string name="settings_about_credits_harmony_label">Harmony Music (GPL-3.0)</string>
-  <string name="settings_about_credits_harmony_subtitle">Chrome-Referenz (Rail-und-Inhalt-Trennung, M3 Expressive Cards). github.com/anandnet/Harmony-Music</string>
+  <string name="settings_about_credits_harmony_subtitle">Chrome-Referenz (Rail-und-Inhalt-Trennung, M3 Expressive Cards). Anderer Stack: Flutter / Dart, kein natives Android. github.com/anandnet/Harmony-Music</string>
   <string name="settings_about_credits_media3_label">Media3 + Compose + Room</string>
   <string name="settings_about_credits_media3_subtitle">AndroidX-Bibliotheken: ExoPlayer/MediaSession, Jetpack Compose, Room.</string>
 
