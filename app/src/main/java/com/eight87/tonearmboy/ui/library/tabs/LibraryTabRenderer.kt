@@ -23,8 +23,6 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import com.eight87.tonearmboy.ui.common.FastScrollbar
 import com.eight87.tonearmboy.ui.library.LibraryTileGrid
-import com.eight87.tonearmboy.ui.library.letterForFlatIndex
-import com.eight87.tonearmboy.ui.library.letterForTileIndex
 import com.eight87.tonearmboy.ui.library.libraryListCard
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 import com.eight87.tonearmboy.ui.settings.TabSort
@@ -73,6 +71,20 @@ fun <T : Any> LibraryTabRenderer(
   val grouped = remember(items, sectionKeys) {
     if (sectionKeys.isEmpty()) emptyMap()
     else items.zip(sectionKeys).groupBy({ it.second }, { it.first })
+  }
+  // R.A.Q — index where each section begins (1 sticky-header item +
+  // N item rows per section in both LazyColumn and LazyGrid). Fed to
+  // FastScrollbar so it can render per-section letter markers on the
+  // track.
+  val sectionStarts = remember(orderedKeys, grouped) {
+    if (orderedKeys.isEmpty()) emptyList()
+    else buildList {
+      var idx = 0
+      for (key in orderedKeys) {
+        add(idx to key)
+        idx += 1 + (grouped[key]?.size ?: 0)
+      }
+    }
   }
 
   val listState = rememberLazyListState()
@@ -144,17 +156,13 @@ fun <T : Any> LibraryTabRenderer(
       FastScrollbar(
         state = gridState,
         modifier = Modifier.align(Alignment.CenterEnd),
-        sectionLabelFor = if (sectionKeys.isNotEmpty()) {
-          { idx -> letterForTileIndex(sectionKeys, idx) }
-        } else null,
+        sectionStarts = sectionStarts.takeIf { it.isNotEmpty() },
       )
     } else {
       FastScrollbar(
         state = listState,
         modifier = Modifier.align(Alignment.CenterEnd),
-        sectionLabelFor = if (orderedKeys.isNotEmpty()) {
-          { idx -> letterForFlatIndex(orderedKeys, sectionKeys, idx) }
-        } else null,
+        sectionStarts = sectionStarts.takeIf { it.isNotEmpty() },
       )
     }
   }

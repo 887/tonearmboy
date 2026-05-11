@@ -12,11 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -57,12 +55,11 @@ import kotlinx.coroutines.launch
  * via `rememberUpdatedState`, so the lambda never sees a stale
  * value), giving a smooth drag-from-here gesture without jumping.
  *
- * Optional [sectionLabelFor] is a lookup from the current
- * `firstVisibleItemIndex` to a short label (typically a section
- * letter). When supplied AND the user is actively dragging, a
- * bubble renders to the LEFT of the thumb showing that label —
- * Android-style fast-scroller affordance, replaces the always-on
- * alphabet rail.
+ * Optional [sectionStarts] is a list of `(itemIndex, label)` pairs
+ * marking where each section begins. When supplied, a small letter
+ * chip is rendered on the track at each section's fractional Y
+ * position — letting the user see all upcoming section boundaries
+ * while scrolling.
  *
  * Hidden when the surface isn't scrollable.
  */
@@ -74,7 +71,7 @@ fun FastScrollbar(
   thumbMinHeight: Dp = 56.dp,
   thumbColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
   hitTargetWidth: Dp = 40.dp,
-  sectionLabelFor: ((Int) -> String?)? = null,
+  sectionStarts: List<Pair<Int, String>>? = null,
 ) {
   val totalItems by remember { derivedStateOf { state.layoutInfo.totalItemsCount } }
   val visibleItems by remember { derivedStateOf { state.layoutInfo.visibleItemsInfo.size } }
@@ -127,7 +124,7 @@ fun FastScrollbar(
     thumbMinHeight = thumbMinHeight,
     thumbColor = thumbColor,
     hitTargetWidth = hitTargetWidth,
-    sectionLabelFor = sectionLabelFor,
+    sectionStarts = sectionStarts,
     onScrollToFraction = { fraction ->
       val maxIndex = (totalItems - visibleItems).coerceAtLeast(0)
       val targetIndex = (fraction * maxIndex).toInt().coerceIn(0, maxIndex)
@@ -148,7 +145,7 @@ fun FastScrollbar(
   thumbMinHeight: Dp = 56.dp,
   thumbColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
   hitTargetWidth: Dp = 40.dp,
-  sectionLabelFor: ((Int) -> String?)? = null,
+  sectionStarts: List<Pair<Int, String>>? = null,
 ) {
   val totalItems by remember { derivedStateOf { state.layoutInfo.totalItemsCount } }
   val visibleItems by remember { derivedStateOf { state.layoutInfo.visibleItemsInfo.size } }
@@ -177,7 +174,7 @@ fun FastScrollbar(
     thumbMinHeight = thumbMinHeight,
     thumbColor = thumbColor,
     hitTargetWidth = hitTargetWidth,
-    sectionLabelFor = sectionLabelFor,
+    sectionStarts = sectionStarts,
     onScrollToFraction = { fraction ->
       val maxIndex = (totalItems - visibleItems).coerceAtLeast(0)
       val targetIndex = (fraction * maxIndex).toInt().coerceIn(0, maxIndex)
@@ -186,8 +183,8 @@ fun FastScrollbar(
   )
 }
 
-/** Linger window after a scroll stops — bubble fades out [LINGER_MS] later. */
-private const val LINGER_MS = 600L
+/** Linger window after a scroll stops — chips fade out [LINGER_MS] later. */
+private const val LINGER_MS = 800L
 
 /**
  * Shared thumb-rendering + drag-handling. Two public overloads
@@ -207,7 +204,7 @@ private fun ScrollbarThumb(
   thumbMinHeight: Dp,
   thumbColor: Color,
   hitTargetWidth: Dp,
-  sectionLabelFor: ((Int) -> String?)?,
+  sectionStarts: List<Pair<Int, String>>? = null,
   onScrollToFraction: suspend (Float) -> Unit,
 ) {
   val scope = rememberCoroutineScope()
@@ -219,13 +216,11 @@ private fun ScrollbarThumb(
   var dragTopPxOverride by remember { mutableStateOf<Float?>(null) }
   var isDragging by remember { mutableStateOf(false) }
 
-  // Linger pattern (mirrors shutterboy's `YearScrubber.kt`): the
-  // section bubble is visible while the user actively scrolls or
-  // drags, and stays visible for [LINGER_MS] after that input stops
-  // before fading out — gives the eye time to read the letter without
-  // strobing the bubble on every quick flick. When neither input is
-  // active for the linger window, `lingering` flips false and
-  // AnimatedVisibility fades the bubble out.
+  // Linger pattern: section chips are visible while the user is
+  // actively scrolling or dragging the thumb, and stay visible for
+  // [LINGER_MS] after that input stops before fading out. Gives the
+  // eye time to read the letters without strobing them on every quick
+  // flick.
   var lingering by remember { mutableStateOf(false) }
   LaunchedEffect(isScrollInProgress, isDragging) {
     if (isScrollInProgress || isDragging) {
@@ -235,7 +230,7 @@ private fun ScrollbarThumb(
       lingering = false
     }
   }
-  val bubbleVisible = isScrollInProgress || isDragging || lingering
+  val chipsVisible = isScrollInProgress || isDragging || lingering
 
   BoxWithConstraints(
     modifier = modifier
@@ -274,6 +269,38 @@ private fun ScrollbarThumb(
     // pointerInput last initialised — typically 0).
     val currentThumbTopPx by rememberUpdatedState(thumbTopPx)
     val currentMaxThumbTopPx by rememberUpdatedState(maxThumbTopPx)
+
+    // Section-start markers — one small letter chip per section,
+    // placed at the fractional Y where that section *begins* on the
+    // track (using the same cumulative-size table the thumb uses, so
+    // chips stay coherent with the thumb position). Rendered before
+    // the thumb so the thumb glides over them. Visible only while
+    // scrolling / dragging + the linger window after.
+    if (!sectionStarts.isNullOrEmpty() && totalContentPx > 0f) {
+      sectionStarts.forEach { (idx, label) ->
+        val priorPx = (0 until idx.coerceAtMost(totalItems))
+          .sumOf { itemSizeOf(it).toDouble() }.toFloat()
+        val chipFraction = (priorPx / totalContentPx).coerceIn(0f, 1f)
+        val chipYDp = with(density) { (chipFraction * trackHeightPx).toDp() }
+        AnimatedVisibility(
+          visible = chipsVisible,
+          enter = fadeIn(),
+          exit = fadeOut(),
+          modifier = Modifier
+            .align(Alignment.TopEnd)
+            .offset(y = chipYDp)
+            .padding(end = thumbWidth + 4.dp)
+            .semantics { testTag = "fast_scrollbar_section_$label" },
+        ) {
+          Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+          )
+        }
+      }
+    }
 
     Box(
       modifier = Modifier
@@ -315,38 +342,6 @@ private fun ScrollbarThumb(
           .clip(RoundedCornerShape(thumbWidth / 2))
           .background(thumbColor),
       )
-    }
-
-    // Section-letter bubble — appears to the LEFT of the thumb during
-    // active scroll, drag, or while lingering after either stops.
-    // AnimatedVisibility handles the fade so the bubble doesn't strobe
-    // when the user does quick repeated flicks.
-    val label = sectionLabelFor?.invoke(firstIndex)
-    AnimatedVisibility(
-      visible = bubbleVisible && label != null,
-      enter = fadeIn(),
-      exit = fadeOut(),
-      modifier = Modifier.offset(
-        x = -hitTargetWidth - 8.dp,
-        y = thumbTopDp + (thumbHeightDp - 56.dp) / 2,
-      ),
-    ) {
-      Box(
-        modifier = Modifier
-          .size(56.dp)
-          .clip(CircleShape)
-          .background(MaterialTheme.colorScheme.secondaryContainer)
-          .semantics { testTag = "fast_scrollbar_bubble" },
-        contentAlignment = Alignment.Center,
-      ) {
-        Text(
-          text = label.orEmpty(),
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = FontWeight.Bold,
-          color = MaterialTheme.colorScheme.onSecondaryContainer,
-          modifier = Modifier.padding(8.dp),
-        )
-      }
     }
   }
 }
