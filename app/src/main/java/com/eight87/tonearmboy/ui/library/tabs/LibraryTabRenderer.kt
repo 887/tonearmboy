@@ -222,7 +222,11 @@ fun <T : Any> LibraryTabRenderer(
       val stableLongClick: (T) -> Unit = remember {
         { it -> onItemLongClickRef.value?.invoke(it) }
       }
-      LazyColumn(state = listState, modifier = Modifier.fillMaxSize().libraryListCard()) {
+      LazyColumn(
+        state = listState,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp),
+        modifier = Modifier.fillMaxSize().libraryListCard(),
+      ) {
         if (grouped.isNotEmpty()) {
           orderedKeys.forEach { key ->
             stickyHeader { SectionHeader(key) }

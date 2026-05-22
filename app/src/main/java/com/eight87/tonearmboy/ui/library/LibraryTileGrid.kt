@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.semantics
@@ -328,14 +330,22 @@ private fun TileCell(
 
 @Composable
 private fun TileSectionHeader(letter: String) {
-  Box(
+  // Same shape as tabs/SectionHeader.kt — M3 Expressive pill backplate
+  // on `surfaceContainerHigh`. Kept private so the tile-grid path can
+  // attach its own testTag without coupling to the list-mode header.
+  Row(
     modifier = Modifier
       .fillMaxWidth()
-      .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-      .padding(horizontal = 16.dp, vertical = 6.dp)
+      .clip(RoundedCornerShape(12.dp))
+      .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+      .padding(horizontal = 16.dp, vertical = 8.dp)
       .semantics { testTag = "library_tile_section_${letter}" },
   ) {
-    Text(text = letter, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+    Text(
+      text = letter,
+      style = MaterialTheme.typography.labelLarge,
+      color = MaterialTheme.colorScheme.onSurface,
+    )
   }
 }
 
