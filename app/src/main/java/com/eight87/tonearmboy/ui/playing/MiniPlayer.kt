@@ -117,15 +117,14 @@ fun MiniPlayer(
   if (!state.hasMedia) return
   // Surface (not Modifier.background) so LocalContentColor propagates
   // — the missing-frame fix that put light onSurface back on the
-  // transport-row icons. Container stays on `surfaceContainerHigh`
-  // (which is OPAQUE under cover-wallpaper mode by design — see
-  // Theme.kt). The mini-player strip is too narrow to benefit from
-  // cover-bleed glass; the cover-wallpaper paints behind the sheet
-  // (NowPlayingSheet's internal AlbumArtBackground), not behind this
-  // mini band. Mirrors whisperboy's NowPlayingBar decision.
+  // transport-row icons. Container reads from `surface` (same token
+  // TopAppBar / LibraryRail use), which the theme drops to alpha 0.5
+  // under cover-wallpaper mode — the user wants the cover bleeding
+  // through the mini band too. `surfaceContainerHigh` stays opaque
+  // exclusively for modal containers (AlertDialog / PickerDialog).
   Surface(
     modifier = Modifier.fillMaxSize(),
-    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    color = MaterialTheme.colorScheme.surface,
   ) {
   Column(
     modifier = Modifier.fillMaxSize(),
