@@ -21,4 +21,10 @@ interface TrackCoverDao {
    *  choice) is filtered at the call site. */
   @Query("SELECT * FROM track_covers WHERE coverUri IS NOT NULL")
   suspend fun allPinned(): List<TrackCoverEntity>
+
+  /** Hot flow of every pinned row. Re-emits on any change to the
+   *  `track_covers` table so the library cover-URI map stays in sync
+   *  when the user pins / clears covers at runtime. */
+  @Query("SELECT * FROM track_covers WHERE coverUri IS NOT NULL")
+  fun observeAllPinned(): Flow<List<TrackCoverEntity>>
 }

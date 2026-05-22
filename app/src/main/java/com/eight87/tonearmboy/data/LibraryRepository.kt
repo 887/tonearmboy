@@ -375,6 +375,13 @@ class LibraryRepository(
       .mapNotNull { e -> e.coverUri?.takeIf { it.isNotBlank() }?.let { e.trackId to it } }
       .toMap()
 
+  override fun observeTrackCoverUris(): Flow<Map<Long, String>> =
+    db.trackCoverDao().observeAllPinned().map { rows ->
+      rows.mapNotNull { e ->
+        e.coverUri?.takeIf { it.isNotBlank() }?.let { e.trackId to it }
+      }.toMap()
+    }
+
   override suspend fun setTrackCoverUri(trackId: Long, uri: String) {
     db.trackCoverDao().upsert(
       com.eight87.tonearmboy.data.db.TrackCoverEntity(trackId, uri),

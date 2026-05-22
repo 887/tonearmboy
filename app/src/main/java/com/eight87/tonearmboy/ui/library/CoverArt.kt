@@ -28,10 +28,22 @@ import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Precision
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.albumKey
 import com.eight87.tonearmboy.data.albumart.AlbumArtFetchRegistry
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
+
+/**
+ * Map of `trackId → pinned cover URI` for every song in the user's
+ * library that has a pinned per-track cover. The library root
+ * collects [TrackSource.observeTrackCoverUris] once and publishes
+ * the map here so every [CoverArt] instance resolves its URI
+ * synchronously — no per-row Flow subscription, no second
+ * AsyncImage request after the URI arrives. Default empty when no
+ * library root is in scope (previews, tests, standalone composables).
+ */
+val LocalTrackCoverUris = staticCompositionLocalOf<Map<Long, String>> { emptyMap() }
 
 /**
  * Phase D.9b.3 — render the cover art for an album, with a music-note
@@ -113,15 +125,16 @@ fun CoverArt(
       key in keys
     } else false
 
-    // Round 5 — per-track cover override takes precedence over the
-    // album fallback when the cell represents a song. Collected here
-    // (before the placeholder branch) so a pinned track cover lights
-    // up the tile even when the song has no MediaStore albumId at all.
-    val perTrackUri: String? = if (trackId != null && trackSource != null) {
-      val flow = remember(trackId) { trackSource.trackCoverUriFlow(trackId) }
-      val state by flow.collectAsStateWithLifecycle(initialValue = null as String?)
-      state?.takeIf { it.isNotBlank() }
-    } else null
+    // Per-track cover URI — read synchronously from the snapshot
+    // map the library root publishes via [LocalTrackCoverUris]. This
+    // mirrors whisperboy's Book.coverPath shape: the URI is in
+    // memory before CoverArt composes, so AsyncImage fires exactly
+    // ONE request per row instead of the previous two-step
+    // "albumart-first, then re-issue when the per-track Flow emits"
+    // pattern that always re-decoded on every scroll-into-view.
+    val perTrackUri: String? = trackId?.let { id ->
+      LocalTrackCoverUris.current[id]?.takeIf { it.isNotBlank() }
+    }
 
     val showPlaceholder = mode == AlbumCoversMode.Off ||
       (albumId == null && coverUriOverride.isNullOrBlank() && perTrackUri.isNullOrBlank())

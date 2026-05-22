@@ -1,6 +1,7 @@
 package com.eight87.tonearmboy.ui.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -280,6 +281,17 @@ fun LibraryScreen(
     }
   }
 
+  // Whisperboy-shape per-track cover URI map. Collected once at the
+  // library root and published via [LocalTrackCoverUris] so every
+  // CoverArt instance resolves its URI synchronously — no per-row
+  // Flow subscription, no second AsyncImage request after the URI
+  // arrives. Mirrors how whisperboy's Book.coverPath is already on
+  // the row when LazyColumn composes.
+  val pinnedCoverUris: Map<Long, String> by tracks.observeTrackCoverUris()
+    .collectAsStateWithLifecycle(initialValue = emptyMap<Long, String>())
+  androidx.compose.runtime.CompositionLocalProvider(
+    LocalTrackCoverUris provides pinnedCoverUris,
+  ) {
   Scaffold(
     topBar = {
       TopAppBar(
@@ -546,6 +558,7 @@ fun LibraryScreen(
         showFilterSheet = false
       },
     )
+  }
   }
 }
 

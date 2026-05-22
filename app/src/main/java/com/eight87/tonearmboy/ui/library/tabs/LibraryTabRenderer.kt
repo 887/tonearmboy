@@ -116,20 +116,10 @@ fun <T : Any> LibraryTabRenderer(
     val prefetchTiles = remember(items, spec, resources) {
       items.mapNotNull { spec.toTile(it, resources) }
     }
-    // Per-track pinned-cover URI snapshot. The on-screen CoverArt
-    // composable resolves the cover URI as
-    //   perTrackPinned (file://...) > albumOverride > MediaStore albumart
-    // — so for tracks with pinned per-track covers (the Piped /
-    // iTunes / bulk-art-worker case, very common), the URI it
-    // requests is the file:// one. Without this map the prefetcher
-    // would warm only the legacy MediaStore URIs and the on-screen
-    // AsyncImage would still decode-on-scroll for every pinned track.
-    val pinnedUris: Map<Long, String> by androidx.compose.runtime.produceState(
-      initialValue = emptyMap<Long, String>(),
-      trackSource, items,
-    ) {
-      value = trackSource?.snapshotTrackCoverUris() ?: emptyMap()
-    }
+    // Per-track pinned-cover URI map, sourced from the library-root
+    // CompositionLocal (same map CoverArt reads, so prefetch and
+    // on-screen request agree on the URI).
+    val pinnedUris = com.eight87.tonearmboy.ui.library.LocalTrackCoverUris.current
     val prefetchPx = remember(density, effectiveTileMode) {
       val dp = if (effectiveTileMode) 200 else 48
       with(density) { dp.dp.toPx().toInt().coerceAtLeast(1) }
