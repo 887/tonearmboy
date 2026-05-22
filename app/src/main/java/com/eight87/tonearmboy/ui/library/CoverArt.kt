@@ -145,16 +145,18 @@ fun CoverArt(
         ?: coverUriOverride?.takeIf { it.isNotBlank() }
         ?: albumArtUri(albumId ?: 0L)
     }
-    // Track three phases: Loading (small indeterminate spinner overlay
-    // so the user sees the decode is in flight), Error (music-note
-    // placeholder), or Success (just the image). The per-cell spinner
-    // was previously dropped for Songs-tab scroll perf, but it left
-    // covers appearing to "pop in" silently on first scroll-into-view —
-    // the user wants the visible cue back. The spinner is only mounted
-    // while state == Loading, so once Coil's memory cache is warm the
-    // compose/measure/draw cost goes away.
+    // Shutterboy / whisperboy pattern: a static ColorPainter as Coil's
+    // placeholder + error + fallback. No per-frame state tracking, no
+    // loading spinner overlay on every scroll-into-view — the same
+    // surfaceVariant tone the page already paints stays put while the
+    // decode is in flight, and the image pops in once ready. Aves /
+    // Google Photos style: "pending = colored square, decoded = image".
+    val placeholderColor = MaterialTheme.colorScheme.surfaceVariant
+    val placeholderPainter = remember(placeholderColor) {
+      androidx.compose.ui.graphics.painter.ColorPainter(placeholderColor)
+    }
+    // Only track the Error phase for the music-note overlay fallback.
     var isError by remember(uri) { mutableStateOf(false) }
-    var isLoading by remember(uri) { mutableStateOf(true) }
 
     val request = remember(uri, targetPx) {
       // Cache + decode keyed by URI + target px. Different grid zoom
@@ -171,31 +173,28 @@ fun CoverArt(
         .build()
     }
 
-    // Always render the AsyncImage so it can fire load events; render
-    // overlays on top only for Error and the web-fetch state.
     AsyncImage(
       model = request,
       contentDescription = contentDescription,
       modifier = Modifier.fillMaxSize(),
       contentScale = ContentScale.Crop,
-      onState = { state ->
-        isError = state is AsyncImagePainter.State.Error
-        isLoading = state is AsyncImagePainter.State.Loading ||
-          state is AsyncImagePainter.State.Empty
-      },
+      placeholder = placeholderPainter,
+      error = placeholderPainter,
+      fallback = placeholderPainter,
+      onSuccess = { isError = false },
+      onError = { isError = true },
     )
 
     // Overlay rules:
-    //   - Fetching from web: cloud-download icon + spinner — network.
+    //   - Fetching from web: cloud-download icon + spinner — only the
+    //     bulk-fetch worker / album-fetch chain wants this signal, so
+    //     it stays.
     //   - Error: music-note placeholder.
-    //   - Loading: tiny indeterminate spinner so the user sees the
-    //     decode is in flight (covers don't appear to silently "pop in"
-    //     on first scroll-into-view).
-    //   - Success: nothing on top.
+    //   - Otherwise: the AsyncImage's ColorPainter placeholder fills
+    //     the cell — no spinner, no recomposition cost during scroll.
     when {
       fetching -> FetchingIndicator(size)
       isError -> Placeholder(size)
-      isLoading -> LoadingSpinner(size)
       else -> Unit
     }
   }
@@ -223,25 +222,6 @@ private fun FetchingIndicator(size: Dp) {
       modifier = Modifier.size((size * 0.32f).coerceAtLeast(18.dp)),
     )
   }
-}
-
-/**
- * Static 75% arc shown while Coil is decoding the cover. Determinate
- * `CircularProgressIndicator` with `progress = { 0.75f }` so it's a
- * single frozen frame — no spin animation, no per-frame recomposition,
- * no compose cost while N tiles are mid-decode on a scroll-in. The
- * arc is enough visual cue that work is happening.
- */
-@Composable
-private fun LoadingSpinner(size: Dp) {
-  CircularProgressIndicator(
-    progress = { 0.75f },
-    modifier = Modifier.size((size * 0.35f).coerceAtLeast(20.dp)),
-    strokeWidth = 2.dp,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-    trackColor = androidx.compose.ui.graphics.Color.Transparent,
-    gapSize = 0.dp,
-  )
 }
 
 @Composable
