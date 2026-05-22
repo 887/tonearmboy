@@ -34,7 +34,16 @@ android {
         applicationId = "com.eight87.tonearmboy"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        // Auto-bump per build: minutes since the Unix epoch. Stays in
+        // Int range until ~year 6053 (current value ~28-29M, max Int
+        // ~2.1B). Every `gradlew assemble*` produces a strictly higher
+        // versionCode than the previous one, which is what Obtainium /
+        // Android's PackageInstaller need to treat the new APK as an
+        // upgrade rather than a "conflict / duplicate package" reject.
+        // The hardcoded `versionCode = 1` shipped on every prior
+        // release, which kept reinstalls in the "no upgrade vector"
+        // grey zone where some installers refuse to overwrite.
+        versionCode = (System.currentTimeMillis() / 60_000L).toInt()
         versionName = "1.0"
 
         // D.16.4.1 / D.16.4.2 — surface build identity to runtime code.
