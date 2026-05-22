@@ -113,7 +113,10 @@ class MainActivity : ComponentActivity() {
       val showAlbumArtBackground = albumArtTintEnabled && albumArtBackgroundEnabled &&
         albumCoverUri != null
 
-      CompositionLocalProvider(LocalAlbumPalette provides albumPalette) {
+      CompositionLocalProvider(
+        LocalAlbumPalette provides albumPalette,
+        com.eight87.tonearmboy.ui.library.LocalCoverArtPrefetcher provides graph.coverArtPrefetcher,
+      ) {
         TonearmboyTheme(
           darkTheme = resolvedDark,
           baseTheme = baseTheme,

@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -147,6 +148,38 @@ fun LibraryTileGrid(
   // per letter group.
   val groups = remember(tiles, sectionKeys) {
     if (sectionKeys.size != tiles.size) emptyList() else buildGroups(sectionKeys)
+  }
+
+  // Bidirectional cover-art prefetch scheduler — shutterboy pattern,
+  // simplified. Watches the visible-item range and submits prefetch
+  // tasks for items in a ±5-viewport window so fast-scroll tiles
+  // land warm in Coil's memory cache instead of decoding on entry.
+  val prefetcher = LocalCoverArtPrefetcher.current
+  val density = androidx.compose.ui.platform.LocalDensity.current
+  val prefetchPx = androidx.compose.runtime.remember(density, columns) {
+    // Tile target size — column-aware best-effort. Adaptive(160) tiles
+    // are ~160dp; Fixed(2) tiles in the two-column mode are larger.
+    // Slightly over-shooting is fine because Coil keys by exact px.
+    with(density) { 200.dp.toPx().toInt().coerceAtLeast(1) }
+  }
+  if (prefetcher != null) {
+    androidx.compose.runtime.LaunchedEffect(state, tiles, prefetcher, prefetchPx) {
+      androidx.compose.runtime.snapshotFlow {
+        state.firstVisibleItemIndex to state.layoutInfo.visibleItemsInfo.size
+      }.distinctUntilChanged().collect { (first, visibleCount) ->
+          if (visibleCount <= 0) return@collect
+          val window = visibleCount * 5
+          val from = (first - window).coerceAtLeast(0)
+          val to = (first + visibleCount + window).coerceAtMost(tiles.size)
+          for (i in from until to) {
+            val tile = tiles.getOrNull(i) ?: continue
+            val uri = tile.artUri
+              ?: tile.albumArtId?.let { "content://media/external/audio/albumart/$it" }
+              ?: continue
+            prefetcher.submit(uri, prefetchPx)
+          }
+        }
+    }
   }
 
   LazyVerticalGrid(

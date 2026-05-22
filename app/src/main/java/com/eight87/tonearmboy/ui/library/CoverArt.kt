@@ -145,24 +145,24 @@ fun CoverArt(
         ?: coverUriOverride?.takeIf { it.isNotBlank() }
         ?: albumArtUri(albumId ?: 0L)
     }
-    // Shutterboy / whisperboy pattern: a static ColorPainter as Coil's
-    // placeholder + error + fallback. No per-frame state tracking, no
-    // loading spinner overlay on every scroll-into-view — the same
-    // surfaceVariant tone the page already paints stays put while the
-    // decode is in flight, and the image pops in once ready. Aves /
-    // Google Photos style: "pending = colored square, decoded = image".
+    // Shutterboy pattern:
+    //  - Outer Box's background paints the placeholder color (the cell
+    //    base layer the user always sees while empty).
+    //  - Static CircularProgressIndicator(progress = { 0.75f }) sits
+    //    CENTERED ON the cell. Single frozen frame, no animation, no
+    //    per-frame recomposition.
+    //  - AsyncImage on top uses ColorPainter(Transparent) as its
+    //    placeholder, so while Coil decodes the spinner shows through.
+    //    Once Coil paints the bitmap on success, the opaque bitmap
+    //    covers the spinner — Compose's overdraw culling handles the
+    //    rest. No crossfade (set globally in TonearmboyApp.kt).
     val placeholderColor = MaterialTheme.colorScheme.surfaceVariant
-    val placeholderPainter = remember(placeholderColor) {
-      androidx.compose.ui.graphics.painter.ColorPainter(placeholderColor)
+    val transparentPainter = remember {
+      androidx.compose.ui.graphics.painter.ColorPainter(androidx.compose.ui.graphics.Color.Transparent)
     }
-    // Only track the Error phase for the music-note overlay fallback.
     var isError by remember(uri) { mutableStateOf(false) }
 
     val request = remember(uri, targetPx) {
-      // Cache + decode keyed by URI + target px. Different grid zoom
-      // levels (Albums 2-col vs 4-col) request different sizes and
-      // get independently-cached entries instead of fighting over the
-      // same bucket.
       val key = "cover-$uri-$targetPx"
       ImageRequest.Builder(context)
         .data(uri)
@@ -173,25 +173,43 @@ fun CoverArt(
         .build()
     }
 
+    // Background tone (the cell's solid base). Behind the spinner +
+    // image. With colorscheme.surfaceVariant the placeholder reads as
+    // a quietly-saturated tile.
+    Box(
+      modifier = Modifier
+        .fillMaxSize()
+        .background(placeholderColor),
+    )
+    // Static 75% arc — frozen frame, no animation. Shutterboy's
+    // pattern: gives the user a "decode in flight" cue without
+    // burning compose cycles per tile during scroll.
+    CircularProgressIndicator(
+      progress = { 0.75f },
+      modifier = Modifier
+        .align(Alignment.Center)
+        .size((size * 0.35f).coerceAtLeast(20.dp)),
+      strokeWidth = 2.dp,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      trackColor = androidx.compose.ui.graphics.Color.Transparent,
+      gapSize = 0.dp,
+    )
     AsyncImage(
       model = request,
       contentDescription = contentDescription,
       modifier = Modifier.fillMaxSize(),
       contentScale = ContentScale.Crop,
-      placeholder = placeholderPainter,
-      error = placeholderPainter,
-      fallback = placeholderPainter,
+      placeholder = transparentPainter,
+      error = transparentPainter,
+      fallback = transparentPainter,
       onSuccess = { isError = false },
       onError = { isError = true },
     )
 
     // Overlay rules:
     //   - Fetching from web: cloud-download icon + spinner — only the
-    //     bulk-fetch worker / album-fetch chain wants this signal, so
-    //     it stays.
+    //     bulk-fetch worker / album-fetch chain wants this signal.
     //   - Error: music-note placeholder.
-    //   - Otherwise: the AsyncImage's ColorPainter placeholder fills
-    //     the cell — no spinner, no recomposition cost during scroll.
     when {
       fetching -> FetchingIndicator(size)
       isError -> Placeholder(size)

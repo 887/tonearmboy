@@ -129,6 +129,18 @@ class AppGraph(private val applicationContext: Context) {
     AlbumPaletteSource(applicationContext)
   }
 
+  /**
+   * App-scoped bidirectional cover-art prefetcher. The Library tile
+   * grid feeds it items in a window around the visible viewport so
+   * fast-scroll tiles land warm in Coil's memory cache.
+   */
+  val coverArtPrefetcher: com.eight87.tonearmboy.ui.library.CoverArtPrefetcher by lazy {
+    com.eight87.tonearmboy.ui.library.CoverArtPrefetcher(
+      context = applicationContext,
+      scope = applicationScope,
+    )
+  }
+
   companion object {
     @Volatile
     private var instance: AppGraph? = null

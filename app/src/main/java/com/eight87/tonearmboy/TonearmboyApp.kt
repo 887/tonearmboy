@@ -51,7 +51,11 @@ class TonearmboyApp : Application(), SingletonImageLoader.Factory {
           .maxSizeBytes(100L * 1024 * 1024)
           .build()
       }
-      .crossfade(true)
+      // Crossfade off — the user wants the cover to pop instantly
+      // once decoded. With the static 75% spinner overlay in CoverArt
+      // (shutterboy pattern), the visual cue while loading is the
+      // spinner; the cover replaces it with no fade animation.
+      .crossfade(false)
       .build()
   }
 }
