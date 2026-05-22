@@ -205,7 +205,10 @@ fun <T : Any> LibraryTabRenderer(
         inSelectionMode = selection?.inSelectionMode ?: false,
         isSelected = selection?.let { sel -> { tile -> sel.contains(tile.id) } },
         trackSource = trackSource,
-        modifier = Modifier.fillMaxSize().padding(horizontal = SettingsDimens.PagePadding),
+        // Whisperboy-shape tile inset: 8 dp horizontal so covers
+        // breathe close to the edges, matching whisperboy's
+        // LibraryCoverGrid contentPadding.
+        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
       )
     } else {
       // Stable per-row click lambdas. Without rememberUpdatedState +
