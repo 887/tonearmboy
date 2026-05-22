@@ -115,16 +115,14 @@ fun MiniPlayer(
   trackCoverUriOverride: String? = null,
 ) {
   if (!state.hasMedia) return
-  // G+ — fillMaxSize so the surfaceContainerHigh background fills the
-  // sheet's peek slot end-to-end. We wrap the Column in a Material 3
-  // Surface (rather than `Modifier.background(surfaceContainerHigh)`)
-  // so `LocalContentColor` propagates to the IconButtons in the
-  // transport row — `Modifier.background` paints a colour but does
-  // NOT set the content-color CompositionLocal, so the row's icons
-  // were inheriting the OUTER `onBackground` colour (~black against
-  // a tinted dark surface = invisible). Surface fills max size and
-  // takes the same colour, so the no-gap guarantee that drove the
-  // original Modifier.background choice still holds.
+  // Surface (not Modifier.background) so LocalContentColor propagates
+  // — the missing-frame fix that put light onSurface back on the
+  // transport-row icons. Container stays on `surfaceContainerHigh`
+  // (which is OPAQUE under cover-wallpaper mode by design — see
+  // Theme.kt). The mini-player strip is too narrow to benefit from
+  // cover-bleed glass; the cover-wallpaper paints behind the sheet
+  // (NowPlayingSheet's internal AlbumArtBackground), not behind this
+  // mini band. Mirrors whisperboy's NowPlayingBar decision.
   Surface(
     modifier = Modifier.fillMaxSize(),
     color = MaterialTheme.colorScheme.surfaceContainerHigh,
