@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -98,6 +99,59 @@ fun <T : Any> LibraryTabRenderer(
   val listState = rememberLazyListState()
   val gridState = rememberLazyGridState()
   val effectiveTileMode = viewMode != ViewMode.List && spec.supportsTileMode
+
+  // Bidirectional cover-art prefetch scheduler. Watches whichever
+  // scroll state is active (list or grid) and pushes URIs in a
+  // ±10-viewport window into the app-scoped CoverArtPrefetcher, which
+  // pre-warms Coil's memory cache so on-screen AsyncImages become
+  // memory-cache hits with no decode flash. List rows use 48dp covers;
+  // tile cells use ~160-200dp. The prefetch matches the row size so
+  // the cache key lines up with what CoverArt requests at compose
+  // time.
+  val prefetcher = com.eight87.tonearmboy.ui.library.LocalCoverArtPrefetcher.current
+  if (prefetcher != null) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val resources = LocalContext.current.resources
+    val prefetchTiles = remember(items, spec, resources) {
+      items.mapNotNull { spec.toTile(it, resources) }
+    }
+    val prefetchPx = remember(density, effectiveTileMode) {
+      val dp = if (effectiveTileMode) 200 else 48
+      with(density) { dp.dp.toPx().toInt().coerceAtLeast(1) }
+    }
+    androidx.compose.runtime.LaunchedEffect(
+      prefetchTiles, listState, gridState, effectiveTileMode, prefetchPx, prefetcher,
+    ) {
+      val firstFlow = if (effectiveTileMode) {
+        androidx.compose.runtime.snapshotFlow {
+          gridState.firstVisibleItemIndex to gridState.layoutInfo.visibleItemsInfo.size
+        }
+      } else {
+        androidx.compose.runtime.snapshotFlow {
+          listState.firstVisibleItemIndex to listState.layoutInfo.visibleItemsInfo.size
+        }
+      }
+      firstFlow.distinctUntilChanged().collect { (first, visibleCount) ->
+          if (visibleCount <= 0) return@collect
+          // Window is intentionally wide — LIFO + memory-cache dedup
+          // makes redundant submissions cheap, so we err on the side
+          // of warming more rather than missing a tile the user
+          // scrolls to. The list LazyColumn index includes sticky
+          // section headers, so the index→tile mapping isn't exact —
+          // a wider window absorbs that drift.
+          val window = (visibleCount * 10).coerceAtLeast(30)
+          val from = (first - window).coerceAtLeast(0)
+          val to = (first + visibleCount + window).coerceAtMost(prefetchTiles.size)
+          for (i in from until to) {
+            val tile = prefetchTiles.getOrNull(i) ?: continue
+            val uri = tile.artUri
+              ?: tile.albumArtId?.let { "content://media/external/audio/albumart/$it" }
+              ?: continue
+            prefetcher.submit(uri, prefetchPx)
+          }
+        }
+    }
+  }
   // ViewMode.TwoColumn pins the grid to exactly two columns; Tile
   // keeps the pre-existing adaptive 160-dp-min layout.
   val gridColumns = if (viewMode == ViewMode.TwoColumn) {
