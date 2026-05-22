@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -115,12 +116,26 @@ fun <T : Any> LibraryTabRenderer(
     val prefetchTiles = remember(items, spec, resources) {
       items.mapNotNull { spec.toTile(it, resources) }
     }
+    // Per-track pinned-cover URI snapshot. The on-screen CoverArt
+    // composable resolves the cover URI as
+    //   perTrackPinned (file://...) > albumOverride > MediaStore albumart
+    // — so for tracks with pinned per-track covers (the Piped /
+    // iTunes / bulk-art-worker case, very common), the URI it
+    // requests is the file:// one. Without this map the prefetcher
+    // would warm only the legacy MediaStore URIs and the on-screen
+    // AsyncImage would still decode-on-scroll for every pinned track.
+    val pinnedUris: Map<Long, String> by androidx.compose.runtime.produceState(
+      initialValue = emptyMap<Long, String>(),
+      trackSource, items,
+    ) {
+      value = trackSource?.snapshotTrackCoverUris() ?: emptyMap()
+    }
     val prefetchPx = remember(density, effectiveTileMode) {
       val dp = if (effectiveTileMode) 200 else 48
       with(density) { dp.dp.toPx().toInt().coerceAtLeast(1) }
     }
     androidx.compose.runtime.LaunchedEffect(
-      prefetchTiles, listState, gridState, effectiveTileMode, prefetchPx, prefetcher,
+      prefetchTiles, pinnedUris, listState, gridState, effectiveTileMode, prefetchPx, prefetcher,
     ) {
       val firstFlow = if (effectiveTileMode) {
         androidx.compose.runtime.snapshotFlow {
@@ -144,7 +159,10 @@ fun <T : Any> LibraryTabRenderer(
           val to = (first + visibleCount + window).coerceAtMost(prefetchTiles.size)
           for (i in from until to) {
             val tile = prefetchTiles.getOrNull(i) ?: continue
-            val uri = tile.artUri
+            // Same resolution order CoverArt uses:
+            //   per-track-pinned > artUri override > MediaStore albumart.
+            val uri = tile.trackId?.let { pinnedUris[it] }
+              ?: tile.artUri
               ?: tile.albumArtId?.let { "content://media/external/audio/albumart/$it" }
               ?: continue
             prefetcher.submit(uri, prefetchPx)

@@ -16,4 +16,9 @@ interface TrackCoverDao {
 
   @Query("DELETE FROM track_covers WHERE trackId = :id")
   suspend fun delete(id: Long)
+
+  /** Every pinned row at once. Empty `coverUri` (intentionally-empty
+   *  choice) is filtered at the call site. */
+  @Query("SELECT * FROM track_covers WHERE coverUri IS NOT NULL")
+  suspend fun allPinned(): List<TrackCoverEntity>
 }
