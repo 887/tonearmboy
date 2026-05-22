@@ -294,15 +294,29 @@ private fun ScrollbarThumb(
             .wrapContentWidth(Alignment.End, unbounded = true)
             .semantics { testTag = "fast_scrollbar_section_$label" },
         ) {
-          Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-            maxLines = 1,
-            softWrap = false,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
-          )
+          // Pill backplate — same shape shutterboy's YearPill uses, so
+          // section markers stay readable when the chrome is translucent
+          // and the album-art wallpaper shows through.
+          Box(
+            modifier = Modifier
+              .padding(vertical = 2.dp)
+              .clip(RoundedCornerShape(percent = 50))
+              .background(
+                MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f),
+              )
+              .padding(horizontal = 10.dp, vertical = 3.dp),
+            contentAlignment = Alignment.Center,
+          ) {
+            Text(
+              text = label,
+              style = MaterialTheme.typography.labelMedium,
+              fontWeight = FontWeight.Medium,
+              color = MaterialTheme.colorScheme.onSurface,
+              maxLines = 1,
+              softWrap = false,
+              overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
+            )
+          }
         }
       }
     }
