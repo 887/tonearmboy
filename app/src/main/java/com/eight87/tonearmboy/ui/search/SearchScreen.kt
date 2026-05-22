@@ -50,7 +50,10 @@ import androidx.compose.ui.unit.dp
 import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.data.TrackSource
 import com.eight87.tonearmboy.data.model.Track
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eight87.tonearmboy.ui.library.CoverArt
+import com.eight87.tonearmboy.ui.library.LocalTrackCoverUris
 import com.eight87.tonearmboy.ui.library.libraryListCard
 import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
 import kotlinx.coroutines.flow.collectLatest
@@ -85,6 +88,14 @@ fun SearchScreen(
     flow.collectLatest { value = it }
   }
 
+  // Same per-track cover URI map LibraryScreen provides — without
+  // this, CoverArt falls back to MediaStore's albumart URI which
+  // 404s for unknown-album tracks. Search is a top-level route so it
+  // doesn't inherit the library's CompositionLocal; provide it here.
+  val pinnedCoverUris: Map<Long, String> by repository.observeTrackCoverUris()
+    .collectAsStateWithLifecycle(initialValue = emptyMap<Long, String>())
+
+  CompositionLocalProvider(LocalTrackCoverUris provides pinnedCoverUris) {
   Scaffold(
     topBar = {
       Row(
@@ -184,5 +195,6 @@ fun SearchScreen(
         }
       }
     }
+  }
   }
 }
