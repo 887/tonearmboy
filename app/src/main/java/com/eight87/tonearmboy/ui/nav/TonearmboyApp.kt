@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -499,12 +500,23 @@ fun TonearmboyApp(
             // Mini-player (front of stack). Sized to peek, anchored at
             // top of inner area — visible at peek state, fades out by
             // progress=0.5. ALWAYS composed — see comment above.
+            //
+            // zIndex flip: when the sheet is mostly-or-fully expanded
+            // (nowPlayingAlpha > miniAlpha), push the MiniPlayer below
+            // the NowPlayingScreen in hit-test order. Otherwise the
+            // invisible-but-still-composed MiniPlayer's interactive
+            // children (play / skip / cover-tap) silently intercept
+            // taps inside the NowPlayingScreen's TopAppBar action area
+            // — which is exactly the band where the sleep-timer moon
+            // icon sits, so tapping the moon registered as a previous-
+            // track skip instead.
             Box(
               modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .height(peekDp)
-                .alpha(miniAlpha),
+                .alpha(miniAlpha)
+                .zIndex(if (miniAlpha >= nowPlayingAlpha) 1f else -1f),
             ) {
               MiniPlayer(
                 state = playbackState,
