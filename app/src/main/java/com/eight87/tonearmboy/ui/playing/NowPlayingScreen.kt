@@ -1,6 +1,7 @@
 package com.eight87.tonearmboy.ui.playing
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -186,12 +187,36 @@ fun NowPlayingScreen(
               onClick = onOpenSleepTimer,
               modifier = Modifier.semantics { testTag = "now_playing_sleep_timer" },
             ) {
-              Icon(
-                imageVector = if (active) Icons.Filled.Bedtime else Icons.Outlined.Bedtime,
-                contentDescription = "Sleep timer",
-                tint = if (active) MaterialTheme.colorScheme.primary
-                       else androidx.compose.material3.LocalContentColor.current,
-              )
+              androidx.compose.foundation.layout.Box(
+                contentAlignment = Alignment.Center,
+              ) {
+                Icon(
+                  imageVector = if (active) Icons.Filled.Bedtime else Icons.Outlined.Bedtime,
+                  contentDescription = "Sleep timer",
+                  tint = if (active) MaterialTheme.colorScheme.primary
+                         else androidx.compose.material3.LocalContentColor.current,
+                )
+                val badge = when (val s = timerState) {
+                  is com.eight87.tonearmboy.playback.SleepTimerState.Running -> {
+                    val totalSec = (s.remainingMs / 1000L).coerceAtLeast(0L)
+                    val mm = totalSec / 60
+                    val ss = totalSec % 60
+                    "${mm}:${ss.toString().padStart(2, '0')}"
+                  }
+                  com.eight87.tonearmboy.playback.SleepTimerState.WaitingForTrackEnd -> "·"
+                  com.eight87.tonearmboy.playback.SleepTimerState.Idle -> null
+                }
+                if (badge != null) {
+                  Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                      .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                      .padding(horizontal = 2.dp),
+                  )
+                }
+              }
             }
           }
           // G+ — Delete current track. To the LEFT of the save-queue
