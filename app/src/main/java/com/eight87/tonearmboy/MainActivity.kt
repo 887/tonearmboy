@@ -122,9 +122,20 @@ class MainActivity : ComponentActivity() {
       // it. Chrome glass-mode follows whichever backdrop paints.
       val showWallpaper = albumArtTintEnabled && albumArtBackgroundEnabled &&
         albumCoverUri != null
-      val solidTintFallback: androidx.compose.ui.graphics.Color? =
-        if (!showWallpaper) effectiveTint else null
-      val anyBackdrop = showWallpaper || solidTintFallback != null
+      // Always-on opaque base under any backdrop layer. Covers the case
+      // where `albumCoverUri` is non-null but Coil silently fails to
+      // load it (deleted file, dead MediaStore content URI, network
+      // cover with no connectivity) — without this the queue / now-
+      // playing / library all sat on a transparent activity window
+      // because the theme flips `colorScheme.background` to Transparent
+      // whenever `albumArtBackgroundActive` is true. Prefers the tint
+      // when available so colour continuity survives an image-load
+      // failure; otherwise picks a foundation black/white that matches
+      // the resolved theme.
+      val baseBackdrop: androidx.compose.ui.graphics.Color = effectiveTint
+        ?: if (resolvedDark) androidx.compose.ui.graphics.Color.Black
+           else androidx.compose.ui.graphics.Color.White
+      val anyBackdrop = showWallpaper || effectiveTint != null
 
       CompositionLocalProvider(
         LocalAlbumPalette provides albumPalette,
@@ -140,17 +151,18 @@ class MainActivity : ComponentActivity() {
           albumArtBackgroundActive = anyBackdrop,
         ) {
           androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
-            if (showWallpaper) {
-              com.eight87.tonearmboy.theme.AlbumArtBackground(
-                coverUri = albumCoverUri,
-                modifier = Modifier.fillMaxSize(),
-              )
-            } else if (solidTintFallback != null) {
+            if (anyBackdrop) {
               androidx.compose.foundation.layout.Box(
                 modifier = Modifier
                   .fillMaxSize()
-                  .background(solidTintFallback),
+                  .background(baseBackdrop),
               )
+              if (showWallpaper) {
+                com.eight87.tonearmboy.theme.AlbumArtBackground(
+                  coverUri = albumCoverUri,
+                  modifier = Modifier.fillMaxSize(),
+                )
+              }
             }
             Surface(
               modifier = Modifier.fillMaxSize(),
