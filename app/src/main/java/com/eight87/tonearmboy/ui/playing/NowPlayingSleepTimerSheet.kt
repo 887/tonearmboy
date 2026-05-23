@@ -59,10 +59,17 @@ fun NowPlayingSleepTimerSheet(
   var customOpen by remember { mutableStateOf(false) }
   var waitForEndOfTrack by remember { mutableStateOf(false) }
 
+  // Force fully-opaque container even in glass-mode (the theme only
+  // strips alpha from `surface`, but ModalBottomSheet's default tonal
+  // elevation + dark-scheme `surfaceContainer` value still reads as
+  // glassy against the cover wallpaper behind the queue). Explicit
+  // `.copy(alpha = 1f)` + tonalElevation = 0.dp keeps the sheet a
+  // hard surface.
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
-    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 1f),
+    tonalElevation = 0.dp,
     dragHandle = { BottomSheetDefaults.DragHandle() },
     modifier = modifier,
   ) {
