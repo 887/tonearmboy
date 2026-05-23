@@ -111,17 +111,20 @@ class MainActivity : ComponentActivity() {
       }
       val albumPalette by graph.albumPaletteSource.palette.collectAsStateWithLifecycle()
       val albumCoverUri by graph.albumPaletteSource.coverUri.collectAsStateWithLifecycle()
-      // Album-art background layer is active whenever the user has the
-      // option on — even when the current track has no cover loaded
-      // (Piped/YouTube downloads before their cover-art fetch
-      // completes). In the cover-less case we paint a solid tint
-      // panel below the chrome instead of the blurred wallpaper, so
-      // the screen doesn't pop to base-scheme black between tracks.
-      val albumArtBackgroundActive = albumArtTintEnabled && albumArtBackgroundEnabled
+      // Effective tint colour: the user's custom pick wins; otherwise
+      // the album-art palette if that mode is on; otherwise none.
+      val effectiveTint: androidx.compose.ui.graphics.Color? = customChromeTint
+        ?: (if (albumArtTintEnabled) albumPalette.surfaceTint else null)
+      // Wallpaper paints only when the user has the option on AND the
+      // current track has a cover loaded. Otherwise, if any tint is
+      // available, paint that as a solid backdrop instead — the user
+      // has explicitly picked a colour (or palette mode), so surface
+      // it. Chrome glass-mode follows whichever backdrop paints.
+      val showWallpaper = albumArtTintEnabled && albumArtBackgroundEnabled &&
+        albumCoverUri != null
       val solidTintFallback: androidx.compose.ui.graphics.Color? =
-        if (albumArtBackgroundActive && albumCoverUri == null) {
-          customChromeTint ?: albumPalette.surfaceTint
-        } else null
+        if (!showWallpaper) effectiveTint else null
+      val anyBackdrop = showWallpaper || solidTintFallback != null
 
       CompositionLocalProvider(
         LocalAlbumPalette provides albumPalette,
@@ -132,13 +135,12 @@ class MainActivity : ComponentActivity() {
           baseTheme = baseTheme,
           albumArtTintEnabled = albumArtTintEnabled,
           customChromeTint = customChromeTint,
-          // Keep the chrome glassy whenever a backdrop layer (cover or
-          // solid tint) is going to paint below it.
-          albumArtBackgroundActive = albumArtBackgroundActive &&
-            (albumCoverUri != null || solidTintFallback != null),
+          // Glass chrome (translucent surfaces) whenever a backdrop
+          // layer is going to paint below — cover or solid tint.
+          albumArtBackgroundActive = anyBackdrop,
         ) {
           androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
-            if (albumArtBackgroundActive && albumCoverUri != null) {
+            if (showWallpaper) {
               com.eight87.tonearmboy.theme.AlbumArtBackground(
                 coverUri = albumCoverUri,
                 modifier = Modifier.fillMaxSize(),
@@ -152,7 +154,7 @@ class MainActivity : ComponentActivity() {
             }
             Surface(
               modifier = Modifier.fillMaxSize(),
-              color = if (albumCoverUri != null || solidTintFallback != null)
+              color = if (anyBackdrop)
                 androidx.compose.ui.graphics.Color.Transparent
               else MaterialTheme.colorScheme.background,
             ) {
