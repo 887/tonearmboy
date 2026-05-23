@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -138,6 +140,12 @@ fun NowPlayingScreen(
    * bulk-art worker walking each song's filename).
    */
   trackCoverUriOverride: String? = null,
+  /**
+   * Sleep-timer handle — surfaced in the top app bar as a bedtime
+   * action, opens [NowPlayingSleepTimerSheet]. Nullable for previews /
+   * tests that don't wire the playback graph.
+   */
+  sleepTimer: com.eight87.tonearmboy.playback.SleepTimer? = null,
 ) {
   val state by nowPlayingState.state.collectAsStateWithLifecycle()
   val queueSnapshot by nowPlayingState.queue.collectAsStateWithLifecycle()
@@ -148,6 +156,7 @@ fun NowPlayingScreen(
   val listState = nowPlayingListState ?: fallbackListState
   // G+ — typed-confirm delete dialog state.
   var showDeleteConfirm by remember { mutableStateOf(false) }
+  var showSleepSheet by remember { mutableStateOf(false) }
 
   Scaffold(
     topBar = {
@@ -162,6 +171,26 @@ fun NowPlayingScreen(
           }
         },
         actions = {
+          // Sleep timer — bedtime icon opens the modal sheet. Lives
+          // on the queue/now-playing top bar (not in Settings) so the
+          // user can arm a timer in the same surface where they
+          // already see what's playing. Mirrors the placement
+          // whisperboy uses.
+          if (sleepTimer != null) {
+            val timerState by sleepTimer.state.collectAsStateWithLifecycle()
+            val active = timerState !is com.eight87.tonearmboy.playback.SleepTimerState.Idle
+            IconButton(
+              onClick = { showSleepSheet = true },
+              modifier = Modifier.semantics { testTag = "now_playing_sleep_timer" },
+            ) {
+              Icon(
+                imageVector = if (active) Icons.Filled.Bedtime else Icons.Outlined.Bedtime,
+                contentDescription = "Sleep timer",
+                tint = if (active) MaterialTheme.colorScheme.primary
+                       else androidx.compose.material3.LocalContentColor.current,
+              )
+            }
+          }
           // G+ — Delete current track. To the LEFT of the save-queue
           // button. Opens a typed-confirm dialog ("y/yes" or "n/no")
           // so a pocket-tap can't trigger a delete. The actual SAF
@@ -252,6 +281,13 @@ fun NowPlayingScreen(
   // can dismiss with Cancel or back. Pocket-tap-proof: a single tap on
   // the trash icon opens this dialog, but no accidental sequence of
   // taps can complete the delete.
+  if (showSleepSheet && sleepTimer != null) {
+    NowPlayingSleepTimerSheet(
+      sleepTimer = sleepTimer,
+      onDismiss = { showSleepSheet = false },
+    )
+  }
+
   if (showDeleteConfirm) {
     TypedConfirmDialog(
       title = stringResource(R.string.playing_delete_confirm_title),

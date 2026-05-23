@@ -486,6 +486,7 @@ fun TonearmboyApp(
                 },
                 nowPlayingListState = nowPlayingListState,
                 trackCoverUriOverride = activeTrackCoverUri,
+                sleepTimer = graph.sleepTimer,
               )
             }
 

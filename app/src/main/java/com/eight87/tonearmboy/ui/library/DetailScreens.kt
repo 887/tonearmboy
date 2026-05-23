@@ -153,6 +153,17 @@ fun AlbumDetailScreen(
     }
   }
 
+  // Pinned per-track cover URIs are only published by [LibraryScreen]'s
+  // CompositionLocalProvider — detail screens are navigated as
+  // sibling routes outside that scope, so without re-providing here
+  // every [DetailTrackRow]'s [CoverArt] sees an empty map and falls
+  // through to the MediaStore `albumart` URI (often empty when the
+  // tracks come from a downloaded folder with `<unknown>` album).
+  val pinnedCoverUris by trackSource.observeTrackCoverUris()
+    .collectAsState(initial = emptyMap<Long, String>())
+  androidx.compose.runtime.CompositionLocalProvider(
+    LocalTrackCoverUris provides pinnedCoverUris,
+  ) {
   Scaffold(
     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     topBar = {
@@ -353,6 +364,7 @@ fun AlbumDetailScreen(
       }
     }
   }
+  }
 }
 
 // --- Artist --------------------------------------------------------------
@@ -399,6 +411,13 @@ fun ArtistDetailScreen(
   ).copy(showSearchOnline = false)
   var artistCoverMenuOpen by remember { mutableStateOf(false) }
 
+  // See [AlbumDetailScreen] for the rationale — provide pinned
+  // per-track covers here so the per-row [CoverArt] cascade lands.
+  val pinnedCoverUris by trackSource.observeTrackCoverUris()
+    .collectAsState(initial = emptyMap<Long, String>())
+  androidx.compose.runtime.CompositionLocalProvider(
+    LocalTrackCoverUris provides pinnedCoverUris,
+  ) {
   Scaffold(
     topBar = {
       TopAppBar(
@@ -519,6 +538,7 @@ fun ArtistDetailScreen(
       }
     }
   }
+  }
 }
 
 // --- Genre --------------------------------------------------------------
@@ -541,6 +561,13 @@ fun GenreDetailScreen(
   val sectionTitle = LocalSectionTitle.current
   LaunchedEffect(genreName) { sectionTitle.value = genreName }
 
+  // See [AlbumDetailScreen] for the rationale — provide pinned
+  // per-track covers here so the per-row [CoverArt] cascade lands.
+  val pinnedCoverUris by trackSource.observeTrackCoverUris()
+    .collectAsState(initial = emptyMap<Long, String>())
+  androidx.compose.runtime.CompositionLocalProvider(
+    LocalTrackCoverUris provides pinnedCoverUris,
+  ) {
   Scaffold(
     topBar = {
       TopAppBar(
@@ -594,6 +621,7 @@ fun GenreDetailScreen(
         }
       }
     }
+  }
   }
 }
 

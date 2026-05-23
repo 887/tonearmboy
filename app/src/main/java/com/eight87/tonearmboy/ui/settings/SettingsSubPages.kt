@@ -653,37 +653,12 @@ fun SettingsAudioScreen(
   // R.F.17 — picker state controller (Settings-F5).
   val rgStrategyPicker = rememberSettingPickerState()
   var rgPreampDialog by remember { mutableStateOf(false) }
-  var sleepDialog by remember { mutableStateOf(false) }
-
-  // Phase H.3 — observe the timer state so the dialog (and the row
-  // subtitle) can render the live countdown without polling.
-  val sleepState by (sleepTimer?.state
-    ?: kotlinx.coroutines.flow.MutableStateFlow(
-      com.eight87.tonearmboy.playback.SleepTimerState.Idle,
-    )).collectAsState(initial = com.eight87.tonearmboy.playback.SleepTimerState.Idle)
-
-  val sleepRowSubtitle = when (val s = sleepState) {
-    is com.eight87.tonearmboy.playback.SleepTimerState.Running -> {
-      val minutes = (s.remainingMs / 60_000L).coerceAtLeast(0)
-      stringResource(R.string.settings_audio_sleep_timer_running_subtitle, minutes.toInt())
-    }
-    com.eight87.tonearmboy.playback.SleepTimerState.WaitingForTrackEnd ->
-      stringResource(R.string.settings_audio_sleep_timer_waiting_subtitle)
-    com.eight87.tonearmboy.playback.SleepTimerState.Idle ->
-      stringResource(R.string.settings_audio_sleep_timer_subtitle)
-  }
 
   val bindings = listOf(
     SettingsRowBinding.Toggle(
       id = SettingsCatalog.ID_PAUSE_ON_REPEAT,
       checked = pauseOnRepeat,
       onCheckedChange = { scope.launch { settings.pauseOnRepeat.set(it) } },
-    ),
-    // Phase H.3 — sleep timer row.
-    SettingsRowBinding.Picker(
-      id = SettingsCatalog.ID_SLEEP_TIMER,
-      currentLabel = sleepRowSubtitle,
-      onClick = { sleepDialog = true },
     ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
@@ -723,26 +698,6 @@ fun SettingsAudioScreen(
       section = Section.Audio,
       bindings = bindings,
       modifier = mod,
-    )
-  }
-
-  if (sleepDialog) {
-    SleepTimerDialog(
-      state = sleepState,
-      onStart = { durationMs, waitForEndOfTrack ->
-        sleepTimer?.start(durationMs, waitForEndOfTrack)
-        sleepDialog = false
-        scope.launch {
-          val mins = durationMs / 60_000L
-          snackbarHostState.showSnackbar(
-            context.getString(R.string.settings_audio_sleep_timer_set_snackbar, mins.toInt()),
-          )
-        }
-      },
-      onCancel = {
-        sleepTimer?.cancel()
-      },
-      onDismiss = { sleepDialog = false },
     )
   }
 

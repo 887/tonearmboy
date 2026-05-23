@@ -65,22 +65,6 @@ internal val AudioEntries: List<SettingsCatalogEntry> = listOf(
     destination = SettingsAudio,
     breadcrumb = listOf(SECTION_AUDIO, "Volume normalization", "ReplayGain pre-amp"),
   ),
-  // Phase H.3 — sleep timer. RowKind.OpenDialog so the row hosts the
-  // presets dialog inline instead of pushing a sub-page.
-  SettingsCatalogEntry(
-    id = SettingsCatalog.ID_SLEEP_TIMER,
-    label = "Sleep timer",
-    subtitle = "Pause playback after a delay.",
-    labelRes = R.string.settings_audio_sleep_timer_label,
-    subtitleRes = R.string.settings_audio_sleep_timer_subtitle,
-    keywords = listOf("sleep", "timer", "pause", "bedtime", "off"),
-    icon = Icons.Outlined.Bedtime,
-    section = Section.Audio,
-    group = Groups.Playback,
-    kind = RowKind.OpenDialog,
-    destination = SettingsAudio,
-    breadcrumb = listOf(SECTION_AUDIO, "Playback", "Sleep timer"),
-  ),
   // Phase H.4 — System equalizer hand-off. Tapping fires
   // ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL on the active audio
   // session; if no app handles it the snackbar falls back.
