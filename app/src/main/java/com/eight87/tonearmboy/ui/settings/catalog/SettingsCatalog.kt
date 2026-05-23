@@ -10,6 +10,7 @@ import com.eight87.tonearmboy.ui.settings.catalog.sections.CoverArtEntries
 import com.eight87.tonearmboy.ui.settings.catalog.sections.LookAndFeelEntries
 import com.eight87.tonearmboy.ui.settings.catalog.sections.PersonalizeEntries
 import com.eight87.tonearmboy.ui.settings.catalog.sections.RootEntries
+import com.eight87.tonearmboy.ui.settings.catalog.sections.SleepTimerEntries
 
 /**
  * Where this entry sits in the settings hierarchy. The root settings
@@ -17,7 +18,7 @@ import com.eight87.tonearmboy.ui.settings.catalog.sections.RootEntries
  * is [Section.Root]; each sub-page is rendered from entries with the
  * matching section value.
  */
-enum class Section { Root, LookAndFeel, Personalize, CoverArt, Content, Audio }
+enum class Section { Root, LookAndFeel, Personalize, CoverArt, Content, Audio, SleepTimer }
 
 /**
  * R.F.15 — grouping bucket inside a section. All entries with the same
@@ -176,6 +177,13 @@ object SettingsCatalog {
   // Phase H.4 — system equalizer hand-off.
   const val ID_SYSTEM_EQUALIZER = "audio.system_equalizer"
 
+  // Sleep timer sub-page (Settings → Audio → Sleep timer).
+  const val ID_AUDIO_SLEEP_TIMER = "audio.sleep_timer"
+  const val ID_SLEEP_DEFAULT_DURATION = "sleep.default_duration"
+  const val ID_SLEEP_FADE_OUT = "sleep.fade_out"
+  const val ID_SLEEP_SHAKE_TO_RESUME = "sleep.shake_to_resume"
+  const val ID_SLEEP_AUTO_ARM = "sleep.auto_arm"
+
   // Phase H.5 — playlist backup actions on the Settings root, in the
   // Library group alongside Music sources / Refresh / Rescan.
   const val ID_LIBRARY_EXPORT_PLAYLISTS = "library.export_playlists"
@@ -188,7 +196,8 @@ object SettingsCatalog {
       PersonalizeEntries +
       CoverArtEntries +
       ContentEntries +
-      AudioEntries
+      AudioEntries +
+      SleepTimerEntries
 
   /** Look up an entry by id. Throws if missing — IDs are compile-time stable. */
   fun byId(id: String): SettingsCatalogEntry =

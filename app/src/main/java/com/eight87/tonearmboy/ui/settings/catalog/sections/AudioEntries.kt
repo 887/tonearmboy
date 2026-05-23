@@ -1,13 +1,17 @@
 package com.eight87.tonearmboy.ui.settings.catalog.sections
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Equalizer
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.PauseCircle
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.material.icons.outlined.VolumeUp
 import com.eight87.tonearmboy.R
 import com.eight87.tonearmboy.ui.nav.SettingsAudio
+import com.eight87.tonearmboy.ui.nav.SettingsSleepTimer
 import com.eight87.tonearmboy.ui.settings.catalog.Groups
 import com.eight87.tonearmboy.ui.settings.catalog.RowKind
 import com.eight87.tonearmboy.ui.settings.catalog.Section
@@ -67,5 +71,80 @@ internal val AudioEntries: List<SettingsCatalogEntry> = listOf(
     kind = RowKind.Action,
     destination = SettingsAudio,
     breadcrumb = listOf(SECTION_AUDIO, "Volume normalization", "System equalizer"),
+  ),
+  // Sleep timer sub-page navigator.
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_AUDIO_SLEEP_TIMER,
+    label = "Sleep timer",
+    subtitle = "Default duration, fade-out, shake to resume, auto-arm window.",
+    labelRes = R.string.settings_audio_sleep_timer_label,
+    subtitleRes = R.string.settings_audio_sleep_timer_subtitle,
+    keywords = listOf("sleep", "timer", "bedtime", "fade", "shake", "auto-arm"),
+    icon = Icons.Outlined.Bedtime,
+    section = Section.Audio,
+    group = Groups.VolumeNormalization,
+    kind = RowKind.Navigate,
+    destination = SettingsSleepTimer,
+    breadcrumb = listOf(SECTION_AUDIO, "Sleep timer"),
+  ),
+)
+
+/** Sub-page entries for Settings → Audio → Sleep timer. */
+internal val SleepTimerEntries: List<SettingsCatalogEntry> = listOf(
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_SLEEP_DEFAULT_DURATION,
+    label = "Default duration",
+    subtitle = null,
+    labelRes = R.string.settings_sleep_default_duration_label,
+    subtitleRes = null,
+    keywords = listOf("default", "duration", "minutes"),
+    icon = Icons.Outlined.Bedtime,
+    section = Section.SleepTimer,
+    group = Groups.VolumeNormalization,
+    kind = RowKind.Picker,
+    destination = SettingsSleepTimer,
+    breadcrumb = listOf(SECTION_AUDIO, "Sleep timer", "Default duration"),
+  ),
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_SLEEP_FADE_OUT,
+    label = "Fade-out",
+    subtitle = null,
+    labelRes = R.string.settings_sleep_fade_out_label,
+    subtitleRes = null,
+    keywords = listOf("fade", "ramp", "volume"),
+    icon = Icons.Outlined.VolumeUp,
+    section = Section.SleepTimer,
+    group = Groups.VolumeNormalization,
+    kind = RowKind.Picker,
+    destination = SettingsSleepTimer,
+    breadcrumb = listOf(SECTION_AUDIO, "Sleep timer", "Fade-out"),
+  ),
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_SLEEP_SHAKE_TO_RESUME,
+    label = "Shake to resume",
+    subtitle = "Pick up the phone to resume after sleep.",
+    labelRes = R.string.settings_sleep_shake_label,
+    subtitleRes = R.string.settings_sleep_shake_subtitle,
+    keywords = listOf("shake", "resume", "wake", "motion"),
+    icon = Icons.Outlined.Vibration,
+    section = Section.SleepTimer,
+    group = Groups.VolumeNormalization,
+    kind = RowKind.Toggle,
+    destination = SettingsSleepTimer,
+    breadcrumb = listOf(SECTION_AUDIO, "Sleep timer", "Shake to resume"),
+  ),
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_SLEEP_AUTO_ARM,
+    label = "Auto-arm window",
+    subtitle = null,
+    labelRes = R.string.settings_sleep_auto_arm_label,
+    subtitleRes = null,
+    keywords = listOf("auto", "arm", "schedule", "window", "night"),
+    icon = Icons.Outlined.AccessTime,
+    section = Section.SleepTimer,
+    group = Groups.VolumeNormalization,
+    kind = RowKind.Picker,
+    destination = SettingsSleepTimer,
+    breadcrumb = listOf(SECTION_AUDIO, "Sleep timer", "Auto-arm window"),
   ),
 )

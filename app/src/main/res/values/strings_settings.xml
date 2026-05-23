@@ -23,6 +23,7 @@
   <string name="settings_cover_art_title">Cover art</string>
   <string name="settings_bulk_art_progress_title">Fill in missing covers</string>
   <string name="settings_audio_title">Audio</string>
+  <string name="settings_sleep_timer_title">Sleep timer</string>
   <string name="settings_about_title">About</string>
   <string name="settings_cd_back">Back</string>
   <string name="settings_dialog_save">Save</string>
@@ -187,7 +188,21 @@
   <string name="settings_audio_replaygain_strategy_label">ReplayGain strategy</string>
   <string name="settings_audio_replaygain_preamp_label">ReplayGain pre-amp</string>
   <string name="settings_audio_sleep_timer_label">Sleep timer</string>
-  <string name="settings_audio_sleep_timer_subtitle">Pause playback after a delay.</string>
+  <string name="settings_audio_sleep_timer_subtitle">Default duration, fade-out, shake to resume, auto-arm window.</string>
+  <string name="settings_sleep_default_duration_label">Default duration</string>
+  <string name="settings_sleep_default_duration_value">%1$d minutes</string>
+  <string name="settings_sleep_fade_out_label">Fade-out</string>
+  <string name="settings_sleep_fade_out_value">%1$d seconds</string>
+  <string name="settings_sleep_fade_out_off">Off</string>
+  <string name="settings_sleep_shake_label">Shake to resume</string>
+  <string name="settings_sleep_shake_subtitle">Pick up the phone to resume after sleep.</string>
+  <string name="settings_sleep_auto_arm_label">Auto-arm window</string>
+  <string name="settings_sleep_auto_arm_off">Off</string>
+  <string name="settings_sleep_auto_arm_value">%1$s – %2$s</string>
+  <string name="settings_sleep_auto_arm_set_button">Set window</string>
+  <string name="settings_sleep_auto_arm_disable_button">Disable</string>
+  <string name="settings_sleep_auto_arm_start">Start</string>
+  <string name="settings_sleep_auto_arm_end">End</string>
   <string name="settings_audio_system_equalizer_label">System equalizer</string>
   <string name="settings_audio_system_equalizer_subtitle">Open the system audio effect panel.</string>
 

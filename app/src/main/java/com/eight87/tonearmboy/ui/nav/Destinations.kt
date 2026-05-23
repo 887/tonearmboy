@@ -94,6 +94,10 @@ data object SettingsBulkArtProgress : Destination
 @Serializable
 data object SettingsAudio : Destination
 
+/** Settings → Audio → Sleep timer sub-page. */
+@Serializable
+data object SettingsSleepTimer : Destination
+
 /**
  * Cover-art Phase D — reorderable provider list (Settings → Content →
  * Cover art providers). Hosts the drag-handle / toggle rows and links

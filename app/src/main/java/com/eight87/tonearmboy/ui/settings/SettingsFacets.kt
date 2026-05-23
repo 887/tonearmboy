@@ -56,6 +56,16 @@ interface PlaybackSettings {
   val playFromItemDetails: Setting<PlayFromItemDetails>
   val replayGainStrategy: Setting<ReplayGainStrategy>
   val replayGainPreampDb: Setting<Float>
+  /** Default sleep-timer duration in minutes — seeds the sheet's custom field. */
+  val sleepDefaultMinutes: Setting<Int>
+  /** Volume fade-out window in seconds before the timer pauses (0 = off). */
+  val sleepFadeOutSeconds: Setting<Int>
+  /** Whether to listen for a phone-pickup shake to resume after the timer pauses. */
+  val sleepShakeToResume: Setting<Boolean>
+  /** Auto-arm window start minute-of-day (0..1439, -1 = off). */
+  val sleepAutoArmStartMinute: Setting<Int>
+  /** Auto-arm window end minute-of-day (0..1439, -1 = off). */
+  val sleepAutoArmEndMinute: Setting<Int>
 }
 
 /**

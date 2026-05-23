@@ -480,6 +480,30 @@ class SettingsRepository(private val context: Context) :
   )
 
   // --- PlaybackSettings ---
+  override val sleepDefaultMinutes: Setting<Int> = PreferencesSetting(
+    store, KEY_SLEEP_DEFAULT_MINUTES,
+    read = { (it ?: 30).coerceIn(1, 720) },
+    write = { it.coerceIn(1, 720) },
+  )
+  override val sleepFadeOutSeconds: Setting<Int> = PreferencesSetting(
+    store, KEY_SLEEP_FADE_OUT_SECONDS,
+    read = { (it ?: 30).coerceIn(0, 120) },
+    write = { it.coerceIn(0, 120) },
+  )
+  override val sleepShakeToResume: Setting<Boolean> = booleanSetting(
+    store, KEY_SLEEP_SHAKE_TO_RESUME, false,
+  )
+  // Minute-of-day storage for auto-arm window; -1 sentinel = off.
+  override val sleepAutoArmStartMinute: Setting<Int> = PreferencesSetting(
+    store, KEY_SLEEP_AUTO_ARM_START,
+    read = { it ?: -1 },
+    write = { if (it in 0..1439) it else -1 },
+  )
+  override val sleepAutoArmEndMinute: Setting<Int> = PreferencesSetting(
+    store, KEY_SLEEP_AUTO_ARM_END,
+    read = { it ?: -1 },
+    write = { if (it in 0..1439) it else -1 },
+  )
   // album-art Phase D — opt-in to MusicBrainz Cover Art Archive
   // auto-fetch. Default OFF (privacy: enabling sends artist + album
   // text to a third-party service).
@@ -798,6 +822,16 @@ class SettingsRepository(private val context: Context) :
   }
 
   companion object {
+    internal val KEY_SLEEP_DEFAULT_MINUTES =
+      androidx.datastore.preferences.core.intPreferencesKey("sleep_default_minutes")
+    internal val KEY_SLEEP_FADE_OUT_SECONDS =
+      androidx.datastore.preferences.core.intPreferencesKey("sleep_fade_out_seconds")
+    internal val KEY_SLEEP_SHAKE_TO_RESUME =
+      booleanPreferencesKey("sleep_shake_to_resume")
+    internal val KEY_SLEEP_AUTO_ARM_START =
+      androidx.datastore.preferences.core.intPreferencesKey("sleep_auto_arm_start_minute")
+    internal val KEY_SLEEP_AUTO_ARM_END =
+      androidx.datastore.preferences.core.intPreferencesKey("sleep_auto_arm_end_minute")
     internal val KEY_LIBRARY_TABS = stringPreferencesKey("library_tabs")
     internal val KEY_INTELLIGENT_SORTING = booleanPreferencesKey("intelligent_sorting")
     internal val KEY_FORCE_SQUARE_COVERS = booleanPreferencesKey("force_square_covers")

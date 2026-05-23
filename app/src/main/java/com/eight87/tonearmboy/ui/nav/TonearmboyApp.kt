@@ -289,6 +289,7 @@ fun TonearmboyApp(
             entry<SettingsBulkArtProgress> { it.Register(scope) }
             entry<SettingsMusicSources> { it.Register(scope) }
             entry<SettingsAudio> { it.Register(scope) }
+            entry<com.eight87.tonearmboy.ui.nav.SettingsSleepTimer> { it.Register(scope) }
             entry<SettingsCoverArtProviders> { it.Register(scope) }
             entry<SettingsPipedInstances> { it.Register(scope) }
             entry<SettingsMusicBrainzProvider> { it.Register(scope) }
@@ -541,8 +542,11 @@ fun TonearmboyApp(
     }
 
     if (showSleepSheet) {
+      val defaultMinutes by graph.settingsRepository.sleepDefaultMinutes.flow
+        .collectAsStateWithLifecycle(initialValue = 30)
       com.eight87.tonearmboy.ui.playing.NowPlayingSleepTimerSheet(
         sleepTimer = graph.sleepTimer,
+        defaultMinutes = defaultMinutes,
         onDismiss = { showSleepSheet = false },
       )
     }

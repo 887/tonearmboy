@@ -53,6 +53,8 @@ fun NowPlayingSleepTimerSheet(
   sleepTimer: SleepTimer,
   onDismiss: () -> Unit,
   modifier: Modifier = Modifier,
+  /** User's default duration (minutes) — seeds the Custom… dialog. */
+  defaultMinutes: Int = 30,
 ) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val state by sleepTimer.state.collectAsStateWithLifecycle()
@@ -159,6 +161,7 @@ fun NowPlayingSleepTimerSheet(
 
   if (customOpen) {
     CustomDurationDialog(
+      initialMinutes = defaultMinutes,
       onPick = { minutes ->
         sleepTimer.start(minutes * 60_000L, waitForEndOfTrack)
         customOpen = false
@@ -171,10 +174,11 @@ fun NowPlayingSleepTimerSheet(
 
 @Composable
 private fun CustomDurationDialog(
+  initialMinutes: Int,
   onPick: (Int) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  var raw by remember { mutableStateOf("45") }
+  var raw by remember { mutableStateOf(initialMinutes.toString()) }
   val parsed = raw.toIntOrNull()
   val valid = parsed != null && parsed in 1..720
 

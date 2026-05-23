@@ -268,3 +268,16 @@ fun SettingsAudio.Register(scope: RouteScope) {
     )
   }
 }
+
+@Composable
+fun com.eight87.tonearmboy.ui.nav.SettingsSleepTimer.Register(scope: RouteScope) {
+  val sectionTitle = LocalSectionTitle.current
+  LaunchedEffect(Unit) { sectionTitle.value = "Sleep timer" }
+  with(scope) {
+    com.eight87.tonearmboy.ui.settings.SettingsSleepTimerScreen(
+      settings = graph.settingsRepository,
+      onBack = { backStack.pop() },
+      snackbarHostState = snackbar,
+    )
+  }
+}

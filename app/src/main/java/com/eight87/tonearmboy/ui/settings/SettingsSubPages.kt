@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -709,6 +712,196 @@ fun SettingsAudioScreen(
       },
       onDismiss = { rgPreampDialog = false },
     )
+  }
+}
+
+// =============================================================================
+// Sleep timer (sub-page of Audio)
+// =============================================================================
+
+@Composable
+fun SettingsSleepTimerScreen(
+  settings: PlaybackSettings,
+  onBack: () -> Unit,
+  snackbarHostState: SnackbarHostState,
+) {
+  val scope = rememberCoroutineScope()
+  val context = LocalContext.current
+
+  val defaultMinutes by settings.sleepDefaultMinutes.flow.collectAsState(initial = 30)
+  val fadeOutSeconds by settings.sleepFadeOutSeconds.flow.collectAsState(initial = 30)
+  val shakeToResume by settings.sleepShakeToResume.flow.collectAsState(initial = false)
+  val autoArmStart by settings.sleepAutoArmStartMinute.flow.collectAsState(initial = -1)
+  val autoArmEnd by settings.sleepAutoArmEndMinute.flow.collectAsState(initial = -1)
+
+  val durationPicker = rememberSettingPickerState()
+  val fadePicker = rememberSettingPickerState()
+  var autoArmDialog by remember { mutableStateOf(false) }
+
+  val autoArmLabel = if (autoArmStart in 0..1439 && autoArmEnd in 0..1439) {
+    stringResource(
+      R.string.settings_sleep_auto_arm_value,
+      formatMinuteOfDay(autoArmStart),
+      formatMinuteOfDay(autoArmEnd),
+    )
+  } else stringResource(R.string.settings_sleep_auto_arm_off)
+
+  val bindings = listOf(
+    SettingsRowBinding.Picker(
+      id = SettingsCatalog.ID_SLEEP_DEFAULT_DURATION,
+      currentLabel = stringResource(R.string.settings_sleep_default_duration_value, defaultMinutes),
+      onClick = durationPicker::show,
+    ),
+    SettingsRowBinding.Picker(
+      id = SettingsCatalog.ID_SLEEP_FADE_OUT,
+      currentLabel = if (fadeOutSeconds <= 0) stringResource(R.string.settings_sleep_fade_out_off)
+                     else stringResource(R.string.settings_sleep_fade_out_value, fadeOutSeconds),
+      onClick = fadePicker::show,
+    ),
+    SettingsRowBinding.Toggle(
+      id = SettingsCatalog.ID_SLEEP_SHAKE_TO_RESUME,
+      checked = shakeToResume,
+      onCheckedChange = { scope.launch { settings.sleepShakeToResume.set(it) } },
+    ),
+    SettingsRowBinding.Picker(
+      id = SettingsCatalog.ID_SLEEP_AUTO_ARM,
+      currentLabel = autoArmLabel,
+      onClick = { autoArmDialog = true },
+    ),
+  )
+
+  SettingsSubScaffold(
+    stringResource(R.string.settings_sleep_timer_title),
+    "settings_sleep_timer",
+    onBack,
+    snackbarHostState,
+  ) { mod ->
+    SettingsCatalogPage(
+      testTagName = "settings_sleep_timer_body",
+      section = Section.SleepTimer,
+      bindings = bindings,
+      modifier = mod,
+    )
+  }
+
+  val durationFormat = stringResource(R.string.settings_sleep_default_duration_value)
+  val fadeFormat = stringResource(R.string.settings_sleep_fade_out_value)
+  val fadeOffLabel = stringResource(R.string.settings_sleep_fade_out_off)
+  durationPicker.Render(
+    title = stringResource(R.string.settings_sleep_default_duration_label),
+    options = SLEEP_DURATION_PRESETS,
+    label = { String.format(durationFormat, it) },
+    current = defaultMinutes,
+    onPick = { scope.launch { settings.sleepDefaultMinutes.set(it) } },
+  )
+  fadePicker.Render(
+    title = stringResource(R.string.settings_sleep_fade_out_label),
+    options = SLEEP_FADE_PRESETS,
+    label = { if (it <= 0) fadeOffLabel else String.format(fadeFormat, it) },
+    current = fadeOutSeconds,
+    onPick = { scope.launch { settings.sleepFadeOutSeconds.set(it) } },
+  )
+  if (autoArmDialog) {
+    AutoArmWindowDialog(
+      currentStart = autoArmStart,
+      currentEnd = autoArmEnd,
+      onConfirm = { start, end ->
+        scope.launch {
+          settings.sleepAutoArmStartMinute.set(start)
+          settings.sleepAutoArmEndMinute.set(end)
+        }
+        autoArmDialog = false
+      },
+      onDisable = {
+        scope.launch {
+          settings.sleepAutoArmStartMinute.set(-1)
+          settings.sleepAutoArmEndMinute.set(-1)
+        }
+        autoArmDialog = false
+      },
+      onDismiss = { autoArmDialog = false },
+    )
+  }
+}
+
+private val SLEEP_DURATION_PRESETS = listOf(5, 10, 15, 30, 45, 60, 90, 120)
+private val SLEEP_FADE_PRESETS = listOf(0, 5, 10, 15, 30, 45, 60)
+
+internal fun formatMinuteOfDay(minute: Int): String {
+  val h = (minute / 60).coerceIn(0, 23)
+  val m = (minute % 60).coerceIn(0, 59)
+  return "${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}"
+}
+
+@Composable
+private fun AutoArmWindowDialog(
+  currentStart: Int,
+  currentEnd: Int,
+  onConfirm: (start: Int, end: Int) -> Unit,
+  onDisable: () -> Unit,
+  onDismiss: () -> Unit,
+) {
+  var startMinute by remember { mutableStateOf(if (currentStart in 0..1439) currentStart else 22 * 60) }
+  var endMinute by remember { mutableStateOf(if (currentEnd in 0..1439) currentEnd else 2 * 60) }
+  androidx.compose.material3.AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(stringResource(R.string.settings_sleep_auto_arm_label)) },
+    text = {
+      Column {
+        TimePickerRow(
+          label = stringResource(R.string.settings_sleep_auto_arm_start),
+          minute = startMinute,
+          onChange = { startMinute = it },
+        )
+        Spacer(Modifier.height(12.dp))
+        TimePickerRow(
+          label = stringResource(R.string.settings_sleep_auto_arm_end),
+          minute = endMinute,
+          onChange = { endMinute = it },
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = { onConfirm(startMinute, endMinute) }) {
+        Text(stringResource(R.string.settings_sleep_auto_arm_set_button))
+      }
+    },
+    dismissButton = {
+      Row {
+        TextButton(onClick = onDisable) {
+          Text(stringResource(R.string.settings_sleep_auto_arm_disable_button))
+        }
+        TextButton(onClick = onDismiss) {
+          Text(stringResource(R.string.settings_dialog_cancel))
+        }
+      }
+    },
+  )
+}
+
+@Composable
+private fun TimePickerRow(label: String, minute: Int, onChange: (Int) -> Unit) {
+  val h = (minute / 60).coerceIn(0, 23)
+  val m = (minute % 60).coerceIn(0, 59)
+  Row(verticalAlignment = Alignment.CenterVertically) {
+    Text(label, modifier = Modifier.weight(1f))
+    androidx.compose.material3.OutlinedButton(
+      onClick = { onChange(((h + 23) % 24) * 60 + m) },
+    ) { Text("−h") }
+    Spacer(Modifier.width(4.dp))
+    Text("${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}")
+    Spacer(Modifier.width(4.dp))
+    androidx.compose.material3.OutlinedButton(
+      onClick = { onChange(((h + 1) % 24) * 60 + m) },
+    ) { Text("+h") }
+    Spacer(Modifier.width(8.dp))
+    androidx.compose.material3.OutlinedButton(
+      onClick = { onChange(h * 60 + ((m + 45) % 60)) },
+    ) { Text("−15m") }
+    Spacer(Modifier.width(4.dp))
+    androidx.compose.material3.OutlinedButton(
+      onClick = { onChange(h * 60 + ((m + 15) % 60)) },
+    ) { Text("+15m") }
   }
 }
 
