@@ -52,8 +52,15 @@ class PlaybackUiController private constructor(
   // R.C.5 — SleepTimer hooks. Inline forwards so AppGraph can build
   // the timer with closures over these three methods.
   fun pauseSilently() { scope.launch { controllerHolder.value?.pause() } }
+  fun resumeSilently() { scope.launch { controllerHolder.value?.play() } }
   fun addPlayerListener(l: Player.Listener) { controllerHolder.value?.addListener(l) }
   fun removePlayerListener(l: Player.Listener) { controllerHolder.value?.removeListener(l) }
+  /** Current MediaController volume (0..1). 1f when no controller bound. */
+  fun getVolume(): Float = controllerHolder.value?.volume ?: 1f
+  fun setVolume(v: Float) {
+    val c = controllerHolder.value ?: return
+    c.volume = v.coerceIn(0f, 1f)
+  }
 
   /**
    * D.22.2 — suspend until handshake reports Connected. Bounded by

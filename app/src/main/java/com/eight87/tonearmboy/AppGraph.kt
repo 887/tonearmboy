@@ -19,6 +19,8 @@ import com.eight87.tonearmboy.ui.settings.ThemePreferenceStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Manual dependency graph. Per the project convention there is **no DI
@@ -109,7 +111,24 @@ class AppGraph(private val applicationContext: Context) {
       pauseAction = { playbackUiController.pauseSilently() },
       addPlayerListener = playbackUiController::addPlayerListener,
       removePlayerListener = playbackUiController::removePlayerListener,
+      getVolume = { playbackUiController.getVolume() },
+      setVolume = { playbackUiController.setVolume(it) },
+      onFired = {
+        // After the timer pauses, optionally arm the shake-to-resume
+        // detector. Reads the current setting value imperatively so
+        // toggling it mid-session is honoured by the next fire.
+        applicationScope.launch {
+          val on = settingsRepository.sleepShakeToResume.flow.first()
+          if (on) shakeWaker.arm { playbackUiController.resumeSilently() }
+        }
+      },
     )
+  }
+
+  /** Process-wide accelerometer-based shake detector for sleep-timer
+   *  "pick the phone up to resume" behaviour. */
+  val shakeWaker: com.eight87.tonearmboy.playback.ShakeWaker by lazy {
+    com.eight87.tonearmboy.playback.ShakeWaker(applicationContext)
   }
 
   val themePreferenceStore: ThemePreferenceStore by lazy {

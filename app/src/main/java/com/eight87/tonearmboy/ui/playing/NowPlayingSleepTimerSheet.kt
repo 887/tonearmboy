@@ -55,6 +55,8 @@ fun NowPlayingSleepTimerSheet(
   modifier: Modifier = Modifier,
   /** User's default duration (minutes) — seeds the Custom… dialog. */
   defaultMinutes: Int = 30,
+  /** User's fade-out window in seconds. 0 = no fade. */
+  fadeOutSeconds: Int = 0,
 ) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val state by sleepTimer.state.collectAsStateWithLifecycle()
@@ -115,7 +117,7 @@ fun NowPlayingSleepTimerSheet(
           FilterChip(
             selected = isActive,
             onClick = {
-              sleepTimer.start(minutes * 60_000L, waitForEndOfTrack)
+              sleepTimer.start(minutes * 60_000L, waitForEndOfTrack, fadeOutSeconds * 1000L)
               onDismiss()
             },
             label = { Text("$minutes min") },
@@ -163,7 +165,7 @@ fun NowPlayingSleepTimerSheet(
     CustomDurationDialog(
       initialMinutes = defaultMinutes,
       onPick = { minutes ->
-        sleepTimer.start(minutes * 60_000L, waitForEndOfTrack)
+        sleepTimer.start(minutes * 60_000L, waitForEndOfTrack, fadeOutSeconds * 1000L)
         customOpen = false
         onDismiss()
       },

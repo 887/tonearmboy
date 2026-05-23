@@ -119,6 +119,7 @@ fun TonearmboyApp(
 
   // R.E.6 — settings → playback mirrors.
   PlaybackSettingsBridge(playback, graph.settingsRepository)
+  SleepTimerAutoArmBridge(playback, graph.sleepTimer, graph.settingsRepository)
 
   // D.20.1 — react to a notification deeplink: animate the sheet open.
   LaunchedEffect(deeplinkNonce, pendingDeeplink) {
@@ -544,9 +545,12 @@ fun TonearmboyApp(
     if (showSleepSheet) {
       val defaultMinutes by graph.settingsRepository.sleepDefaultMinutes.flow
         .collectAsStateWithLifecycle(initialValue = 30)
+      val fadeOutSeconds by graph.settingsRepository.sleepFadeOutSeconds.flow
+        .collectAsStateWithLifecycle(initialValue = 0)
       com.eight87.tonearmboy.ui.playing.NowPlayingSleepTimerSheet(
         sleepTimer = graph.sleepTimer,
         defaultMinutes = defaultMinutes,
+        fadeOutSeconds = fadeOutSeconds,
         onDismiss = { showSleepSheet = false },
       )
     }
