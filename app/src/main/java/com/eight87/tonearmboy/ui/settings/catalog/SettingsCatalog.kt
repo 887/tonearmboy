@@ -43,7 +43,6 @@ internal object Groups {
   val PersonalizeBehaviour = GroupRef(R.string.settings_group_behaviour)
   val Music = GroupRef(R.string.settings_group_music)
   val Images = GroupRef(R.string.settings_group_images)
-  val Playback = GroupRef(R.string.settings_group_playback)
   val VolumeNormalization = GroupRef(R.string.settings_group_volume_normalization)
   /** album-art Phase E — gathers the Phase B + D toggles into one
    *  "Album art sources" group on the Content sub-page. */

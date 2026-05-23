@@ -41,7 +41,7 @@
   <string name="settings_root_cover_art_label">Cover art</string>
   <string name="settings_root_cover_art_subtitle">Providers, kill switch, bulk fill, display mode.</string>
   <string name="settings_root_audio_label">Audio</string>
-  <string name="settings_root_audio_subtitle">Playback, volume normalization.</string>
+  <string name="settings_root_audio_subtitle">Volume normalization, equalizer.</string>
   <string name="settings_root_music_sources_label">Music sources</string>
   <string name="settings_root_music_sources_subtitle">Choose how the library finds your music.</string>
   <string name="settings_root_refresh_label">Refresh music</string>

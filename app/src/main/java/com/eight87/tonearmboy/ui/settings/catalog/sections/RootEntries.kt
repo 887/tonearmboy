@@ -77,10 +77,10 @@ internal val RootEntries: List<SettingsCatalogEntry> = listOf(
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_BEHAVIOUR_AUDIO,
     label = SECTION_AUDIO,
-    subtitle = "Playback, volume normalization.",
+    subtitle = "Volume normalization, equalizer.",
     labelRes = R.string.settings_root_audio_label,
     subtitleRes = R.string.settings_root_audio_subtitle,
-    keywords = listOf("playback", "replaygain", "volume", "headset"),
+    keywords = listOf("replaygain", "volume", "headset", "equalizer"),
     icon = Icons.Outlined.GraphicEq,
     section = Section.Root,
     group = Groups.Behaviour,

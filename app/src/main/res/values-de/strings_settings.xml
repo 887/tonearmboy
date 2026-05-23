@@ -37,7 +37,7 @@
   <string name="settings_root_content_label">Inhalt</string>
   <string name="settings_root_content_subtitle">Sortierung, Trennzeichen, Albumcover.</string>
   <string name="settings_root_audio_label">Audio</string>
-  <string name="settings_root_audio_subtitle">Wiedergabe, Lautstärkeanpassung.</string>
+  <string name="settings_root_audio_subtitle">Lautstärkeanpassung, Equalizer.</string>
   <string name="settings_root_music_sources_label">Musikquellen</string>
   <string name="settings_root_music_sources_subtitle">Lege fest, wie die Bibliothek deine Musik findet.</string>
   <string name="settings_root_refresh_label">Musik aktualisieren</string>
