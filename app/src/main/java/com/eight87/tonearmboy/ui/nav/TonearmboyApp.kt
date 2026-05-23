@@ -94,6 +94,11 @@ fun TonearmboyApp(
     (choice as? com.eight87.tonearmboy.data.AlbumCoverChoice.Pinned)?.uri
       ?.takeIf { com.eight87.tonearmboy.data.albumart.AlbumArtFetcher.pinnedFileStillExists(it) }
   }
+  // Hoisted out of NowPlayingScreen so the ModalBottomSheet popup
+  // window isn't created inside the `alpha(nowPlayingAlpha)` graphics
+  // layer that wraps the now-playing surface — that nesting was
+  // suppressing the sheet's appearance.
+  var showSleepSheet by remember { mutableStateOf(false) }
   val snackbar = remember { SnackbarHostState() }
   val sectionTitle = remember { mutableStateOf("tonearmboy") }
   val highlightedSettingId = remember { mutableStateOf<String?>(null) }
@@ -487,6 +492,7 @@ fun TonearmboyApp(
                 nowPlayingListState = nowPlayingListState,
                 trackCoverUriOverride = activeTrackCoverUri,
                 sleepTimer = graph.sleepTimer,
+                onOpenSleepTimer = { showSleepSheet = true },
               )
             }
 
@@ -520,6 +526,13 @@ fun TonearmboyApp(
           }
         }
       }
+    }
+
+    if (showSleepSheet) {
+      com.eight87.tonearmboy.ui.playing.NowPlayingSleepTimerSheet(
+        sleepTimer = graph.sleepTimer,
+        onDismiss = { showSleepSheet = false },
+      )
     }
   }
 }

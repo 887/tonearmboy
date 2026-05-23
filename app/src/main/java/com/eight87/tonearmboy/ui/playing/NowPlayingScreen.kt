@@ -142,10 +142,14 @@ fun NowPlayingScreen(
   trackCoverUriOverride: String? = null,
   /**
    * Sleep-timer handle — surfaced in the top app bar as a bedtime
-   * action, opens [NowPlayingSleepTimerSheet]. Nullable for previews /
-   * tests that don't wire the playback graph.
+   * action; tapping the icon flips this lambda so the host app can
+   * mount the sheet outside the alpha-wrapped sheet content (mounting
+   * inline inside the alpha-layer prevented the popup window from
+   * appearing reliably). Nullable for previews / tests that don't
+   * wire the playback graph.
    */
   sleepTimer: com.eight87.tonearmboy.playback.SleepTimer? = null,
+  onOpenSleepTimer: (() -> Unit)? = null,
 ) {
   val state by nowPlayingState.state.collectAsStateWithLifecycle()
   val queueSnapshot by nowPlayingState.queue.collectAsStateWithLifecycle()
@@ -156,7 +160,6 @@ fun NowPlayingScreen(
   val listState = nowPlayingListState ?: fallbackListState
   // G+ — typed-confirm delete dialog state.
   var showDeleteConfirm by remember { mutableStateOf(false) }
-  var showSleepSheet by remember { mutableStateOf(false) }
 
   Scaffold(
     topBar = {
@@ -176,11 +179,11 @@ fun NowPlayingScreen(
           // user can arm a timer in the same surface where they
           // already see what's playing. Mirrors the placement
           // whisperboy uses.
-          if (sleepTimer != null) {
+          if (sleepTimer != null && onOpenSleepTimer != null) {
             val timerState by sleepTimer.state.collectAsStateWithLifecycle()
             val active = timerState !is com.eight87.tonearmboy.playback.SleepTimerState.Idle
             IconButton(
-              onClick = { showSleepSheet = true },
+              onClick = onOpenSleepTimer,
               modifier = Modifier.semantics { testTag = "now_playing_sleep_timer" },
             ) {
               Icon(
@@ -281,13 +284,6 @@ fun NowPlayingScreen(
   // can dismiss with Cancel or back. Pocket-tap-proof: a single tap on
   // the trash icon opens this dialog, but no accidental sequence of
   // taps can complete the delete.
-  if (showSleepSheet && sleepTimer != null) {
-    NowPlayingSleepTimerSheet(
-      sleepTimer = sleepTimer,
-      onDismiss = { showSleepSheet = false },
-    )
-  }
-
   if (showDeleteConfirm) {
     TypedConfirmDialog(
       title = stringResource(R.string.playing_delete_confirm_title),
