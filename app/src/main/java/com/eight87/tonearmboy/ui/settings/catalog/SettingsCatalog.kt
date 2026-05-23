@@ -172,11 +172,8 @@ object SettingsCatalog {
   const val ID_REFRESH_ALBUM_ART = "content.refresh_album_art"
   const val ID_FORCE_SQUARE_COVERS = "content.force_square_covers"
 
-  const val ID_PAUSE_ON_REPEAT = "audio.pause_on_repeat"
   const val ID_REPLAYGAIN_STRATEGY = "audio.replaygain_strategy"
   const val ID_REPLAYGAIN_PREAMP = "audio.replaygain_preamp"
-  // Phase H.3 — sleep timer.
-  const val ID_SLEEP_TIMER = "audio.sleep_timer"
   // Phase H.4 — system equalizer hand-off.
   const val ID_SYSTEM_EQUALIZER = "audio.system_equalizer"
 

@@ -59,8 +59,6 @@ interface TransportCommands {
   fun stop()
   fun toggleShuffle()
   fun cycleRepeatMode()
-  /** D.9a.3 — playback-controller mirror of the user's pause-on-repeat setting. */
-  fun setPauseOnRepeat(enabled: Boolean)
   fun playTrack(track: Track)
   fun playQueue(tracks: List<Track>, index: Int = 0)
   /**

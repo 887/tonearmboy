@@ -480,9 +480,6 @@ class SettingsRepository(private val context: Context) :
   )
 
   // --- PlaybackSettings ---
-  override val pauseOnRepeat: Setting<Boolean> = booleanSetting(
-    store, KEY_PAUSE_ON_REPEAT, false,
-  )
   // album-art Phase D — opt-in to MusicBrainz Cover Art Archive
   // auto-fetch. Default OFF (privacy: enabling sends artist + album
   // text to a third-party service).
@@ -663,7 +660,6 @@ class SettingsRepository(private val context: Context) :
   suspend fun setCustomBarAction(value: CustomBarAction) = customBarAction.set(value)
   suspend fun setCustomNotificationAction(value: CustomNotificationAction) =
     customNotificationAction.set(value)
-  suspend fun setPauseOnRepeat(value: Boolean) = pauseOnRepeat.set(value)
   suspend fun setPlayFromLibrary(value: PlayFromLibrary) = playFromLibrary.set(value)
   suspend fun setPlayFromItemDetails(value: PlayFromItemDetails) = playFromItemDetails.set(value)
   suspend fun setHideCollaborators(value: Boolean) = hideCollaborators.set(value)
@@ -807,7 +803,6 @@ class SettingsRepository(private val context: Context) :
     internal val KEY_FORCE_SQUARE_COVERS = booleanPreferencesKey("force_square_covers")
     internal val KEY_CUSTOM_BAR_ACTION = stringPreferencesKey("custom_bar_action")
     internal val KEY_CUSTOM_NOTIFICATION_ACTION = stringPreferencesKey("custom_notification_action")
-    internal val KEY_PAUSE_ON_REPEAT = booleanPreferencesKey("pause_on_repeat")
     internal val KEY_AUTO_DISCOVER_ALBUM_ART = booleanPreferencesKey("auto_discover_album_art")
     internal val KEY_SCAN_FOLDERS_FOR_COVER_ART = booleanPreferencesKey("scan_folders_for_cover_art")
     internal val KEY_PLAY_FROM_LIBRARY = stringPreferencesKey("play_from_library")

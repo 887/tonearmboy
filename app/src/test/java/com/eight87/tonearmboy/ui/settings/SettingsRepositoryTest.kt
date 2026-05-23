@@ -36,7 +36,6 @@ class SettingsRepositoryTest {
     repo.setForceSquareCovers(false)
     repo.setCustomBarAction(CustomBarAction.Default)
     repo.setCustomNotificationAction(CustomNotificationAction.Default)
-    repo.setPauseOnRepeat(false)
     repo.setPlayFromLibrary(PlayFromLibrary.Default)
     repo.setPlayFromItemDetails(PlayFromItemDetails.Default)
     repo.setHideCollaborators(false)
@@ -66,7 +65,6 @@ class SettingsRepositoryTest {
     assertEquals(false, repo.forceSquareCovers.flow.first())
     assertEquals(CustomBarAction.Default, repo.customBarAction.flow.first())
     assertEquals(CustomNotificationAction.Default, repo.customNotificationAction.flow.first())
-    assertEquals(false, repo.pauseOnRepeat.flow.first())
     assertEquals(PlayFromLibrary.Default, repo.playFromLibrary.flow.first())
     assertEquals(PlayFromItemDetails.Default, repo.playFromItemDetails.flow.first())
     assertEquals(false, repo.hideCollaborators.flow.first())
@@ -120,21 +118,18 @@ class SettingsRepositoryTest {
       CustomNotificationAction.RepeatMode,
       repo.customNotificationAction.flow.first(),
     )
-    assertEquals(false, repo.pauseOnRepeat.flow.first())
     assertEquals(PlayFromLibrary.AllSongs, repo.playFromLibrary.flow.first())
     assertEquals(PlayFromItemDetails.ShownItem, repo.playFromItemDetails.flow.first())
     assertEquals(false, repo.hideCollaborators.flow.first())
 
     repo.setCustomBarAction(CustomBarAction.ShuffleToggle)
     repo.setCustomNotificationAction(CustomNotificationAction.Shuffle)
-    repo.setPauseOnRepeat(true)
     repo.setPlayFromLibrary(PlayFromLibrary.ItemOnly)
     repo.setPlayFromItemDetails(PlayFromItemDetails.Album)
     repo.setHideCollaborators(true)
 
     assertEquals(CustomBarAction.ShuffleToggle, repo.customBarAction.flow.first())
     assertEquals(CustomNotificationAction.Shuffle, repo.customNotificationAction.flow.first())
-    assertEquals(true, repo.pauseOnRepeat.flow.first())
     assertEquals(PlayFromLibrary.ItemOnly, repo.playFromLibrary.flow.first())
     assertEquals(PlayFromItemDetails.Album, repo.playFromItemDetails.flow.first())
     assertEquals(true, repo.hideCollaborators.flow.first())

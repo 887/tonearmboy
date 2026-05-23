@@ -24,20 +24,6 @@ import com.eight87.tonearmboy.ui.settings.catalog.SettingsCatalogEntry
  * remove them. User picked remove. */
 internal val AudioEntries: List<SettingsCatalogEntry> = listOf(
   SettingsCatalogEntry(
-    id = SettingsCatalog.ID_PAUSE_ON_REPEAT,
-    label = "Pause on repeat",
-    subtitle = "Pause at the end of the first play instead of looping the same track.",
-    labelRes = R.string.settings_audio_pause_on_repeat_label,
-    subtitleRes = R.string.settings_audio_pause_on_repeat_subtitle,
-    keywords = listOf("repeat", "loop", "pause"),
-    icon = Icons.Outlined.PauseCircle,
-    section = Section.Audio,
-    group = Groups.Playback,
-    kind = RowKind.Toggle,
-    destination = SettingsAudio,
-    breadcrumb = listOf(SECTION_AUDIO, "Playback", "Pause on repeat"),
-  ),
-  SettingsCatalogEntry(
     id = SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
     label = "ReplayGain strategy",
     subtitle = null,

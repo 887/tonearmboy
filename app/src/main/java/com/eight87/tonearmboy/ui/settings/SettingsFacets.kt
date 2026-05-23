@@ -50,7 +50,6 @@ interface ThemeSettings {
  * the playback session or its UI affordances.
  */
 interface PlaybackSettings {
-  val pauseOnRepeat: Setting<Boolean>
   val customBarAction: Setting<CustomBarAction>
   val customNotificationAction: Setting<CustomNotificationAction>
   val playFromLibrary: Setting<PlayFromLibrary>

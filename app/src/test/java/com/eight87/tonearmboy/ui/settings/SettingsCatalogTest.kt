@@ -77,11 +77,8 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_COVER_ART_DISABLED,
       SettingsCatalog.ID_COVER_ART_PROVIDERS,
       // Audio.
-      SettingsCatalog.ID_PAUSE_ON_REPEAT,
       SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
       SettingsCatalog.ID_REPLAYGAIN_PREAMP,
-      // Phase H.3 / H.4.
-      SettingsCatalog.ID_SLEEP_TIMER,
       SettingsCatalog.ID_SYSTEM_EQUALIZER,
       // Phase H.5 — root-level Library actions.
       SettingsCatalog.ID_LIBRARY_EXPORT_PLAYLISTS,

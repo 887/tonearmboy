@@ -132,7 +132,6 @@ class PlaybackUiController private constructor(
       val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
       val controllerHolder = ControllerHolder()
       val phaseHolder = ConnectionPhaseHolder()
-      val pauseOnRepeat = PauseOnRepeatHolder()
       val projector = PlaybackStateProjector(
         controllerProvider = { controllerHolder.value },
         connectionPhaseProvider = { phaseHolder.value },
@@ -141,7 +140,6 @@ class PlaybackUiController private constructor(
       val transport = MediaTransportCommands(
         controllerProvider = { controllerHolder.value },
         projector = projector,
-        pauseOnRepeatHolder = pauseOnRepeat,
       )
       val queue = MediaQueueCommands(
         controllerProvider = { controllerHolder.value },
@@ -151,8 +149,6 @@ class PlaybackUiController private constructor(
         scope = scope,
         projector = projector,
         replayGainController = replayGain,
-        pauseOnRepeatHolder = pauseOnRepeat,
-        controllerProvider = { controllerHolder.value },
       )
       return PlaybackUiController(
         applicationContext, scope, controllerHolder, phaseHolder,

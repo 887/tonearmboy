@@ -1,6 +1,5 @@
 package com.eight87.tonearmboy.playback
 
-import androidx.media3.common.Player
 import com.eight87.tonearmboy.data.model.Track
 import com.eight87.tonearmboy.ui.settings.PlayFromItemDetails
 import com.eight87.tonearmboy.ui.settings.PlayFromLibrary
@@ -10,13 +9,6 @@ import com.eight87.tonearmboy.ui.settings.PlayFromLibrary
  * one is testable without spinning a real `MediaController` (which
  * needs a live `MediaSession`, expensive in Robolectric).
  */
-
-/**
- * Pure decision helper for D.9a.3 — split out so the matrix is unit
- * testable without spinning a full ExoPlayer + MediaController.
- */
-internal fun shouldPauseOnRepeatBoundary(reason: Int, pauseOnRepeat: Boolean): Boolean =
-  pauseOnRepeat && reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
 
 /**
  * Phase F.4 — pure helper exposing the list-walking logic for

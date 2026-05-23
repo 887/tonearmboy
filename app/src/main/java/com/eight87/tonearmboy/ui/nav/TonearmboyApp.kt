@@ -112,7 +112,7 @@ fun TonearmboyApp(
   val nowPlayingListState = rememberLazyListState()
 
   // R.E.6 — settings → playback mirrors.
-  PlaybackSettingsBridge(playback, playback, graph.settingsRepository)
+  PlaybackSettingsBridge(playback, graph.settingsRepository)
 
   // D.20.1 — react to a notification deeplink: animate the sheet open.
   LaunchedEffect(deeplinkNonce, pendingDeeplink) {

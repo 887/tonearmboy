@@ -25,7 +25,6 @@ import com.eight87.tonearmboy.ui.settings.PlayFromLibrary
 internal class MediaTransportCommands(
   private val controllerProvider: () -> MediaController?,
   private val projector: PlaybackStateProjector,
-  private val pauseOnRepeatHolder: PauseOnRepeatHolder,
 ) : TransportCommands {
 
   override fun togglePlayPause() {
@@ -80,10 +79,6 @@ internal class MediaTransportCommands(
     val ctl = controllerProvider() ?: return
     ctl.repeatMode = nextRepeatMode(ctl.repeatMode)
     projector.pushPlaybackState()
-  }
-
-  override fun setPauseOnRepeat(enabled: Boolean) {
-    pauseOnRepeatHolder.value = enabled
   }
 
   override fun playTrack(track: Track) {
@@ -158,18 +153,6 @@ internal class MediaTransportCommands(
   companion object {
     internal const val SEEK_INCREMENT_MS = 10_000L
   }
-}
-
-/**
- * R.C.3 — small holder for the pause-on-repeat flag. The flag is
- * read by `PlaybackUiController`'s `Player.Listener` (not by the
- * transport impl), so we share it through this tiny mutable cell
- * instead of pushing a callback through the constructor.
- */
-@UnstableApi
-internal class PauseOnRepeatHolder {
-  @Volatile
-  var value: Boolean = false
 }
 
 /** Repeat-mode state machine. OFF → ALL → ONE → OFF. */

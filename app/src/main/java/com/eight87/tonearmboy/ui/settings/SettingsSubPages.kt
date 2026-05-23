@@ -639,9 +639,6 @@ fun SettingsAudioScreen(
   // R.E.7 — injectable equalizer launcher (Settings-F6).
   equalizer: EqualizerLauncher = DefaultEqualizerLauncher,
 ) {
-  val pauseOnRepeat by settings.pauseOnRepeat.flow.collectAsState(
-    initial = false,
-  )
   val replayGainStrategy by settings.replayGainStrategy.flow.collectAsState(
     initial = ReplayGainStrategy.Default,
   )
@@ -655,11 +652,6 @@ fun SettingsAudioScreen(
   var rgPreampDialog by remember { mutableStateOf(false) }
 
   val bindings = listOf(
-    SettingsRowBinding.Toggle(
-      id = SettingsCatalog.ID_PAUSE_ON_REPEAT,
-      checked = pauseOnRepeat,
-      onCheckedChange = { scope.launch { settings.pauseOnRepeat.set(it) } },
-    ),
     SettingsRowBinding.Picker(
       id = SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
       currentLabel = replayGainStrategyLabel(context, replayGainStrategy),
