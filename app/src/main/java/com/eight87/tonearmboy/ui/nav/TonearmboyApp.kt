@@ -92,6 +92,7 @@ fun TonearmboyApp(
       initialValue = com.eight87.tonearmboy.data.AlbumCoverChoice.NoChoice,
     )
     (choice as? com.eight87.tonearmboy.data.AlbumCoverChoice.Pinned)?.uri
+      ?.takeIf { com.eight87.tonearmboy.data.albumart.AlbumArtFetcher.pinnedFileStillExists(it) }
   }
   val snackbar = remember { SnackbarHostState() }
   val sectionTitle = remember { mutableStateOf("tonearmboy") }

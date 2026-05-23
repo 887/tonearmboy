@@ -372,13 +372,28 @@ class LibraryRepository(
 
   override suspend fun snapshotTrackCoverUris(): Map<Long, String> =
     db.trackCoverDao().allPinned()
-      .mapNotNull { e -> e.coverUri?.takeIf { it.isNotBlank() }?.let { e.trackId to it } }
+      .mapNotNull { e ->
+        e.coverUri
+          ?.takeIf { it.isNotBlank() }
+          ?.takeIf { com.eight87.tonearmboy.data.albumart.AlbumArtFetcher.pinnedFileStillExists(it) }
+          ?.let { e.trackId to it }
+      }
       .toMap()
 
+  // Pinned `file:` URIs can rot when Android evicts the backing file
+  // (pre-fix the covers lived in cacheDir) or when the app's filesDir
+  // gets wiped by an install-over-uninstall. Filtering here means a
+  // stale DB row falls through CoverArt's cascade to the album-art
+  // URI / placeholder rather than handing Coil a dead URI it
+  // silently errors on. `AlbumArtBulkWorker` heals the DB rows
+  // themselves on the next bulk pass.
   override fun observeTrackCoverUris(): Flow<Map<Long, String>> =
     db.trackCoverDao().observeAllPinned().map { rows ->
       rows.mapNotNull { e ->
-        e.coverUri?.takeIf { it.isNotBlank() }?.let { e.trackId to it }
+        e.coverUri
+          ?.takeIf { it.isNotBlank() }
+          ?.takeIf { com.eight87.tonearmboy.data.albumart.AlbumArtFetcher.pinnedFileStillExists(it) }
+          ?.let { e.trackId to it }
       }.toMap()
     }
 
