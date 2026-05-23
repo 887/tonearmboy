@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -110,8 +111,17 @@ class MainActivity : ComponentActivity() {
       }
       val albumPalette by graph.albumPaletteSource.palette.collectAsStateWithLifecycle()
       val albumCoverUri by graph.albumPaletteSource.coverUri.collectAsStateWithLifecycle()
-      val showAlbumArtBackground = albumArtTintEnabled && albumArtBackgroundEnabled &&
-        albumCoverUri != null
+      // Album-art background layer is active whenever the user has the
+      // option on — even when the current track has no cover loaded
+      // (Piped/YouTube downloads before their cover-art fetch
+      // completes). In the cover-less case we paint a solid tint
+      // panel below the chrome instead of the blurred wallpaper, so
+      // the screen doesn't pop to base-scheme black between tracks.
+      val albumArtBackgroundActive = albumArtTintEnabled && albumArtBackgroundEnabled
+      val solidTintFallback: androidx.compose.ui.graphics.Color? =
+        if (albumArtBackgroundActive && albumCoverUri == null) {
+          customChromeTint ?: albumPalette.surfaceTint
+        } else null
 
       CompositionLocalProvider(
         LocalAlbumPalette provides albumPalette,
@@ -122,18 +132,28 @@ class MainActivity : ComponentActivity() {
           baseTheme = baseTheme,
           albumArtTintEnabled = albumArtTintEnabled,
           customChromeTint = customChromeTint,
-          albumArtBackgroundActive = showAlbumArtBackground,
+          // Keep the chrome glassy whenever a backdrop layer (cover or
+          // solid tint) is going to paint below it.
+          albumArtBackgroundActive = albumArtBackgroundActive &&
+            (albumCoverUri != null || solidTintFallback != null),
         ) {
           androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
-            if (showAlbumArtBackground) {
+            if (albumArtBackgroundActive && albumCoverUri != null) {
               com.eight87.tonearmboy.theme.AlbumArtBackground(
                 coverUri = albumCoverUri,
                 modifier = Modifier.fillMaxSize(),
               )
+            } else if (solidTintFallback != null) {
+              androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                  .fillMaxSize()
+                  .background(solidTintFallback),
+              )
             }
             Surface(
               modifier = Modifier.fillMaxSize(),
-              color = if (showAlbumArtBackground) androidx.compose.ui.graphics.Color.Transparent
+              color = if (albumCoverUri != null || solidTintFallback != null)
+                androidx.compose.ui.graphics.Color.Transparent
               else MaterialTheme.colorScheme.background,
             ) {
             // D.19 — wrap the app in the runtime-permission gate so a
