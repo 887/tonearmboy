@@ -72,21 +72,6 @@ internal val AudioEntries: List<SettingsCatalogEntry> = listOf(
     destination = SettingsAudio,
     breadcrumb = listOf(SECTION_AUDIO, "Volume normalization", "System equalizer"),
   ),
-  // Sleep timer sub-page navigator.
-  SettingsCatalogEntry(
-    id = SettingsCatalog.ID_AUDIO_SLEEP_TIMER,
-    label = "Sleep timer",
-    subtitle = "Default duration, fade-out, shake to resume, auto-arm window.",
-    labelRes = R.string.settings_audio_sleep_timer_label,
-    subtitleRes = R.string.settings_audio_sleep_timer_subtitle,
-    keywords = listOf("sleep", "timer", "bedtime", "fade", "shake", "auto-arm"),
-    icon = Icons.Outlined.Bedtime,
-    section = Section.Audio,
-    group = Groups.VolumeNormalization,
-    kind = RowKind.Navigate,
-    destination = SettingsSleepTimer,
-    breadcrumb = listOf(SECTION_AUDIO, "Sleep timer"),
-  ),
 )
 
 /** Sub-page entries for Settings → Audio → Sleep timer. */
@@ -103,7 +88,7 @@ internal val SleepTimerEntries: List<SettingsCatalogEntry> = listOf(
     group = Groups.VolumeNormalization,
     kind = RowKind.Picker,
     destination = SettingsSleepTimer,
-    breadcrumb = listOf(SECTION_AUDIO, "Sleep timer", "Default duration"),
+    breadcrumb = listOf(SECTION_SETTINGS, "Sleep timer","Default duration"),
   ),
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_SLEEP_FADE_OUT,
@@ -117,7 +102,7 @@ internal val SleepTimerEntries: List<SettingsCatalogEntry> = listOf(
     group = Groups.VolumeNormalization,
     kind = RowKind.Picker,
     destination = SettingsSleepTimer,
-    breadcrumb = listOf(SECTION_AUDIO, "Sleep timer", "Fade-out"),
+    breadcrumb = listOf(SECTION_SETTINGS, "Sleep timer","Fade-out"),
   ),
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_SLEEP_SHAKE_TO_RESUME,
@@ -131,7 +116,7 @@ internal val SleepTimerEntries: List<SettingsCatalogEntry> = listOf(
     group = Groups.VolumeNormalization,
     kind = RowKind.Toggle,
     destination = SettingsSleepTimer,
-    breadcrumb = listOf(SECTION_AUDIO, "Sleep timer", "Shake to resume"),
+    breadcrumb = listOf(SECTION_SETTINGS, "Sleep timer","Shake to resume"),
   ),
   SettingsCatalogEntry(
     id = SettingsCatalog.ID_SLEEP_AUTO_ARM,
@@ -145,6 +130,6 @@ internal val SleepTimerEntries: List<SettingsCatalogEntry> = listOf(
     group = Groups.VolumeNormalization,
     kind = RowKind.Picker,
     destination = SettingsSleepTimer,
-    breadcrumb = listOf(SECTION_AUDIO, "Sleep timer", "Auto-arm window"),
+    breadcrumb = listOf(SECTION_SETTINGS, "Sleep timer","Auto-arm window"),
   ),
 )

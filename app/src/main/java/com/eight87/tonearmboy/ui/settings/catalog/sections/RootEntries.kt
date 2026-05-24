@@ -3,6 +3,7 @@ package com.eight87.tonearmboy.ui.settings.catalog.sections
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Image
@@ -21,6 +22,7 @@ import com.eight87.tonearmboy.ui.nav.SettingsCoverArt
 import com.eight87.tonearmboy.ui.nav.SettingsLookAndFeel
 import com.eight87.tonearmboy.ui.nav.SettingsPersonalize
 import com.eight87.tonearmboy.ui.nav.SettingsRootDest
+import com.eight87.tonearmboy.ui.nav.SettingsSleepTimer
 import com.eight87.tonearmboy.ui.settings.catalog.Groups
 import com.eight87.tonearmboy.ui.settings.catalog.RowKind
 import com.eight87.tonearmboy.ui.settings.catalog.Section
@@ -104,6 +106,21 @@ internal val RootEntries: List<SettingsCatalogEntry> = listOf(
     kind = RowKind.Navigate,
     destination = SettingsCoverArt,
     breadcrumb = listOf(SECTION_SETTINGS, SECTION_COVER_ART),
+  ),
+  // Sleep timer sub-page entry — lives in root Settings alongside Audio.
+  SettingsCatalogEntry(
+    id = SettingsCatalog.ID_AUDIO_SLEEP_TIMER,
+    label = "Sleep timer",
+    subtitle = "Default duration, fade-out, shake to resume, auto-arm window.",
+    labelRes = R.string.settings_audio_sleep_timer_label,
+    subtitleRes = R.string.settings_audio_sleep_timer_subtitle,
+    keywords = listOf("sleep", "timer", "bedtime", "fade", "shake", "auto-arm"),
+    icon = Icons.Outlined.Bedtime,
+    section = Section.Root,
+    group = Groups.Behaviour,
+    kind = RowKind.Navigate,
+    destination = SettingsSleepTimer,
+    breadcrumb = listOf(SECTION_SETTINGS, "Sleep timer"),
   ),
   // D.17.3 — Music sources opens a modal dialog (Auxio pattern) instead
   // of a sub-page. Keep the SettingsMusicSources NavKey around as the

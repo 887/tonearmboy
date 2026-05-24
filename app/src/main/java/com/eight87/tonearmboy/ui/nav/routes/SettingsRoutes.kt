@@ -45,6 +45,7 @@ fun SettingsRootDest.Register(scope: RouteScope) {
       onContent = { backStack.push(SettingsContent) },
       onCoverArt = { backStack.push(SettingsCoverArt) },
       onAudio = { backStack.push(SettingsAudio) },
+      onSleepTimer = { backStack.push(com.eight87.tonearmboy.ui.nav.SettingsSleepTimer) },
       // D.17.3 — open the modal Music sources dialog instead of
       // pushing a sub-page. The dialog state lives at the app
       // level so search results landing on Settings root can
