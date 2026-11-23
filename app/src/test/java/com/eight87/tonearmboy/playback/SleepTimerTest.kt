@@ -13,7 +13,8 @@ import org.junit.Test
  * Phase H.7.1 — `SleepTimer` lifecycle. Uses the kotlinx-coroutines-test
  * virtual-time scheduler so we don't sit on real wall-clock delays.
  */
-@OptIn(UnstableApi::class, ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 class SleepTimerTest {
 
   @Test

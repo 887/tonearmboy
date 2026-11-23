@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.data.albumart
 
+import androidx.media3.common.util.UnstableApi
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.first
  * Triggering, kill-switch semantics, and the [AlbumArtBulkProgress]
  * sink are unchanged from Round 2.
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 class AlbumArtBulkWorker(
   appContext: Context,
   params: WorkerParameters,

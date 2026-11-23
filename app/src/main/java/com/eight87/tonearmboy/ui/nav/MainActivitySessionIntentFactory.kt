@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.nav
 
+import androidx.media3.common.util.UnstableApi
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -12,6 +13,7 @@ import com.eight87.tonearmboy.playback.SessionActivityIntentFactory
  * the UI layer because it imports [MainActivity]; [PlaybackService]
  * only sees the interface.
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 internal object MainActivitySessionIntentFactory : SessionActivityIntentFactory {
   override fun nowPlayingPendingIntent(context: Context): PendingIntent {
     val intent = Intent(context, MainActivity::class.java).apply {

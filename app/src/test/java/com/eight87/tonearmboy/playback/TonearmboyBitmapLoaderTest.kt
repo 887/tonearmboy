@@ -28,7 +28,7 @@ import java.util.concurrent.ExecutionException
  * D.23.5 — three-branch coverage for [TonearmboyBitmapLoader]: embedded
  * picture loads, content-uri album-art fallback loads, both fail.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class TonearmboyBitmapLoaderTest {

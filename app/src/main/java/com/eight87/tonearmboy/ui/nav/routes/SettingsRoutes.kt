@@ -253,7 +253,7 @@ fun SettingsMusicSources.Register(scope: RouteScope) {
   }
 }
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun SettingsAudio.Register(scope: RouteScope) {
   val sectionTitle = LocalSectionTitle.current

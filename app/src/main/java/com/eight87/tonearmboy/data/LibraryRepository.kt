@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.data
 
+import androidx.media3.common.util.UnstableApi
 import android.content.Context
 import android.net.Uri
 import android.os.Build
@@ -55,6 +56,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * No DI framework — `Context`, scanner, db, and scope are constructor
  * parameters, per the project convention.
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 class LibraryRepository(
   // R.A.6 — no constructor self-defaults. `AppGraph` is the only
   // place that knows how to wire the four collaborators; tests

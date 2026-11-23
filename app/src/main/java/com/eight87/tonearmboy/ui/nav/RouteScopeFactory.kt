@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  * The returned [RouteScope] also exposes `onShowMusicSourcesDialog`
  * which the host wires to its own `var showMusicSourcesDialog`.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun rememberRouteScope(
   graph: AppGraph,
@@ -69,6 +69,7 @@ fun rememberRouteScope(
   var libraryFilter by remember { mutableStateOf(FilterCriteria()) }
 
   val context = androidx.compose.ui.platform.LocalContext.current
+  val resources = androidx.compose.ui.platform.LocalResources.current
   val refreshedMessage = androidx.compose.ui.res.stringResource(
     com.eight87.tonearmboy.R.string.library_scan_refreshed,
   )
@@ -104,7 +105,7 @@ fun rememberRouteScope(
   val onComingSoon: (String) -> Unit = { feature ->
     graph.applicationScope.launch {
       snackbar.showSnackbar(
-        context.getString(com.eight87.tonearmboy.R.string.library_coming_soon, feature),
+        resources.getString(com.eight87.tonearmboy.R.string.library_coming_soon, feature),
       )
     }
   }

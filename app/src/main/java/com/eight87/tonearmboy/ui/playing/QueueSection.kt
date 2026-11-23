@@ -83,7 +83,7 @@ import com.eight87.tonearmboy.ui.common.DragReorderColumn
  */
 internal data class QueueEntry(val realIndex: Int, val item: QueueItem, val isActive: Boolean)
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun QueueSection(
   snapshot: QueueSnapshot,

@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.playback
 
+import androidx.media3.common.util.UnstableApi
 import android.content.Context
 import android.net.Uri
 import androidx.datastore.core.DataStore
@@ -39,6 +40,7 @@ import kotlinx.serialization.json.Json
  * `PlaybackService` is responsible for the debounce; this class is a
  * dumb store.
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 class QueuePersistence(private val context: Context) {
 
   /** A single queue item, serialised as JSON inside the prefs string. */
@@ -232,6 +234,7 @@ class QueuePersistence(private val context: Context) {
 }
 
 /** Serialisation helper — used by the companion's [Snapshot.toMediaItemsWithStartPosition]. */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 internal fun QueuePersistence.Entry.toMediaItem(): MediaItem {
   // D.20.4 — restore the MediaStore album-id extra so the palette
   // tint can find a cover bitmap. The metadata Builder doesn't take

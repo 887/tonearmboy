@@ -70,7 +70,7 @@ import kotlinx.coroutines.launch
  * back into the sheet progress so the queue's pull-down-from-top
  * keeps the same continuous-drag feel as the open / close gesture.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun TonearmboyApp(
   graph: AppGraph,

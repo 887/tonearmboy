@@ -21,7 +21,7 @@ import java.util.Calendar
  * The window crosses midnight when `start > end` (e.g. 22:00–02:00),
  * mirroring the typical "fall asleep at night" use case.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun SleepTimerAutoArmBridge(
   playback: NowPlayingState,

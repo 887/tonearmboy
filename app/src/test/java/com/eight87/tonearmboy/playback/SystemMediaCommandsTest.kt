@@ -25,7 +25,7 @@ import org.robolectric.annotation.Config
  * next) we want to fail loudly here rather than silently regress on
  * the device.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class SystemMediaCommandsTest {

@@ -41,7 +41,7 @@ import org.robolectric.annotation.Config
  * integration assertions in `scripts/playback-smoke-test.sh` against
  * the running AVD via `dumpsys notification --noredact`.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class MediaNotificationProviderTest {

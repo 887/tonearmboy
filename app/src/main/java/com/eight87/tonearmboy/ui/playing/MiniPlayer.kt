@@ -79,7 +79,8 @@ import com.eight87.tonearmboy.ui.settings.AlbumCoversMode
  * the `clickable`) so tap-to-expand semantics in tests still resolve to
  * a single semantics node with a click action.
  */
-@OptIn(ExperimentalFoundationApi::class, UnstableApi::class)
+@OptIn(ExperimentalFoundationApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun MiniPlayer(
   state: PlaybackUiState,

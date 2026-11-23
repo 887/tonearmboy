@@ -42,7 +42,7 @@ import org.robolectric.annotation.Config
  * `PlaybackController.connect(...)` returns a non-null future for
  * downstream callers to `await()`.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class MediaControllerColdResumeTest {

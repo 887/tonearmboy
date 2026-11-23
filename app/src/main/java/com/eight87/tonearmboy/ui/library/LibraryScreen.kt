@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.library
 
+import androidx.media3.common.util.UnstableApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
@@ -157,6 +158,7 @@ internal fun Modifier.libraryListCard(): Modifier {
  * Tab visibility / order comes from [SettingsRepository.snapshot]; tabs
  * marked hidden in Personalize are filtered out at the strip layer.
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
@@ -273,11 +275,12 @@ fun LibraryScreen(
   // Resolve resource ids outside the LaunchedEffect so we don't have to
   // hold a Context reference inside the suspend block.
   val context = LocalContext.current
-  LaunchedEffect(activeTab, activeCustomTab) {
+  val resources = androidx.compose.ui.platform.LocalResources.current
+  LaunchedEffect(activeTab, activeCustomTab, resources) {
     sectionTitle.value = if (activeCustomTab != null) {
       activeCustomTab.name
     } else {
-      context.getString(tabLabelRes(activeTab))
+      resources.getString(tabLabelRes(activeTab))
     }
   }
 

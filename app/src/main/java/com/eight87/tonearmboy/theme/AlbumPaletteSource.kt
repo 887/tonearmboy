@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.theme
 
+import androidx.media3.common.util.UnstableApi
 import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
@@ -38,6 +39,7 @@ import kotlinx.coroutines.withContext
  * Falls back to [AlbumPalette.Empty] / null URI when no cover source
  * exists anywhere for the playing track.
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 class AlbumPaletteSource(private val context: Context) {
 
   private val _palette = MutableStateFlow(AlbumPalette.Empty)

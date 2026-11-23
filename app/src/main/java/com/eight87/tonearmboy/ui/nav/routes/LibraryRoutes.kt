@@ -47,10 +47,11 @@ import kotlinx.coroutines.launch
  * `Register` extension on the new sealed-type variant.
  */
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun LibraryRoot.Register(scope: RouteScope) {
   val context = androidx.compose.ui.platform.LocalContext.current
+  val resources = androidx.compose.ui.platform.LocalResources.current
   with(scope) {
     LibraryScreen(
       tracks = graph.tracks,
@@ -95,7 +96,7 @@ fun LibraryRoot.Register(scope: RouteScope) {
         playback.addToQueue(track)
         applicationScope.launch {
           snackbar.showSnackbar(
-            context.getString(com.eight87.tonearmboy.R.string.library_added_to_queue, track.title),
+            resources.getString(com.eight87.tonearmboy.R.string.library_added_to_queue, track.title),
           )
         }
       },
@@ -105,7 +106,7 @@ fun LibraryRoot.Register(scope: RouteScope) {
         applicationScope.launch {
           graph.playlists.renamePlaylist(id, name)
           snackbar.showSnackbar(
-            context.getString(com.eight87.tonearmboy.R.string.library_playlist_renamed, name),
+            resources.getString(com.eight87.tonearmboy.R.string.library_playlist_renamed, name),
           )
         }
       },
@@ -113,7 +114,7 @@ fun LibraryRoot.Register(scope: RouteScope) {
         applicationScope.launch {
           graph.playlists.deletePlaylist(id)
           snackbar.showSnackbar(
-            context.getString(com.eight87.tonearmboy.R.string.library_playlist_deleted),
+            resources.getString(com.eight87.tonearmboy.R.string.library_playlist_deleted),
           )
         }
       },
@@ -121,7 +122,7 @@ fun LibraryRoot.Register(scope: RouteScope) {
         applicationScope.launch {
           graph.playlists.setPlaylistCoverUri(id, uri)
           snackbar.showSnackbar(
-            context.getString(
+            resources.getString(
               if (uri == null) com.eight87.tonearmboy.R.string.library_playlist_cover_cleared
               else com.eight87.tonearmboy.R.string.library_playlist_cover_updated,
             ),
@@ -136,7 +137,7 @@ fun LibraryRoot.Register(scope: RouteScope) {
   }
 }
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun AlbumDetail.Register(scope: RouteScope) {
   val context = androidx.compose.ui.platform.LocalContext.current
@@ -170,7 +171,7 @@ fun AlbumDetail.Register(scope: RouteScope) {
   }
 }
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun ArtistDetail.Register(scope: RouteScope) {
   val context = androidx.compose.ui.platform.LocalContext.current
@@ -205,7 +206,7 @@ fun ArtistDetail.Register(scope: RouteScope) {
   }
 }
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun GenreDetail.Register(scope: RouteScope) {
   val context = androidx.compose.ui.platform.LocalContext.current
@@ -237,7 +238,7 @@ fun GenreDetail.Register(scope: RouteScope) {
   }
 }
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun PlaylistDetail.Register(scope: RouteScope) {
   with(scope) {
@@ -264,6 +265,7 @@ fun PlaylistTrackPicker.Register(scope: RouteScope) {
   val sectionTitle = LocalSectionTitle.current
   LaunchedEffect(Unit) { sectionTitle.value = "Add tracks" }
   val context = androidx.compose.ui.platform.LocalContext.current
+  val resources = androidx.compose.ui.platform.LocalResources.current
   with(scope) {
     TrackPickerScreen(
       trackSource = graph.tracks,
@@ -287,7 +289,7 @@ fun PlaylistTrackPicker.Register(scope: RouteScope) {
             graph.playlists.reorderPlaylist(playlistId, remaining)
           }
           snackbar.showSnackbar(
-            context.getString(
+            resources.getString(
               com.eight87.tonearmboy.R.string.library_playlist_updated,
               toAdd.size,
               toRemove.size,
@@ -355,7 +357,7 @@ fun CustomTabEditor.Register(scope: RouteScope) {
  * Shared between [AlbumDetail], [ArtistDetail], [GenreDetail] track-row
  * actions. Lifted from `TonearmboyApp.kt` as part of R.E.2.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 internal fun handleDetailTrackAction(
   track: Track,
   action: TrackContextAction,

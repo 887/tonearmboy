@@ -108,7 +108,8 @@ import kotlinx.coroutines.launch
  * still calls `connect()` (idempotent) on entry to be safe in deep-
  * link scenarios where Now Playing is the first composable rendered.
  */
-@OptIn(ExperimentalMaterial3Api::class, UnstableApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun NowPlayingScreen(
   // R.C.1 — narrow facets: read-only state + write-only commands.
@@ -394,7 +395,7 @@ private fun TypedConfirmDialog(
  * reorder helper needs to own its own scroll-axis offset translations
  * and would conflict with `LazyColumn`'s recycler.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 internal fun NowPlayingMergedSurface(
   state: PlaybackUiState,

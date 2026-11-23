@@ -48,7 +48,8 @@ import com.eight87.tonearmboy.playback.SleepTimerState
  * timer is active. Reads the live `SleepTimerState` so any remote
  * arm (settings auto-arm in the future) reflects immediately.
  */
-@OptIn(ExperimentalMaterial3Api::class, UnstableApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun NowPlayingSleepTimerSheet(
   sleepTimer: SleepTimer,

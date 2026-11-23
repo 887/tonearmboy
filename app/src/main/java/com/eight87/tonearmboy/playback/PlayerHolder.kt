@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * The player is created lazily on first access and released via [release],
  * which the service calls from `onDestroy`.
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 object PlayerHolder {
   @Volatile private var instance: ExoPlayer? = null
 

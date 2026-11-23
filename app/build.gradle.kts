@@ -79,6 +79,14 @@ android {
       }
     }
 
+    lint {
+      // Locale files are deliberately partial overrides: a key missing
+      // from values-<locale>/ falls back to English at runtime, which is
+      // the intended behaviour (CLAUDE.md → "Translations workflow").
+      // MissingTranslation would demand every key in every locale.
+      disable += "MissingTranslation"
+    }
+
     testOptions {
       unitTests {
         isIncludeAndroidResources = true

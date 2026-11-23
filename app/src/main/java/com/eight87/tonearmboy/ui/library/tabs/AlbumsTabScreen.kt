@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.library.tabs
 
+import androidx.media3.common.util.UnstableApi
 import android.content.res.Resources
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -142,6 +143,7 @@ internal fun AlbumsTabContent(
  * R.D.3 — TabSpec for the Albums tab. Sections by name when sort is
  * by name; tile mode shows cover art via [TileItem.albumArtId].
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 internal class AlbumsTabSpec(
   private val albumCoversMode: AlbumCoversMode,
   private val albumSource: AlbumSource? = null,
@@ -234,6 +236,7 @@ internal class AlbumsTabSpec(
  * Set empty / Reset). The cover-art override is also applied to the
  * leading thumbnail so the row reflects the user's choice immediately.
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun AlbumListRow(

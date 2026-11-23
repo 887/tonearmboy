@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.data
 
+import androidx.media3.common.util.UnstableApi
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -24,6 +25,7 @@ import kotlinx.coroutines.launch
  *   -n com.eight87.tonearmboy/.data.LibraryScanReceiver
  * ```
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 class LibraryScanReceiver : BroadcastReceiver() {
 
   override fun onReceive(context: Context, intent: Intent) {

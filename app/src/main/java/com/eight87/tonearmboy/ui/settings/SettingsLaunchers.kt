@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.settings
 
+import androidx.media3.common.util.UnstableApi
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -26,6 +27,7 @@ fun interface AutoReloadController {
   fun setEnabled(context: Context, enabled: Boolean)
 }
 
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 object DefaultAutoReloadController : AutoReloadController {
   override fun setEnabled(context: Context, enabled: Boolean) {
     if (enabled) LibraryWatcherService.start(context)

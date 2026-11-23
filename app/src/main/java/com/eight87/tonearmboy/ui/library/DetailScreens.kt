@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.library
 
+import androidx.media3.common.util.UnstableApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -87,6 +88,7 @@ import com.eight87.tonearmboy.ui.settings.catalog.SettingsDimens
 
 // --- Album --------------------------------------------------------------
 
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumDetailScreen(

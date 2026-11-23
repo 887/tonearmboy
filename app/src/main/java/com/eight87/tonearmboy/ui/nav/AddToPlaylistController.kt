@@ -50,9 +50,9 @@ fun rememberAddToPlaylistController(
   val playlistList by playlists.observePlaylists()
     .collectAsStateWithLifecycle(initialValue = emptyList())
   val context = LocalContext.current
-  val resources = context.resources
+  val resources = androidx.compose.ui.platform.LocalResources.current
 
-  return remember(playlists, snackbar, applicationScope, context) {
+  return remember(playlists, snackbar, applicationScope, context, resources) {
     object : AddToPlaylistController {
       override fun requestSingle(track: Track) { pendingTrack = track }
       override fun requestBulk(ids: List<Long>) {
@@ -70,7 +70,7 @@ fun rememberAddToPlaylistController(
               applicationScope.launch {
                 playlists.addTrackToPlaylist(p.id, track.id)
                 snackbar.showSnackbar(
-                  context.getString(R.string.playlist_added_track, track.title, p.name),
+                  resources.getString(R.string.playlist_added_track, track.title, p.name),
                 )
               }
             },
@@ -80,7 +80,7 @@ fun rememberAddToPlaylistController(
                 val id = playlists.createPlaylist(name)
                 playlists.addTrackToPlaylist(id, track.id)
                 snackbar.showSnackbar(
-                  context.getString(R.string.playlist_added_track, track.title, name),
+                  resources.getString(R.string.playlist_added_track, track.title, name),
                 )
               }
             },

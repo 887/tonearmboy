@@ -63,6 +63,7 @@ fun rememberPlaylistBackupController(
   applicationScope: CoroutineScope,
 ): PlaylistBackupController {
   val context = LocalContext.current
+  val resources = androidx.compose.ui.platform.LocalResources.current
   var pendingExport by remember { mutableStateOf<PlaylistBackupEnvelope?>(null) }
   var pendingImport by remember { mutableStateOf<PlaylistImportPending?>(null) }
 
@@ -83,14 +84,14 @@ fun rememberPlaylistBackupController(
         onSuccess = {
           val count = envelope.playlists.size
           snackbar.showSnackbar(
-            context.resources.getQuantityString(R.plurals.playlist_exported_count, count, count),
+            resources.getQuantityString(R.plurals.playlist_exported_count, count, count),
           )
         },
         onFailure = {
           snackbar.showSnackbar(
-            context.getString(
+            resources.getString(
               R.string.playlist_export_failed,
-              it.message ?: context.getString(R.string.playlist_import_unknown_error),
+              it.message ?: resources.getString(R.string.playlist_import_unknown_error),
             ),
           )
         },
@@ -107,7 +108,7 @@ fun rememberPlaylistBackupController(
         withContext(Dispatchers.IO) {
           val raw = context.contentResolver.openInputStream(uri)?.use {
             it.bufferedReader(Charsets.UTF_8).readText()
-          } ?: error(context.getString(R.string.playlist_import_read_failed))
+          } ?: error(resources.getString(R.string.playlist_import_read_failed))
           val envelope = PlaylistBackupCodec.decode(raw)
           val libraryTracks = tracks.observeTracks().first()
           val resolution = resolvePlaylistImport(envelope, libraryTracks)
@@ -131,9 +132,9 @@ fun rememberPlaylistBackupController(
         },
         onFailure = {
           snackbar.showSnackbar(
-            context.getString(
+            resources.getString(
               R.string.playlist_import_failed,
-              it.message ?: context.getString(R.string.playlist_import_unknown_error),
+              it.message ?: resources.getString(R.string.playlist_import_unknown_error),
             ),
           )
         },

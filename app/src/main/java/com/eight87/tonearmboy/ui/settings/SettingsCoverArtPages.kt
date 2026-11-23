@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
  * (Round 2 / Ask A) — tapping it no longer silently enqueues a
  * WorkManager job; the user sees the worker's progress instead.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun SettingsCoverArtScreen(
   library: LibrarySettings,

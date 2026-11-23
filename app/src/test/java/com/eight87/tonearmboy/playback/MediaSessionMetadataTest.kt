@@ -31,7 +31,7 @@ import org.robolectric.annotation.Config
  * confirm `state=PLAYING(3)` and the description matches the metadata
  * we set here.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class MediaSessionMetadataTest {

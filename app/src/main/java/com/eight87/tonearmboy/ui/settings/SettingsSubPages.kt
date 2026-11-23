@@ -490,7 +490,7 @@ private fun describeLibraryTabs(context: android.content.Context, tabs: List<Lib
 // Content
 // =============================================================================
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun SettingsContentScreen(
   library: LibrarySettings,
@@ -518,6 +518,7 @@ fun SettingsContentScreen(
   // Round 2 / Ask B — every cover-art binding moved to SettingsCoverArtScreen.
   var separatorsPicker by remember { mutableStateOf(false) }
   val context = LocalContext.current
+  val resources = androidx.compose.ui.platform.LocalResources.current
 
   val bindings = listOf(
     // D.9d.2 — Automatic reloading toggle. Persists immediately and
@@ -578,7 +579,7 @@ fun SettingsContentScreen(
         if (newSelection != multiValueSeparators) {
           scope.launch {
             snackbarHostState.showSnackbar(
-              context.getString(R.string.settings_content_separators_change_applied),
+              resources.getString(R.string.settings_content_separators_change_applied),
             )
           }
         }
@@ -625,7 +626,7 @@ internal fun albumCoversLabel(context: android.content.Context, mode: AlbumCover
 // Audio
 // =============================================================================
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun SettingsAudioScreen(
   settings: PlaybackSettings,
@@ -651,6 +652,7 @@ fun SettingsAudioScreen(
   )
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
+  val resources = androidx.compose.ui.platform.LocalResources.current
   // R.F.17 — picker state controller (Settings-F5).
   val rgStrategyPicker = rememberSettingPickerState()
   var rgPreampDialog by remember { mutableStateOf(false) }
@@ -675,7 +677,7 @@ fun SettingsAudioScreen(
         if (!equalizer.launch(context, sessionId)) {
           scope.launch {
             snackbarHostState.showSnackbar(
-              context.getString(R.string.error_settings_no_system_equalizer),
+              resources.getString(R.string.error_settings_no_system_equalizer),
             )
           }
         }

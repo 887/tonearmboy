@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.playback
 
+import androidx.media3.common.util.UnstableApi
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -11,6 +12,7 @@ import com.eight87.tonearmboy.data.model.Track
  * conversion logic lives next to the playback layer's other Media3
  * adapters.
  */
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 internal fun Track.toMediaItem(): MediaItem {
   // Phase E.1 / E.2: feed the MediaSession enough metadata for the
   // System UI notification + lock-screen surface to render properly.

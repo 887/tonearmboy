@@ -20,7 +20,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
@@ -112,7 +112,7 @@ fun <T : Any> LibraryTabRenderer(
   val prefetcher = com.eight87.tonearmboy.ui.library.LocalCoverArtPrefetcher.current
   if (prefetcher != null) {
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val resources = LocalContext.current.resources
+    val resources = LocalResources.current
     val prefetchTiles = remember(items, spec, resources) {
       items.mapNotNull { spec.toTile(it, resources) }
     }
@@ -175,7 +175,7 @@ fun <T : Any> LibraryTabRenderer(
   // screen edge whether the scrollbar is visible or not.
   Box(modifier = modifier.fillMaxSize().semantics { testTag = spec.testTag }) {
     if (effectiveTileMode) {
-      val resources = LocalContext.current.resources
+      val resources = LocalResources.current
       val tileItems = remember(items, resources) { items.mapNotNull { spec.toTile(it, resources) } }
       // R4 — when the spec opts into tile overflow, wrap its
       // composable hook in a `(TileItem, dismiss) -> Unit` slot keyed

@@ -20,7 +20,6 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,16 +48,11 @@ fun SortSheet(
     initialValue = SheetValue.Hidden,
     enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
   )
-  var pendingKey by rememberSaveable { mutableStateOf(current.key) }
-  var pendingDir by rememberSaveable { mutableStateOf(current.direction) }
-
-  // Reset pending if the externally-supplied current changed since we
-  // were opened (e.g. another tab switched in mid-flight).
-  remember(current) {
-    pendingKey = current.key
-    pendingDir = current.direction
-    Unit
-  }
+  // Keyed on `current` so the pending selection resets if the
+  // externally-supplied sort changed since we were opened (e.g. another
+  // tab switched in mid-flight).
+  var pendingKey by rememberSaveable(current) { mutableStateOf(current.key) }
+  var pendingDir by rememberSaveable(current) { mutableStateOf(current.direction) }
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,

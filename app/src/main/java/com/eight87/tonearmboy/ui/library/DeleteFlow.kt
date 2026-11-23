@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
  * "Delete file…" from the album-detail screen, but the result comes
  * back asynchronously, sometimes after the screen has dismissed).
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 fun rememberDeleteFlow(
   scanner: LibraryScanner,
@@ -163,7 +163,7 @@ fun rememberDeleteFlow(
 internal fun trackUri(track: Track) =
   ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, track.id)
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 private fun finalizeDelete(
   deleted: List<Track>,
   scanner: LibraryScanner,

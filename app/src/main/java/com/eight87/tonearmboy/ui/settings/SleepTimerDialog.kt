@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.settings
 
+import androidx.media3.common.util.UnstableApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -87,6 +88,7 @@ fun SleepTimerDialog(
   )
 }
 
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Composable
 private fun IdleBody(
   onStart: (durationMs: Long, waitForEndOfTrack: Boolean) -> Unit,

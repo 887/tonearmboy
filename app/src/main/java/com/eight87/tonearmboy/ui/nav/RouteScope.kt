@@ -28,7 +28,7 @@ import kotlinx.coroutines.CoroutineScope
  *   [playFromLibrary], etc.) — Register implementations don't need to
  *   pull a `collectAsStateWithLifecycle` themselves.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 interface RouteScope {
   val graph: AppGraph
   val backStack: TonearmboyBackStack
