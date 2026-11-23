@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.library
 
+import com.eight87.tonearmboy.ui.common.rememberControlledRangeSliderState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +18,8 @@ import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,7 +67,10 @@ fun LibraryFilterSheet(
   onApply: (FilterCriteria) -> Unit,
   onReset: () -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberBottomSheetState(
+    initialValue = SheetValue.Hidden,
+    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+  )
 
   // Year span bounds. Default to a sane fallback when the library is
   // empty or has zero year metadata so the slider remains operable
@@ -131,13 +136,15 @@ fun LibraryFilterSheet(
         style = MaterialTheme.typography.bodyMedium,
       )
       RangeSlider(
-        value = yearLowDraft..yearHighDraft,
+        state = rememberControlledRangeSliderState(
+          value = yearLowDraft..yearHighDraft,
+          valueRange = yearLowF..yearHighF,
+          steps = (yearHighF - yearLowF).toInt().coerceAtLeast(1) - 1,
+        ),
         onValueChange = { range ->
           yearLowDraft = range.start
           yearHighDraft = range.endInclusive
         },
-        valueRange = yearLowF..yearHighF,
-        steps = (yearHighF - yearLowF).toInt().coerceAtLeast(1) - 1,
         modifier = Modifier
           .fillMaxWidth()
           .semantics { testTag = "filter_year_slider" },

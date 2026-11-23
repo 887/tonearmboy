@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.settings
 
+import com.eight87.tonearmboy.ui.common.rememberControlledSliderState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -373,13 +374,11 @@ fun MusicBrainzProviderScreen(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Slider(
-        value = value,
+        state = rememberControlledSliderState(value = value, valueRange = 0f..100f, steps = 99),
         onValueChange = { value = it },
         onValueChangeFinished = {
           scope.launch { library.coverArtMatchScore.set(value.toInt()) }
         },
-        valueRange = 0f..100f,
-        steps = 99,
         modifier = Modifier
           .fillMaxWidth()
           .semantics { testTag = "mb_match_score_slider" },

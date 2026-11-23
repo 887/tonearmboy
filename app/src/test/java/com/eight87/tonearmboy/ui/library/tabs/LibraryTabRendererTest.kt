@@ -7,7 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -57,8 +57,8 @@ class LibraryTabRendererTest {
       item: FakeItem,
       selected: Boolean,
       inSelectionMode: Boolean,
-      onClick: () -> Unit,
-      onLongClick: () -> Unit,
+      onClick: (FakeItem) -> Unit,
+      onLongClick: (FakeItem) -> Unit,
     ) {
       Text(
         text = item.label,

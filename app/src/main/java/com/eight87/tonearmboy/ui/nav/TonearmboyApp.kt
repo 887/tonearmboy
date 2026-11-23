@@ -159,10 +159,10 @@ fun TonearmboyApp(
     sheetAlbumArtBackgroundEnabled && sheetCoverUri != null
 
   val openNowPlayingSheet: () -> Unit = remember {
-    { coroutineScope.launch { sheetProgress.animateTo(1f) }; Unit }
+    { coroutineScope.launch { sheetProgress.animateTo(1f) } }
   }
   val closeSheet: () -> Unit = remember {
-    { coroutineScope.launch { sheetProgress.animateTo(0f) }; Unit }
+    { coroutineScope.launch { sheetProgress.animateTo(0f) } }
   }
 
   val scope = rememberRouteScope(

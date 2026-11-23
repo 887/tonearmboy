@@ -11,6 +11,7 @@ import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.eight87.tonearmboy.AppGraph
 import com.eight87.tonearmboy.R
@@ -190,7 +191,7 @@ class PlaybackService : MediaSessionService() {
       // taps. `DEFAULT_PLAYER_COMMANDS` is Media3's canonical
       // "everything the player supports" preset and includes
       // COMMAND_SET_REPEAT_MODE + COMMAND_SET_SHUFFLE_MODE.
-      return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+      return MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
         .setAvailableSessionCommands(available)
         .setAvailablePlayerCommands(MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
         .build()
@@ -212,7 +213,7 @@ class PlaybackService : MediaSessionService() {
           player.shuffleModeEnabled = !player.shuffleModeEnabled
           Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
-        else -> Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+        else -> Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
       }
     }
 

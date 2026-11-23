@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.library
 
+import com.eight87.tonearmboy.ui.common.rememberControlledRangeSliderState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,7 +42,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -375,11 +377,13 @@ internal fun YearRangeEditor(
       style = MaterialTheme.typography.bodySmall,
     )
     RangeSlider(
-      value = curMin..curMax,
+      state = rememberControlledRangeSliderState(
+        value = curMin..curMax,
+        valueRange = low.toFloat()..high.toFloat(),
+      ),
       onValueChange = { range ->
         onChange(condition.copy(min = range.start.toInt(), max = range.endInclusive.toInt()))
       },
-      valueRange = low.toFloat()..high.toFloat(),
       modifier = Modifier
         .fillMaxWidth()
         .semantics { testTag = "year_range" },
@@ -550,7 +554,10 @@ private fun ConditionTypeChooser(
   onPick: (FilterCondition) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberBottomSheetState(
+    initialValue = SheetValue.Hidden,
+    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+  )
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
@@ -588,8 +595,9 @@ private fun ConditionPickRow(
       .semantics { testTag = "pick_${title.lowercase().replace(' ', '_')}" },
   ) {
     ListItem(
-      headlineContent = { Text(title) },
       supportingContent = { Text(subtitle, style = MaterialTheme.typography.bodySmall) },
-    )
+    ) {
+      Text(title)
+    }
   }
 }

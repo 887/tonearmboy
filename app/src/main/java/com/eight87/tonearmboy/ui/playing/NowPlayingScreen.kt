@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.playing
 
+import com.eight87.tonearmboy.ui.common.rememberControlledSliderState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -660,13 +661,15 @@ private fun Scrubber(positionMs: Long, durationMs: Long, onSeek: (Long) -> Unit)
 
   Column {
     Slider(
-      value = sliderValue.coerceIn(0f, sliderMax),
+      state = rememberControlledSliderState(
+        value = sliderValue.coerceIn(0f, sliderMax),
+        valueRange = 0f..sliderMax,
+      ),
       onValueChange = { dragValue = it },
       onValueChangeFinished = {
         dragValue?.let { onSeek(it.toLong()) }
         dragValue = null
       },
-      valueRange = 0f..sliderMax,
       modifier = Modifier.fillMaxWidth().semantics { testTag = "now_playing_scrubber" },
     )
     Row(

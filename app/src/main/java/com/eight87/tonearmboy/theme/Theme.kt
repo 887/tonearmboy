@@ -1,5 +1,3 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
-
 package com.eight87.tonearmboy.theme
 
 import android.os.Build
@@ -46,7 +44,7 @@ import com.eight87.tonearmboy.ui.settings.BaseTheme
 // `secondaryContainer` / `tertiaryContainer`) and the wider
 // surface-tier ladder (`surfaceContainerLow…High`) the M3E look needs.
 // `expressiveDarkColorScheme()` doesn't exist yet — only the light
-// variant ships in 1.4.0 — so we pair `expressiveLightColorScheme()`
+// variant ships (still true in 1.5.0) — so we pair `expressiveLightColorScheme()`
 // for light mode with `darkColorScheme()` plus our brand seeds for
 // dark mode. Both still produce the full surface-tier ladder.
 private val DarkColorScheme = darkColorScheme(primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80)

@@ -23,7 +23,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,7 +59,10 @@ fun NowPlayingSleepTimerSheet(
   /** User's fade-out window in seconds. 0 = no fade. */
   fadeOutSeconds: Int = 0,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberBottomSheetState(
+    initialValue = SheetValue.Hidden,
+    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+  )
   val state by sleepTimer.state.collectAsStateWithLifecycle()
   var customOpen by remember { mutableStateOf(false) }
   var waitForEndOfTrack by remember { mutableStateOf(false) }

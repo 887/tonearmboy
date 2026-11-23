@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -29,7 +30,8 @@ val buildDateUtc: String = DateTimeFormatter.ISO_LOCAL_DATE
 
 android {
     namespace = "com.eight87.tonearmboy"
-    compileSdk = 36
+    compileSdk = 37
+    compileSdkMinor = 2
     defaultConfig {
         applicationId = "com.eight87.tonearmboy"
         minSdk = 26
@@ -61,8 +63,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     buildFeatures {
       compose = true
@@ -121,12 +123,22 @@ androidComponents {
             tasks.named("merge${variantName}Assets").configure {
                 dependsOn(copyTask)
             }
+            // Lint's model/analysis tasks read src/main/assets too; Gradle 9
+            // fails validation unless they depend on the task that writes
+            // artifacts.json there.
+            tasks.matching {
+                it.name.contains("lint", ignoreCase = true) && it.name.contains(variantName) && it != copyTask.get()
+            }.configureEach {
+                dependsOn(copyTask)
+            }
         }
     }
 }
 
 kotlin {
-    jvmToolchain(17)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }
 
 dependencies {
@@ -186,6 +198,9 @@ dependencies {
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.session)
   implementation(libs.androidx.media3.ui)
+  // media3 1.11 removed exoplayer.MetadataRetriever; its replacement
+  // (inspector.MetadataRetriever.Builder) lives in media3-inspector.
+  implementation(libs.androidx.media3.inspector)
 
   // Room — local cache for the MediaStore-derived library (Phase C).
   implementation(libs.androidx.room.runtime)

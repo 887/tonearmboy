@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.ui.settings
 
+import com.eight87.tonearmboy.ui.common.rememberControlledSliderState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -954,13 +955,15 @@ private fun ReplayGainPreampDialog(
           modifier = Modifier.padding(top = 4.dp),
         )
         Slider(
-          value = value,
+          state = rememberControlledSliderState(
+            value = value,
+            valueRange = SettingsRepository.REPLAYGAIN_PREAMP_MIN_DB..SettingsRepository.REPLAYGAIN_PREAMP_MAX_DB,
+            // (max - min) / step - 1 internal stops; 0.1 dB grid over
+            // 30 dB == 299 internal steps.
+            steps = ((SettingsRepository.REPLAYGAIN_PREAMP_MAX_DB - SettingsRepository.REPLAYGAIN_PREAMP_MIN_DB) /
+              SettingsRepository.REPLAYGAIN_PREAMP_STEP_DB).toInt() - 1,
+          ),
           onValueChange = { value = it },
-          valueRange = SettingsRepository.REPLAYGAIN_PREAMP_MIN_DB..SettingsRepository.REPLAYGAIN_PREAMP_MAX_DB,
-          // (max - min) / step - 1 internal stops; 0.1 dB grid over
-          // 30 dB == 299 internal steps.
-          steps = ((SettingsRepository.REPLAYGAIN_PREAMP_MAX_DB - SettingsRepository.REPLAYGAIN_PREAMP_MIN_DB) /
-            SettingsRepository.REPLAYGAIN_PREAMP_STEP_DB).toInt() - 1,
           modifier = Modifier
             .fillMaxWidth()
             .padding(top = 12.dp)
@@ -1046,10 +1049,12 @@ private fun MusicBrainzMatchScoreDialog(
           modifier = Modifier.padding(top = 4.dp),
         )
         Slider(
-          value = value,
+          state = rememberControlledSliderState(
+            value = value,
+            valueRange = 0f..100f,
+            steps = 99, // 100 distinct stops
+          ),
           onValueChange = { value = it },
-          valueRange = 0f..100f,
-          steps = 99, // 100 distinct stops
           modifier = Modifier
             .fillMaxWidth()
             .padding(top = 12.dp)

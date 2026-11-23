@@ -6,7 +6,7 @@ import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Metadata
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.MetadataRetriever
+import androidx.media3.inspector.MetadataRetriever
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.extractor.metadata.vorbis.VorbisComment
 import java.util.concurrent.TimeUnit
@@ -38,8 +38,9 @@ class ReplayGainTagReader(private val context: Context) {
   fun read(uri: Uri): ReplayGainTags {
     return try {
       val item = MediaItem.fromUri(uri)
-      val future = MetadataRetriever.retrieveMetadata(context.applicationContext, item)
-      val groups = future.get(RETRIEVE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+      val groups = MetadataRetriever.Builder(context.applicationContext, item).build().use { retriever ->
+        retriever.retrieveTrackGroups().get(RETRIEVE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+      }
 
       var trackGainDb: Float? = null
       var trackPeak: Float? = null

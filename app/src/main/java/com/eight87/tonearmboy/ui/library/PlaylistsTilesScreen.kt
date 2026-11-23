@@ -44,7 +44,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -352,7 +353,10 @@ internal fun NewPlaylistSheet(
   onDismiss: () -> Unit,
   onCreate: (String) -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberBottomSheetState(
+    initialValue = SheetValue.Hidden,
+    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+  )
   var name by remember { mutableStateOf("") }
   ModalBottomSheet(
     onDismissRequest = onDismiss,
@@ -401,7 +405,10 @@ internal fun PlaylistCoverChooserSheet(
   onDismiss: () -> Unit,
   onChoose: (String?) -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberBottomSheetState(
+    initialValue = SheetValue.Hidden,
+    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+  )
   val launcher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.OpenDocument(),
   ) { uri: Uri? ->
@@ -473,7 +480,10 @@ private fun PickFromTrackSheet(
   onDismiss: () -> Unit,
   onPick: (Long) -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberBottomSheetState(
+    initialValue = SheetValue.Hidden,
+    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+  )
   var tracks by remember { mutableStateOf<List<Track>>(emptyList()) }
   LaunchedEffect(playlist.id) {
     tracks = repository.observePlaylistTracks(playlist.id).first()
