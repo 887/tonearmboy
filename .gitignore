@@ -1,6 +1,7 @@
 # Android
 build/
 .gradle/
+.kotlin/
 local.properties
 captures/
 .cxx/
