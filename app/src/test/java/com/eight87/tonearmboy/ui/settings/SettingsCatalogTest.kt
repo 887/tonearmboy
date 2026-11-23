@@ -8,6 +8,7 @@ import com.eight87.tonearmboy.ui.nav.SettingsLookAndFeel
 import com.eight87.tonearmboy.ui.nav.SettingsMusicSources
 import com.eight87.tonearmboy.ui.nav.SettingsPersonalize
 import com.eight87.tonearmboy.ui.nav.SettingsRootDest
+import com.eight87.tonearmboy.ui.nav.SettingsSleepTimer
 import com.eight87.tonearmboy.ui.settings.catalog.RowKind
 import com.eight87.tonearmboy.ui.settings.catalog.Section
 import com.eight87.tonearmboy.ui.settings.catalog.SettingsCatalog
@@ -44,6 +45,8 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_BEHAVIOUR_AUDIO,
       // Round 2 / Ask B — new top-level Cover art section.
       SettingsCatalog.ID_BEHAVIOUR_COVER_ART,
+      // Sleep timer — root-level sub-page entry.
+      SettingsCatalog.ID_AUDIO_SLEEP_TIMER,
       SettingsCatalog.ID_LIBRARY_MUSIC_SOURCES,
       SettingsCatalog.ID_LIBRARY_REFRESH,
       SettingsCatalog.ID_LIBRARY_RESCAN,
@@ -55,6 +58,7 @@ class SettingsCatalogTest {
       // legacy ID_COLOR_SCHEME + ID_BLACK_THEME pair.
       SettingsCatalog.ID_BASE_THEME,
       SettingsCatalog.ID_ALBUM_ART_TINT,
+      SettingsCatalog.ID_ALBUM_ART_BACKGROUND,
       SettingsCatalog.ID_CUSTOM_CHROME_TINT,
       // Personalize.
       SettingsCatalog.ID_LIBRARY_TABS,
@@ -80,6 +84,11 @@ class SettingsCatalogTest {
       SettingsCatalog.ID_REPLAYGAIN_STRATEGY,
       SettingsCatalog.ID_REPLAYGAIN_PREAMP,
       SettingsCatalog.ID_SYSTEM_EQUALIZER,
+      // Sleep timer sub-page.
+      SettingsCatalog.ID_SLEEP_DEFAULT_DURATION,
+      SettingsCatalog.ID_SLEEP_FADE_OUT,
+      SettingsCatalog.ID_SLEEP_SHAKE_TO_RESUME,
+      SettingsCatalog.ID_SLEEP_AUTO_ARM,
       // Phase H.5 — root-level Library actions.
       SettingsCatalog.ID_LIBRARY_EXPORT_PLAYLISTS,
       SettingsCatalog.ID_LIBRARY_IMPORT_PLAYLISTS,
@@ -117,6 +126,7 @@ class SettingsCatalogTest {
       SettingsContent,
       SettingsCoverArt,
       SettingsAudio,
+      SettingsSleepTimer,
       SettingsMusicSources,
       SettingsAbout,
     )
@@ -210,6 +220,7 @@ class SettingsCatalogTest {
         SettingsContent -> Section.Content
         SettingsCoverArt -> Section.CoverArt
         SettingsAudio -> Section.Audio
+        SettingsSleepTimer -> Section.SleepTimer
         // Music sources is its own root-level destination; it's
         // navigable from the Settings root entry of the same id.
         SettingsMusicSources -> Section.Root

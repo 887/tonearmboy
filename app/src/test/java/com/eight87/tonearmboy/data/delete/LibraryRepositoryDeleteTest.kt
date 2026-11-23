@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.data.delete
 
+import kotlinx.coroutines.cancel
 import android.content.ContentUris
 import android.provider.MediaStore
 import androidx.room.Room
@@ -34,6 +35,12 @@ class LibraryRepositoryDeleteTest {
   private lateinit var db: LibraryDatabase
   private lateinit var repository: LibraryRepository
 
+  // The repository launches a debounced rescan collector on this scope;
+  // cancel it in tearDown so a pending scan can't fire after Robolectric
+  // has torn the application down (it surfaces as an uncaught exception
+  // in whichever test class runs next).
+  private val repositoryScope = kotlinx.coroutines.MainScope()
+
   @Before fun setUp() {
     val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
     db = Room.inMemoryDatabaseBuilder(ctx, LibraryDatabase::class.java)
@@ -43,13 +50,14 @@ class LibraryRepositoryDeleteTest {
       context = ctx,
       scanner = MediaStoreScanner(ctx),
       db = db,
-      externalScope = kotlinx.coroutines.MainScope(),
+      externalScope = repositoryScope,
       scanConfig = com.eight87.tonearmboy.data.EmptyScanConfigSource,
     )
   }
 
   @After fun tearDown() {
     repository.shutdown()
+    repositoryScope.cancel()
     db.close()
   }
 
