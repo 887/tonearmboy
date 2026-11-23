@@ -1,5 +1,6 @@
 package com.eight87.tonearmboy.data.delete
 
+import androidx.annotation.RequiresApi
 import android.app.RecoverableSecurityException
 import android.content.Context
 import android.content.IntentSender
@@ -57,6 +58,7 @@ class TrackDeleter(private val context: Context) {
     }
   }
 
+  @RequiresApi(Build.VERSION_CODES.R)
   private fun deleteViaCreateRequest(uris: List<Uri>): DeleteRequest = try {
     val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, uris)
     DeleteRequest.Consent(pendingIntent.intentSender)
@@ -73,6 +75,7 @@ class TrackDeleter(private val context: Context) {
    * succeeds. We expose the consent flow uniformly via
    * [DeleteRequest.Consent] so the UI never has to special-case Q.
    */
+  @RequiresApi(Build.VERSION_CODES.Q)
   private fun deleteViaRecoverableException(uris: List<Uri>): DeleteRequest {
     // Q does not have a "delete many" entry point; we surface the first
     // URI's consent intent and let the UI loop the remainder. Most

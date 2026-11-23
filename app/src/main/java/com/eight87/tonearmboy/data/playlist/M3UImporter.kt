@@ -96,7 +96,7 @@ class M3UImporter(
     val out = ArrayList<String>()
     for (rawLine in lines) {
       // Strip BOM + trim whitespace.
-      val trimmed = rawLine.removePrefix("﻿").trim()
+      val trimmed = rawLine.removePrefix("\uFEFF").trim()
       if (trimmed.isEmpty()) continue
       if (trimmed.startsWith("#")) continue   // EXTM3U, EXTINF, comments
       out += trimmed
