@@ -19,9 +19,7 @@
 #   - Creates the GitHub Release `v<version>-<sha7>` with the APK attached.
 #   - Generates release notes from `git log <prev-tag>..HEAD`.
 #   - Includes a "Verify build" section with the commit SHA + APK SHA-256.
-#   - Pushes the local annotated tag to `origin` (informational; the GH Action
-#     fallback in `.github/workflows/release.yml` is self-disabling and will
-#     exit 0 when an APK is already attached, so no CI minutes burned).
+#   - Pushes the local annotated tag to `origin`.
 
 set -euo pipefail
 
@@ -204,8 +202,6 @@ EOF
     echo "[build-release-apk] ${REL_URL}"
 
     # D.14.1.1: push the annotated tag to origin (informational — the
-    # GH Action workflow is tag-only AND self-disabling, so this won't
-    # burn CI minutes when the release already has the APK attached).
     if git rev-parse -q --verify "refs/tags/${REL_TAG}" >/dev/null; then
         echo "[build-release-apk] pushing tag ${REL_TAG} to origin..."
         git push origin "refs/tags/${REL_TAG}" || \
